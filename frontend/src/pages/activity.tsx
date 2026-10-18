@@ -1,0 +1,153 @@
+// Every transaction for a month, newest first, grouped by day. Filters sit above the list.
+import { useState } from 'react'
+import { Download, Search, SlidersHorizontal, X } from 'lucide-react'
+import { useApp, useMonth, useRefData } from '@/app-state'
+import { USE_MOCK } from '@/api/client'
+import { api, exportCsvUrl } from '@/api/endpoints'
+import { useQuery } from '@/api/use-query'
+import { MonthSwitcher } from '@/components/month-switcher'
+import { PageHeader } from '@/components/page-header'
+import { SimpleSelect } from '@/components/simple-select'
+import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
+import { TransactionItem } from '@/components/transaction-item'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { ItemGroup } from '@/components/ui/item'
+import { Separator } from '@/components/ui/separator'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { dayLabel, money, monthLabel } from '@/lib/format'
+import type { Transaction, TransactionFilters, TransactionKind } from '@/types'
+
+export function ActivityPage() {
+  const [month, setMonth] = useMonth()
+  const { openAdd } = useApp()
+  const { wallets, categories } = useRefData()
+  const [kind, setKind] = useState<'all' | TransactionKind>('all')
+  const [walletId, setWalletId] = useState('all')
+  const [categoryId, setCategoryId] = useState('all')
+  const [search, setSearch] = useState('')
+  const [moreFilters, setMoreFilters] = useState(false)
+  const isMobile = useIsMobile()
+
+  const filters: TransactionFilters = {
+    month,
+    kind: kind === 'all' ? undefined : kind,
+    walletId: walletId === 'all' ? undefined : walletId,
+    categoryId: categoryId === 'all' ? undefined : categoryId,
+    search: search || undefined,
+  }
+  // ponytail: refetches per keystroke; debounce once this hits the real API.
+  const { data, error, loading } = useQuery(`tx:${JSON.stringify(filters)}`, () => api.transactions.list(filters))
+  const filtered = kind !== 'all' || walletId !== 'all' || categoryId !== 'all' || !!search
+  const clear = () => { setKind('all'); setWalletId('all'); setCategoryId('all'); setSearch('') }
+
+  return (
+    <>
+      <PageHeader
+        page="Activity"
+        headline={!data ? monthLabel(month) : `${data.length} ${filtered ? (data.length === 1 ? 'match' : 'matches') : (data.length === 1 ? 'transaction' : 'transactions')} in ${monthLabel(month)}`}
+        description={isMobile ? 'Tap a row for details, or swipe it left to edit or delete.' : 'Select a row to see its details.'}
+        action={
+          <Button variant="outline" onClick={() => exportCsv(filters, data ?? [])} disabled={!data?.length}>
+            <Download /> <span className="sr-only sm:not-sr-only">Export CSV</span>
+          </Button>
+        }
+      />
+
+      <MonthSwitcher month={month} onChange={setMonth}>
+        <p className="text-sm text-muted-foreground">
+          Spent <span className="font-medium text-foreground tabular-nums">{money(sum(data, 'expense'))}</span>
+          {', earned '}
+          <span className="font-medium text-foreground tabular-nums">{money(sum(data, 'income'))}</span>
+        </p>
+      </MonthSwitcher>
+
+      <div className="grid gap-4">
+
+        <div className="flex gap-2">
+          <InputGroup>
+            <InputGroupAddon><Search /></InputGroupAddon>
+            <InputGroupInput type="search" placeholder="Search by description or note" aria-label="Search transactions" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </InputGroup>
+          <Button
+            variant={walletId !== 'all' || categoryId !== 'all' ? 'secondary' : 'outline'}
+            size="icon"
+            className="md:hidden"
+            aria-expanded={moreFilters}
+            aria-controls="more-filters"
+            aria-label="Filter by wallet and category"
+            onClick={() => setMoreFilters((v) => !v)}
+          >
+            <SlidersHorizontal />
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          <Tabs value={kind} onValueChange={(v) => setKind(v as typeof kind)}>
+            <TabsList className="w-full md:w-auto">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="expense">Expenses</TabsTrigger>
+              <TabsTrigger value="income">Income</TabsTrigger>
+              <TabsTrigger value="transfer">Transfers</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <div id="more-filters" className={`flex-1 grid-cols-2 gap-2 md:grid md:max-w-md ${moreFilters ? 'grid' : 'hidden'}`}>
+            <SimpleSelect aria-label="Wallet" value={walletId} onChange={setWalletId} options={[{ value: 'all', label: 'All wallets' }, ...wallets.map((w) => ({ value: w.id, label: w.name }))]} />
+            <SimpleSelect aria-label="Category" value={categoryId} onChange={setCategoryId} options={[{ value: 'all', label: 'All categories' }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
+          </div>
+          {filtered && <Button variant="ghost" onClick={clear} className="self-start md:self-auto"><X /> Clear filters</Button>}
+        </div>
+      </div>
+
+      {error ? <ErrorState error={error} /> : loading && !data ? <LoadingRows rows={6} /> : !data?.length ? (
+        filtered
+          ? <EmptyState title="No matches" body={`Nothing in ${monthLabel(month)} matches these filters.`} action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
+          : <EmptyState title={`Nothing recorded in ${monthLabel(month)}`} body="Transactions you add for this month are listed here." action={<Button onClick={() => openAdd()}>Add transaction</Button>} />
+      ) : (
+        <Card>
+          <CardContent className="grid gap-2 md:gap-4">
+            {groupByDay(data).map(([day, items], i) => {
+              const spent = sum(items, 'expense')
+              return (
+                <section key={day} className="grid gap-1">
+                  {i > 0 && <Separator className="mb-2 md:mb-3" />}
+                  <div className="flex items-baseline justify-between gap-4 px-3 text-sm">
+                    <h2 className="font-medium">{dayLabel(day)}</h2>
+                    {spent > 0 && <span className="text-muted-foreground tabular-nums">{money(spent)} spent</span>}
+                  </div>
+                  <ItemGroup>{items.map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
+                </section>
+              )
+            })}
+          </CardContent>
+        </Card>
+      )}
+    </>
+  )
+}
+
+const sum = (list: Transaction[] | undefined, kind: TransactionKind) =>
+  (list ?? []).filter((t) => t.kind === kind).reduce((s, t) => s + t.amount, 0)
+
+function groupByDay(list: Transaction[]) {
+  const groups = new Map<string, Transaction[]>()
+  for (const t of list) groups.set(t.date, [...(groups.get(t.date) ?? []), t])
+  return [...groups]
+}
+
+function exportCsv(filters: TransactionFilters, rows: Transaction[]) {
+  if (!USE_MOCK) {
+    window.location.href = exportCsvUrl(filters)
+    return
+  }
+  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`
+  const csv = [['Date', 'Type', 'Description', 'Amount', 'Category', 'Wallet', 'Note'].join(','),
+    ...rows.map((t) => [t.date, t.kind, t.title, t.amount, t.categoryId ?? '', t.walletId, t.note].map(esc).join(','))].join('\n')
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+  a.download = `anttipid-${filters.month}.csv`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
