@@ -10,6 +10,7 @@ import { BudgetItem } from '@/components/budget'
 import { budgetState } from '@/lib/budget'
 import { PageHeader } from '@/components/page-header'
 import { HeroCard } from '@/components/hero-card'
+import { BrandMark } from '@/components/brand-icons'
 import { BillsSlide, Carousel, SpendingSlide } from '@/components/home-carousel'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
@@ -88,7 +89,10 @@ export function HomePage() {
         </div>
 
         <div className="contents lg:grid lg:grid-cols-1 lg:content-start lg:gap-6">
-          <Card className="order-2 lg:order-none">
+          {/* Ledge mascot keeps watch on budgets, perched on the card edge without adding height. */}
+          <div className="relative order-2 lg:order-none">
+          <BrandMark mark="ledge" className="pointer-events-none absolute right-6 bottom-full hidden w-12 translate-y-[12%] lg:block" />
+          <Card>
             <CardHeader>
               <CardTitle role="heading" aria-level={2}>Needs attention</CardTitle>
               <CardDescription>Budgets near or over their limit</CardDescription>
@@ -106,6 +110,7 @@ export function HomePage() {
               )}
             </CardContent>
           </Card>
+          </div>
 
           <Card className="order-4 lg:order-none">
             <CardHeader>
@@ -165,7 +170,7 @@ function SafeToSpend({ s }: { s?: MonthSummary }) {
 
   return (
     <HeroCard>
-      <CardHeader>
+        <CardHeader>
         <CardDescription>{over ? 'Over your monthly budget by' : 'Left to spend this month'}</CardDescription>
         <CardTitle className={over ? 'text-3xl font-semibold tabular-nums text-destructive' : 'text-3xl font-semibold tabular-nums'}>
           {money(Math.abs(left), { whole: true })}

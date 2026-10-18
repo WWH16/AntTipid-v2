@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>The Ant Shield — Ledge Peeking</title>
+  
+  <g id="shield-peeking-ledge">
+    <!-- Antennae (Sweeping up from behind head) -->
+    <g fill="#163300" stroke="#163300">
+      <!-- Left Antenna -->
+      <path d="M 106 130 C 96 70 74 38 34 26" fill="none" stroke-width="12" stroke-linecap="round" />
+      <circle cx="32" cy="24" r="9.5" fill="#9FE870" stroke="#163300" stroke-width="3.5" />
+
+      <!-- Right Antenna -->
+      <path d="M 150 130 C 160 70 182 38 222 26" fill="none" stroke-width="12" stroke-linecap="round" />
+      <circle cx="224" cy="24" r="9.5" fill="#9FE870" stroke="#163300" stroke-width="3.5" />
+
+      <!-- Head Shield Crest (Peeking over bottom ledge) -->
+      <!-- Same geometric shield silhouette as p4_shield, rising from y=210 -->
+      <path d="M 128 106
+               C 184 106 206 142 198 186
+               C 194 204 186 218 178 226
+               L 78 226
+               C 70 218 62 204 58 186
+               C 50 142 72 106 128 106 Z" 
+            fill="#163300" stroke="none" />
+
+      <!-- Brow Contour Arc -->
+      <path d="M 86 136 C 108 124 148 124 170 136" fill="none" stroke="#2A4D12" stroke-width="3" stroke-linecap="round" opacity="0.6" />
+
+      <!-- Central Diamond Accent in Forehead -->
+      <polygon points="128,126 139,142 128,158 117,142" fill="#9FE870" stroke="none" />
+      <polygon points="128,131 134,142 128,153 122,142" fill="#163300" stroke="none" />
+      <circle cx="128" cy="142" r="2.2" fill="#F0F3EE" stroke="none" />
+
+      <!-- Signature Almond Eyes (Electric Lime, tilted, alert) -->
+      <!-- Left Eye -->
+      <ellipse cx="100" cy="168" rx="14" ry="21" transform="rotate(-12 100 168)" fill="#9FE870" stroke="none" />
+      <circle cx="102" cy="165" r="5.2" fill="#163300" stroke="none" />
+      <circle cx="104.5" cy="162.5" r="2" fill="#F0F3EE" stroke="none" />
+
+      <!-- Right Eye -->
+      <ellipse cx="156" cy="168" rx="14" ry="21" transform="rotate(12 156 168)" fill="#9FE870" stroke="none" />
+      <circle cx="154" cy="165" r="5.2" fill="#163300" stroke="none" />
+      <circle cx="151.5" cy="162.5" r="2" fill="#F0F3EE" stroke="none" />
+
+      <!-- Peeking Front Claw Grips on the Ledge -->
+      <path d="M 70 226 C 68 214 78 206 88 208 C 88 218 86 226 78 226 Z" fill="#9FE870" stroke="#163300" stroke-width="3" />
+      <path d="M 186 226 C 188 214 178 206 168 208 C 168 218 170 226 178 226 Z" fill="#9FE870" stroke="#163300" stroke-width="3" />
+    </g>
+
+    <!-- Bottom Baseline / Ledge line -->
+    <line x1="24" y1="226" x2="232" y2="226" stroke="#163300" stroke-width="6" stroke-linecap="round" />
+  </g>
+</svg>

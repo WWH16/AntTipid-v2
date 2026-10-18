@@ -1,5 +1,6 @@
 import { CategoryMedia } from '@/components/category-icon'
 import { Badge } from '@/components/ui/badge'
+import { BrandMark } from '@/components/brand-icons'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemFooter, ItemTitle } from '@/components/ui/item'
 import { Progress } from '@/components/ui/progress'
 import { budgetPercent, budgetRemaining, budgetState, type BudgetState } from '@/lib/budget'
@@ -13,7 +14,12 @@ const BADGE = {
 } as const
 
 export function BudgetBadge({ state, solid }: { state: BudgetState; solid?: boolean }) {
-  return <Badge variant={solid ? 'secondary' : BADGE[state].variant}>{BADGE[state].label}</Badge>
+  return (
+    <Badge variant={solid ? 'secondary' : BADGE[state].variant} className="inline-flex items-center gap-1">
+      {state === 'ok' && <BrandMark mark="carrier" className="size-3.5 shrink-0" />}
+      {BADGE[state].label}
+    </Badge>
+  )
 }
 
 /** One category budget: name, what's left, status and a progress bar. Clickable when onSelect is given. */

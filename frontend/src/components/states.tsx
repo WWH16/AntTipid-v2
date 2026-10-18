@@ -3,11 +3,15 @@ import { CircleAlert } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BrandMark } from '@/components/brand-icons'
 
 export function EmptyState({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
   return (
-    <Empty className="border border-dashed">
+    <Empty className="border border-dashed p-6">
       <EmptyHeader>
+        <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-muted/60 p-1">
+          <BrandMark mark="tile" className="size-full" />
+        </div>
         <EmptyTitle>{title}</EmptyTitle>
         <EmptyDescription>{body}</EmptyDescription>
       </EmptyHeader>

@@ -21,6 +21,7 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle }
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { BrandMark } from '@/components/brand-icons'
 import { done } from '@/lib/done'
 import { WALLET_TYPES, walletTypeLabel } from '@/lib/wallets'
 import type { Category, CategoryKind, Wallet, WalletType } from '@/types'
@@ -166,6 +167,7 @@ function AccountTab() {
       <CardHeader>
         <CardTitle role="heading" aria-level={2}>Account</CardTitle>
         <CardDescription>Signed in to this prototype.</CardDescription>
+        <CardAction><BrandMark mark="outline" className="size-12" /></CardAction>
       </CardHeader>
       <CardContent>
         <DetailList rows={[['Name', user?.name], ['Email', user?.email], ['Currency', 'Philippine peso (₱)']]} />
