@@ -1,42 +1,54 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <title>The Ant Shield — Electric Duotone Outline</title>
-  
-  <!-- Outer Linework in Forest Green -->
-  <g fill="none" stroke="#163300" stroke-linecap="round" stroke-linejoin="round">
+  <title>AntTipid — Adaptive Duotone Outline Favicon</title>
+  <style>
+    :root {
+      --stroke: #163300;
+      --fill: #FFFFFF;
+      --accent: #9FE870;
+      --pupil: #163300;
+      --glint: #FFFFFF;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --stroke: #9FE870;
+        --fill: #163300;
+        --accent: #9FE870;
+        --pupil: #163300;
+        --glint: #FFFFFF;
+      }
+    }
+  </style>
+
+  <g stroke-linecap="round" stroke-linejoin="round">
     <!-- Antennae -->
-    <path d="M 110 88 C 103 54 82 32 40 22" stroke-width="8.5" />
-    <circle cx="38" cy="21" r="8.5" fill="#9FE870" stroke="#163300" stroke-width="3.5" />
+    <path d="M 110 92 C 100 48 78 26 36 16" fill="none" stroke="var(--stroke, #163300)" stroke-width="16" />
+    <circle cx="34" cy="14" r="13" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="5" />
 
-    <path d="M 146 88 C 153 54 174 32 216 22" stroke-width="8.5" />
-    <circle cx="218" cy="21" r="8.5" fill="#9FE870" stroke="#163300" stroke-width="3.5" />
+    <path d="M 146 92 C 156 48 178 26 220 16" fill="none" stroke="var(--stroke, #163300)" stroke-width="16" />
+    <circle cx="222" cy="14" r="13" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="5" />
 
-    <!-- Head Shield Contour (Linear Open) -->
-    <path d="M 128 86
-             C 182 86 202 124 192 168
-             C 182 208 140 236 128 244
-             C 116 236 74 208 64 168
-             C 54 124 74 86 128 86 Z" 
-          stroke-width="8" stroke-linejoin="round" />
+    <!-- Head Shield Contour with dynamic fill -->
+    <path d="M 128 84
+             C 184 84 204 124 194 168
+             C 184 210 140 238 128 246
+             C 116 238 72 210 62 168
+             C 52 124 72 84 128 84 Z" 
+          fill="var(--fill, #FFFFFF)" stroke="var(--stroke, #163300)" stroke-width="16" />
 
-    <!-- Crown Brow Arc in Electric Lime -->
-    <path d="M 92 115 C 110 106 146 106 164 115" stroke="#9FE870" stroke-width="3.5" />
+    <!-- Forehead Diamond -->
+    <polygon points="128,104 142,122 128,140 114,122" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="4" />
 
-    <!-- Diamond Forehead (Glowing Electric Lime) -->
-    <polygon points="128,106 140,122 128,138 116,122" fill="#9FE870" stroke="#163300" stroke-width="2.5" />
-    <polygon points="128,111 135,122 128,133 121,122" fill="#163300" stroke="none" />
-    <circle cx="128" cy="122" r="2.2" fill="#F0F3EE" stroke="none" />
+    <!-- Almond Eyes -->
+    <ellipse cx="100" cy="148" rx="16" ry="24" transform="rotate(-14 100 148)" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="5" />
+    <circle cx="103" cy="146" r="6" fill="var(--pupil, #163300)" />
+    <circle cx="106" cy="143" r="2.5" fill="var(--glint, #FFFFFF)" />
 
-    <!-- Glowing Almond Lime Eyes -->
-    <ellipse cx="102" cy="146" rx="14" ry="21" transform="rotate(-14 102 146)" fill="#9FE870" stroke="#163300" stroke-width="3.5" />
-    <circle cx="104" cy="144" r="5.2" fill="#163300" stroke="none" />
-    <circle cx="106" cy="141.5" r="2" fill="#F0F3EE" stroke="none" />
+    <ellipse cx="156" cy="148" rx="16" ry="24" transform="rotate(14 156 148)" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="5" />
+    <circle cx="153" cy="146" r="6" fill="var(--pupil, #163300)" />
+    <circle cx="150" cy="143" r="2.5" fill="var(--glint, #FFFFFF)" />
 
-    <ellipse cx="154" cy="146" rx="14" ry="21" transform="rotate(14 154 146)" fill="#9FE870" stroke="#163300" stroke-width="3.5" />
-    <circle cx="152" cy="144" r="5.2" fill="#163300" stroke="none" />
-    <circle cx="150" cy="141.5" r="2" fill="#F0F3EE" stroke="none" />
-
-    <!-- Mandible Jaws -->
-    <path d="M 114 212 L 104 230 L 116 226" stroke-width="5" />
-    <path d="M 142 212 L 152 230 L 140 226" stroke-width="5" />
+    <!-- Mandibles -->
+    <path d="M 112 216 L 100 238" fill="none" stroke="var(--stroke, #163300)" stroke-width="9" />
+    <path d="M 144 216 L 156 238" fill="none" stroke="var(--stroke, #163300)" stroke-width="9" />
   </g>
 </svg>
