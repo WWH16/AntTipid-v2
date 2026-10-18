@@ -2,8 +2,9 @@
 // ponytail: data resets on page reload; swap VITE_USE_MOCK=false once the backend exists.
 import type {
   Budget, BudgetStatus, Category, MonthSummary, MonthlyReport, NewTransaction,
-  ReceiptScan, Transaction, TransactionFilters, User, Wallet,
+  Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
+import { scanReceiptLocal } from '@/lib/receipt-ocr'
 
 const categories: Category[] = [
   { id: 'food', name: 'Food & dining', kind: 'expense', icon: 'food' },
@@ -219,20 +220,5 @@ export const mock = {
     })
   },
 
-  // Stands in for the Gemini OCR endpoint: always "reads" the same Puregold receipt.
-  scanReceipt: (_file: File) =>
-    delay<ReceiptScan>({
-      merchant: 'Puregold Price Club',
-      date: iso(new Date()),
-      total: 1186.5,
-      suggestedCategoryId: 'groceries',
-      items: [
-        { name: 'Jasmine rice 5kg', qty: 1, price: 345 },
-        { name: 'Eggs, tray of 30', qty: 1, price: 268 },
-        { name: 'Lucky Me pancit canton', qty: 6, price: 16.5 },
-        { name: 'Del Monte pineapple juice', qty: 2, price: 72 },
-        { name: 'Dishwashing liquid', qty: 1, price: 89 },
-        { name: 'Chicken breast 1kg', qty: 1, price: 241.5 },
-      ],
-    }, 1400),
+  scanReceipt: (file: File) => scanReceiptLocal(file),
 }

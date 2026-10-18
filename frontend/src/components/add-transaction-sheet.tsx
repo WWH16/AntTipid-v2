@@ -21,6 +21,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { done } from '@/lib/done'
 import { money, todayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/labels'
+import { suggestWalletId } from '@/lib/receipt-ocr'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
 
 const LAST_WALLET = 'anttipid-last-wallet'
@@ -95,6 +96,8 @@ function AddFlow() {
     setTitle(r.merchant)
     setDate(r.date)
     setCategoryId(r.suggestedCategoryId ?? '')
+    const suggestedWallet = suggestWalletId(r, wallets)
+    if (suggestedWallet) setWalletId(suggestedWallet)
     setNote(r.items.map((i) => `${i.qty} x ${i.name}`).join('\n'))
     setMode('form')
   }

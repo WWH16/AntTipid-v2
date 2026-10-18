@@ -86,6 +86,8 @@ export interface ReceiptScan {
   total: number
   items: ReceiptItem[]
   suggestedCategoryId?: string
+  paymentMethod?: WalletType
+  paymentLabel?: string // raw provider found, e.g. "GCash", "VISA", "Cash"
 }
 
 export interface User {
