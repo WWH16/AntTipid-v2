@@ -1,0 +1,200 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', sans-serif;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* AntTipid palette on the stock shadcn variables: forest green, lime, cream.
+   Charts: chart-1 income (green), chart-2 spending (slate), validated for colour-blind separation. */
+:root {
+    --background: #F0F3EE;
+    --foreground: #1A1C18;
+    --card: #FFFFFF;
+    --card-foreground: #1A1C18;
+    --popover: #FFFFFF;
+    --popover-foreground: #1A1C18;
+    --primary: #163300;
+    --primary-foreground: #F0F3EE;
+    --secondary: #DCEFCF;
+    --secondary-foreground: #163300;
+    --muted: #E7EDE2;
+    --muted-foreground: #5C5F59;
+    --accent: #E2F6D5;
+    --accent-foreground: #163300;
+    --destructive: #C42B31;
+    --border: #D8E0D2;
+    --input: #848F7D;
+    --ring: #4F7A2E;
+    --chart-1: #3F8A24;
+    --chart-2: #5468B0;
+    --chart-3: #9FE870;
+    --chart-4: #2A4D12;
+    --chart-5: #C9CEC6;
+    --radius: 0.5rem;
+    --sidebar: #163300;
+    --sidebar-foreground: #E8EFE2;
+    --sidebar-primary: #9FE870;
+    --sidebar-primary-foreground: #163300;
+    --sidebar-accent: #2A4D12;
+    --sidebar-accent-foreground: #9FE870;
+    --sidebar-border: #2A4D12;
+    --sidebar-ring: #9FE870;
+}
+
+.dark {
+    --background: #11160E;
+    --foreground: #EEF2EB;
+    --card: #182014;
+    --card-foreground: #EEF2EB;
+    --popover: #182014;
+    --popover-foreground: #EEF2EB;
+    --primary: #9FE870;
+    --primary-foreground: #163300;
+    --secondary: #243020;
+    --secondary-foreground: #EEF2EB;
+    --muted: #243020;
+    --muted-foreground: #A3AE9C;
+    --accent: #2A4D12;
+    --accent-foreground: #E2F6D5;
+    --destructive: #F0716F;
+    --border: rgb(255 255 255 / 10%);
+    --input: rgb(255 255 255 / 15%);
+    --ring: #5E7F48;
+    --chart-1: #6CC24A;
+    --chart-2: #8A9CE0;
+    --chart-3: #9FE870;
+    --chart-4: #CDFFAD;
+    --chart-5: #5E6B58;
+    --sidebar: #182014;
+    --sidebar-foreground: #EEF2EB;
+    --sidebar-primary: #9FE870;
+    --sidebar-primary-foreground: #163300;
+    --sidebar-accent: #243020;
+    --sidebar-accent-foreground: #EEF2EB;
+    --sidebar-border: rgb(255 255 255 / 10%);
+    --sidebar-ring: #5E7F48;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    }
+  html {
+    @apply font-sans;
+    scrollbar-color: var(--input) transparent;
+    }
+  /* Browser-drawn surfaces follow the palette too. */
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+  input, textarea {
+    caret-color: var(--primary);
+    accent-color: var(--primary);
+  }
+}
+
+/* Reduced motion: keep fades so open/close still reads, drop sliding and spinning. */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-property: opacity, color, background-color, border-color !important;
+  }
+}
+
+/* Outline buttons sit on the card colour with a soft lift, so they read as pressable rather than flat.
+   (bg-background is the outline variant's own class; ghost and solid buttons are untouched.) */
+[data-slot=button].bg-background {
+  background-color: var(--card);
+  box-shadow: 0 1px 2px rgb(22 51 0 / 0.08), 0 1px 1px rgb(22 51 0 / 0.04);
+}
+[data-slot=button].bg-background:hover {
+  background-color: var(--muted);
+}
+[data-slot=button].bg-background:active {
+  box-shadow: none;
+}
+
+/* Default-size controls and tab strips share one 36px height so filter rows and forms line up.
+   Small (sm/xs) buttons keep their shadcn sizes. */
+[data-slot=button].h-8,
+[data-slot=button].size-8,
+[data-slot=select-trigger][data-size=default],
+[data-slot=input],
+[data-slot=input-group],
+[data-slot=toggle-group-item][data-size=default],
+[data-slot=tabs-list] {
+  height: 36px;
+}
+[data-slot=button].size-8 {
+  width: 36px;
+}
+
+/* Touch screens: 44px minimum hit area on controls (WCAG 2.5.5); tabs stay 36px inside their strip. */
+@media (pointer: coarse) {
+  [data-slot=button], [data-slot=select-trigger], [data-slot=toggle-group-item], [data-slot=dropdown-menu-trigger] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  [data-slot=input], [data-slot=input-group], [data-slot=select-item], [data-slot=dropdown-menu-item] {
+    min-height: 44px;
+  }
+  /* Input inside an input group: group border is 1px each side. */
+  [data-slot=input-group-control] {
+    min-height: 42px;
+  }
+  [data-slot=tabs-list] {
+    height: auto;
+  }
+  [data-slot=tabs-trigger] {
+    min-height: 36px;
+  }
+}
