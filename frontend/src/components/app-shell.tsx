@@ -39,7 +39,7 @@ export function AppShell() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" render={<NavLink to="/" />}>
-                <Logo />
+                <Logo tone="dark" className="h-11" />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
