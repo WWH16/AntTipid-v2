@@ -220,5 +220,5 @@ export const mock = {
     })
   },
 
-  scanReceipt: (file: File) => scanReceiptLocal(file),
+  scanReceipt: scanReceiptLocal,
 }
