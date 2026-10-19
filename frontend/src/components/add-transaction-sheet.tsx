@@ -114,7 +114,11 @@ function AddFlow() {
       open
       onOpenChange={onOpenChange}
       title={editing ? 'Edit transaction' : 'Add transaction'}
-      description={receipt ? `Filled in from your ${receipt.merchant} receipt. Check it, then save.` : 'Amount and category are all you need.'}
+      description={receipt
+        ? receipt.lowConfidence
+          ? `The photo was hard to read, so check every field before saving.`
+          : `Filled in from your ${receipt.merchant} receipt. Check it, then save.`
+        : 'Amount and category are all you need.'}
       footer={
         <>
           {missing && <p className="text-sm text-muted-foreground" aria-live="polite">{missing}.</p>}
@@ -304,7 +308,7 @@ function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean)
       description="Use your camera or upload a photo. The store, date and items are filled in for you."
       footer={footer}
     >
-      <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} aria-label="Receipt photo" />
+      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} aria-label="Receipt photo" />
 
       {state === 'camera' ? (
         <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-foreground">

@@ -1,6 +1,7 @@
 // Run with: npx tsx scripts/check-ocr.ts
 import assert from 'node:assert'
 import { parseReceiptText, suggestWalletId } from '../src/lib/receipt-ocr'
+import { todayIso } from '../src/lib/format'
 import type { Wallet } from '../src/types'
 
 const wallets: Wallet[] = [
@@ -78,6 +79,33 @@ AMOUNT DUE 145.00
 THANK YOU VISIT AGAIN
 `,
     expect: { merchant: '7-ELEVEN', date: '2026-10-12', total: 145, items: 3, suggestedCategoryId: 'food', paymentMethod: undefined, paymentLabel: undefined, wallet: undefined },
+  },
+  {
+    name: 'OCR noise: TIN header, O-for-0, lost decimal, VAT flag, T0TAL, TOTAL ITEMS, day-first date',
+    text: `
+VAT REG TIN 004-325-876-000
+MERCURY DRUG
+DATE: 18/10/2026
+1 BIOGESIC 500MG 45.OO V
+2 X VITAMIN C 120 00
+T0TAL 165.00
+TOTAL ITEMS 3
+CASH 200.00
+CHANGE 35.00
+`,
+    expect: { merchant: 'MERCURY DRUG', date: '2026-10-18', total: 165, items: 2, suggestedCategoryId: 'health', paymentMethod: 'cash', paymentLabel: 'Cash', wallet: 'cash' },
+  },
+  {
+    name: 'Unreadable TOTAL falls back to largest price, ignoring GCash reference number',
+    text: `
+PUREGOLD
+1 RICE 345.00
+1 EGGS 268.00
+TQTAL 613.00
+GCASH REF 987654321
+`,
+    // the garbled TQTAL line is counted as an item; the user fixes it on the review screen
+    expect: { merchant: 'PUREGOLD', date: todayIso(), total: 613, items: 3, suggestedCategoryId: 'groceries', paymentMethod: 'e_wallet', paymentLabel: 'GCash', wallet: 'gcash' },
   },
 ]
 
