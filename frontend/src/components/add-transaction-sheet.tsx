@@ -21,7 +21,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { done } from '@/lib/done'
 import { money, todayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/labels'
-import { suggestWalletId } from '@/lib/receipt'
+import { shrinkPhoto, suggestWalletId } from '@/lib/receipt'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
 
 const LAST_WALLET = 'anttipid-last-wallet'
@@ -234,12 +234,14 @@ function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean)
   useEffect(() => stopCamera, [])
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
 
-  async function read(file: File) {
-    setPreview(URL.createObjectURL(file))
+  async function read(file: Blob) {
     setResult(null)
     setState('reading')
     try {
-      setResult(await api.receipts.scan(file))
+      // Shrink once: the small copy is both the preview and the upload, so the phone never renders the full photo.
+      const photo = await shrinkPhoto(file)
+      setPreview(URL.createObjectURL(photo))
+      setResult(await api.receipts.scan(photo))
       setState('idle')
     } catch {
       setState('error')
@@ -262,7 +264,7 @@ function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean)
     }
   }
 
-  function capture() {
+  async function capture() {
     const v = videoRef.current
     if (!v?.videoWidth) return
     const canvas = document.createElement('canvas')
@@ -270,7 +272,8 @@ function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean)
     canvas.height = v.videoHeight
     canvas.getContext('2d')?.drawImage(v, 0, 0)
     stopCamera()
-    canvas.toBlob((blob) => blob && read(new File([blob], 'receipt.jpg', { type: 'image/jpeg' })), 'image/jpeg', 0.9)
+    // Sync encode, not canvas.toBlob (see shrinkPhoto); read() then shrinks it like an upload.
+    read(await (await fetch(canvas.toDataURL('image/jpeg', 0.9))).blob())
   }
 
   function reset() {

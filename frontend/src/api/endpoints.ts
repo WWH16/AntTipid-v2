@@ -4,7 +4,6 @@ import type {
   Budget, BudgetStatus, Category, MonthSummary, MonthlyReport, NewTransaction,
   ReceiptScan, Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
-import { shrinkPhoto } from '@/lib/receipt'
 import { API_URL, USE_MOCK, http, json } from './client'
 
 const pick = <A extends unknown[], R>(m: (...a: A) => Promise<R>, real: (...a: A) => Promise<R>) =>
@@ -44,9 +43,10 @@ export const api = {
   },
   receipts: {
     // Always the real backend, even in mock mode: reading receipts needs the server's API key.
-    scan: async (file: File) => {
+    // Expects a photo already shrunk with shrinkPhoto (the scan panel reuses it for the preview).
+    scan: (photo: Blob) => {
       const body = new FormData()
-      body.append('image', await shrinkPhoto(file), 'receipt.jpg')
+      body.append('image', photo, 'receipt.jpg')
       return http<ReceiptScan>('/receipts/scan', { method: 'POST', body })
     },
   },
