@@ -1,11 +1,12 @@
 // Thin fetch wrapper for the FastAPI backend. FastAPI returns errors as {"detail": "..."}.
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api'
+// Relative by default: the Vite dev server proxies /api to FastAPI (vite.config.ts), so phones on the LAN work too.
+export const API_URL = import.meta.env.VITE_API_URL ?? '/api'
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
 type Query = Record<string, string | number | undefined>
 
 export async function http<T>(path: string, init: RequestInit & { query?: Query } = {}): Promise<T> {
-  const url = new URL(API_URL + path)
+  const url = new URL(API_URL + path, location.origin)
   for (const [k, v] of Object.entries(init.query ?? {})) if (v !== undefined && v !== '') url.searchParams.set(k, String(v))
   const res = await fetch(url, {
     ...init,

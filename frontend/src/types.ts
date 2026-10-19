@@ -86,7 +86,7 @@ export interface ReceiptScan {
   total: number
   items: ReceiptItem[]
   suggestedCategoryId?: string
-  lowConfidence?: boolean // OCR was unsure; ask the user to double-check
+  lowConfidence?: boolean // items don't add up to the total; ask the user to double-check
   paymentMethod?: WalletType
   paymentLabel?: string // raw provider found, e.g. "GCash", "VISA", "Cash"
 }

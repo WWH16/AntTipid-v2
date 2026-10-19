@@ -4,7 +4,6 @@ import type {
   Budget, BudgetStatus, Category, MonthSummary, MonthlyReport, NewTransaction,
   Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
-import { scanReceiptLocal } from '@/lib/receipt-ocr'
 
 const categories: Category[] = [
   { id: 'food', name: 'Food & dining', kind: 'expense', icon: 'food' },
@@ -219,6 +218,4 @@ export const mock = {
       }),
     })
   },
-
-  scanReceipt: scanReceiptLocal,
 }

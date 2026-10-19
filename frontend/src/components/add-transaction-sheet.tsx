@@ -21,7 +21,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { done } from '@/lib/done'
 import { money, todayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/labels'
-import { suggestWalletId } from '@/lib/receipt-ocr'
+import { suggestWalletId } from '@/lib/receipt'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
 
 const LAST_WALLET = 'anttipid-last-wallet'
@@ -308,7 +308,7 @@ function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean)
       description="Use your camera or upload a photo. The store, date and items are filled in for you."
       footer={footer}
     >
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} aria-label="Receipt photo" />
+      <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} aria-label="Receipt photo" />
 
       {state === 'camera' ? (
         <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-foreground">
