@@ -33,6 +33,7 @@ export interface Transaction {
   categoryId?: string // not set for transfers
   note: string
   source: 'manual' | 'receipt'
+  items?: ReceiptItem[] // line items read from a scanned receipt; the amount stays the receipt total
 }
 
 export type NewTransaction = Omit<Transaction, 'id'>

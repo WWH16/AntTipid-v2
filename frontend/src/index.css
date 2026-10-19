@@ -141,6 +141,42 @@
   }
 }
 
+/* Receipt scan: a lime bar sweeps down the photo and back while the backend reads it. */
+@keyframes receipt-sweep {
+  from { top: 0%; }
+  to { top: 100%; }
+}
+.receipt-scan-bar {
+  position: absolute;
+  inset-inline: 0;
+  height: 0;
+  animation: receipt-sweep 1.8s cubic-bezier(.45, 0, .55, 1) infinite alternate;
+}
+.receipt-scan-bar::before {
+  /* Soft glow on both sides of the line, so it reads the same going down and coming back up. */
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: -2.5rem;
+  height: 5rem;
+  background: linear-gradient(to bottom, transparent, rgb(159 232 112 / .35), transparent);
+}
+.receipt-scan-bar::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: -1px;
+  height: 2px;
+  background: #9FE870;
+  box-shadow: 0 0 12px 2px rgb(159 232 112 / .8);
+}
+@keyframes receipt-row-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+.receipt-row-in {
+  animation: receipt-row-in .3s ease-out both;
+}
+
 /* Reduced motion: keep fades so open/close still reads, drop sliding and spinning. */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

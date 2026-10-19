@@ -2,7 +2,7 @@
 //   1. Add   2. type the amount (focused on open)   3. pick a category   then Save expense.
 // Wallet defaults to the last one used and the date to today.
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Loader2, ScanLine, Upload } from 'lucide-react'
+import { Camera, Check, Loader2, ScanLine, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
@@ -14,7 +14,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { Label } from '@/components/ui/label'
-import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ReceiptItems } from '@/components/receipt-items'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -74,6 +74,8 @@ function AddFlow() {
       categoryId: kind === 'transfer' ? undefined : categoryId,
       note: note.trim(),
       source: receipt || editing?.source === 'receipt' ? 'receipt' : 'manual',
+      // Items stay their own list, never folded into the note: the note is the user's free text.
+      items: kind === 'expense' ? (receipt?.items ?? editing?.items) : undefined,
     }
     try {
       const saved = editing ? await api.transactions.update(editing.id, body) : await api.transactions.create(body)
@@ -98,7 +100,6 @@ function AddFlow() {
     setCategoryId(r.suggestedCategoryId ?? '')
     const suggestedWallet = suggestWalletId(r, wallets)
     if (suggestedWallet) setWalletId(suggestedWallet)
-    setNote(r.items.map((i) => `${i.qty} x ${i.name}`).join('\n'))
     setMode('form')
   }
 
@@ -217,33 +218,66 @@ function AddFlow() {
  * Get a receipt photo two ways: live camera scanner (getUserMedia) or file upload.
  * Either way the photo goes to the same reader, then back to the form to check and save.
  */
+// After this long, say the wait is normal and offer a way out.
+const SLOW_AFTER_S = 12
+
 function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean) => void; onBack: () => void; onDone: (r: ReceiptScan) => void }) {
-  const [state, setState] = useState<'idle' | 'camera' | 'reading' | 'error'>('idle')
+  const [state, setState] = useState<'idle' | 'camera' | 'preparing' | 'reading' | 'error'>('idle')
   const [cameraError, setCameraError] = useState('')
+  const [scanError, setScanError] = useState('')
   const [preview, setPreview] = useState<string | null>(null)
   const [result, setResult] = useState<ReceiptScan | null>(null)
+  const [elapsed, setElapsed] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
   }
-  // Release the camera whenever the panel closes.
-  useEffect(() => stopCamera, [])
+  // Release the camera and drop any scan in flight whenever the panel closes.
+  useEffect(() => () => { stopCamera(); abortRef.current?.abort() }, [])
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview) }, [preview])
+  useEffect(() => {
+    if (state !== 'reading') return
+    const started = Date.now()
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000)
+    return () => clearInterval(id)
+  }, [state])
 
   async function read(file: Blob) {
+    const abort = new AbortController()
+    abortRef.current = abort
     setResult(null)
-    setState('reading')
+    setState('preparing')
+    let photo: Blob
     try {
       // Shrink once: the small copy is both the preview and the upload, so the phone never renders the full photo.
-      const photo = await shrinkPhoto(file)
-      setPreview(URL.createObjectURL(photo))
-      setResult(await api.receipts.scan(photo))
-      setState('idle')
+      photo = await shrinkPhoto(file)
     } catch {
+      setScanError("Couldn't open this photo. Pick a JPEG or PNG image.")
+      setState('error')
+      return
+    }
+    try {
+      setPreview(URL.createObjectURL(photo))
+      setElapsed(0)
+      setState('reading')
+      const scan = await api.receipts.scan(photo, abort.signal)
+      if (abort.signal.aborted) return
+      setResult(scan)
+      setState('idle')
+    } catch (e) {
+      if (abort.signal.aborted) return
+      // The backend's messages say what to do next ("Try a sharper photo..."). A network drop, or a proxy
+      // error when the backend is down, has none: http() then falls back to "Request failed (502)".
+      const message = (e as Error).message
+      setScanError(
+        e instanceof TypeError ? 'No connection. Check your internet and try again.' :
+        message.startsWith('Request failed') ? "Couldn't reach the receipt reader. Try again in a minute, or type it in." :
+        message)
       setState('error')
     }
   }
@@ -278,6 +312,7 @@ function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean)
 
   function reset() {
     stopCamera()
+    abortRef.current?.abort()
     setPreview(null)
     setResult(null)
     setState('idle')
@@ -293,6 +328,11 @@ function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean)
       <>
         <Button onClick={() => onDone(result)}>Use these details</Button>
         <Button variant="outline" onClick={reset}>Scan another receipt</Button>
+      </>
+    ) : state === 'preparing' || state === 'reading' ? (
+      <>
+        {elapsed >= SLOW_AFTER_S && <Button onClick={() => { abortRef.current?.abort(); onBack() }}>Type it in instead</Button>}
+        <Button variant="outline" onClick={reset}>Cancel scan</Button>
       </>
     ) : state === 'error' ? (
       <>
@@ -340,44 +380,59 @@ function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean)
             <Button onClick={startCamera}><Camera /> Scan with camera</Button>
             <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload /> Upload a photo</Button>
             {cameraError && <p role="alert" className="text-sm text-destructive sm:col-span-2">{cameraError}</p>}
+            {state === 'error' && <p role="alert" className="text-sm text-destructive sm:col-span-2">{scanError}</p>}
           </EmptyContent>
         </Empty>
-      ) : (
+      ) : result ? (
         <div className="grid gap-4 pb-4">
           <div className="flex items-center gap-4">
             <img src={preview} alt="Your receipt" className="h-24 w-18 shrink-0 rounded-md border object-cover" />
             <div className="grid gap-1 text-sm">
-              {state === 'reading' && <p className="flex items-center gap-2"><Loader2 className="animate-spin" /> Reading your receipt…</p>}
-              {state === 'error' && <p className="text-destructive">Couldn't read this photo. Try a sharper photo with the total visible.</p>}
-              {result && (
-                <>
-                  <p className="font-medium">{result.merchant}</p>
-                  <p className="text-muted-foreground">{result.items.length} items, {money(result.total)}</p>
-                </>
-              )}
+              <p className="font-medium">{result.merchant}</p>
+              <p className="text-muted-foreground">{result.items.length} items, {money(result.total)}</p>
+              {result.lowConfidence && <p className="text-destructive">The items don't add up to the total. Check them on the next step.</p>}
             </div>
           </div>
-          {result && (
-            <Table>
-              <TableHeader>
-                <TableRow><TableHead>Item</TableHead><TableHead>Qty</TableHead><TableHead className="text-right">Amount</TableHead></TableRow>
-              </TableHeader>
-              <TableBody>
-                {result.items.map((i) => (
-                  <TableRow key={i.name}>
-                    <TableCell className="whitespace-normal">{i.name}</TableCell>
-                    <TableCell>{i.qty}</TableCell>
-                    <TableCell className="text-right tabular-nums">{money(i.qty * i.price)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              <TableFooter>
-                <TableRow><TableCell colSpan={2}>Total</TableCell><TableCell className="text-right tabular-nums">{money(result.total)}</TableCell></TableRow>
-              </TableFooter>
-            </Table>
+          <ReceiptItems items={result.items} total={result.total} reveal />
+        </div>
+      ) : (
+        <div className="grid gap-4 pb-4">
+          <div className="relative mx-auto aspect-[3/4] h-[min(26rem,45dvh)] overflow-hidden rounded-lg border bg-muted">
+            <img src={preview} alt="Your receipt" className="size-full object-cover" />
+            {state === 'reading' && (
+              <>
+                <div aria-hidden className="absolute inset-0 bg-primary/15" />
+                <div aria-hidden className="receipt-scan-bar motion-reduce:hidden" />
+              </>
+            )}
+          </div>
+          {state === 'error' ? (
+            <p role="alert" className="text-sm text-destructive">{scanError}</p>
+          ) : (
+            <ol className="grid gap-2 text-sm" aria-live="polite">
+              <ScanPhase status={state === 'preparing' ? 'active' : 'done'}>Photo prepared</ScanPhase>
+              <ScanPhase status={state === 'reading' ? 'active' : 'waiting'} seconds={state === 'reading' ? elapsed : undefined}>
+                Reading the store, date and items
+              </ScanPhase>
+              {elapsed >= SLOW_AFTER_S && (
+                <li className="pl-7 text-muted-foreground">Taking longer than usual. Busy readers can need up to a minute.</li>
+              )}
+            </ol>
           )}
         </div>
       )}
     </ResponsivePanel>
+  )
+}
+
+function ScanPhase({ status, seconds, children }: { status: 'done' | 'active' | 'waiting'; seconds?: number; children: string }) {
+  return (
+    <li className={status === 'waiting' ? 'flex items-center gap-3 text-muted-foreground' : 'flex items-center gap-3'}>
+      {status === 'done' ? <Check className="size-4 text-chart-1" /> :
+        status === 'active' ? <Loader2 className="size-4 animate-spin text-primary" /> :
+        <span aria-hidden className="mx-1 size-2 rounded-full bg-border" />}
+      <span>{children}{status === 'active' && <span className="sr-only"> (in progress)</span>}</span>
+      {seconds !== undefined && <span aria-hidden className="ml-auto tabular-nums text-muted-foreground">{seconds}s</span>}
+    </li>
   )
 }

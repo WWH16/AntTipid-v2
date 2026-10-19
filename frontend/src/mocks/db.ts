@@ -147,7 +147,8 @@ export const mock = {
       (!f.kind || t.kind === f.kind) &&
       (!f.walletId || t.walletId === f.walletId || t.toWalletId === f.walletId) &&
       (!f.categoryId || t.categoryId === f.categoryId) &&
-      (!q || t.title.toLowerCase().includes(q) || t.note.toLowerCase().includes(q))))
+      (!q || t.title.toLowerCase().includes(q) || t.note.toLowerCase().includes(q) ||
+        t.items?.some((i) => i.name.toLowerCase().includes(q)))))
   },
   getTransaction: (id: string) => {
     const t = transactions.find((x) => x.id === id)

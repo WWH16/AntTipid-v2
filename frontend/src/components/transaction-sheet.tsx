@@ -6,6 +6,7 @@ import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { KIND_LABEL } from '@/lib/labels'
 import { DetailList } from '@/components/detail-list'
+import { ReceiptItems } from '@/components/receipt-items'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { DeleteTransactionDialog, SignedAmount } from '@/components/transaction-item'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +55,12 @@ function Details({ id }: { id: string }) {
           </div>
           <Separator />
           <DetailList rows={rows} />
+          {!!t.items?.length && (
+            <>
+              <Separator />
+              <ReceiptItems items={t.items} total={t.amount} />
+            </>
+          )}
           {t.note && (
             <>
               <Separator />

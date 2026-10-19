@@ -44,10 +44,10 @@ export const api = {
   receipts: {
     // Always the real backend, even in mock mode: reading receipts needs the server's API key.
     // Expects a photo already shrunk with shrinkPhoto (the scan panel reuses it for the preview).
-    scan: (photo: Blob) => {
+    scan: (photo: Blob, signal?: AbortSignal) => {
       const body = new FormData()
       body.append('image', photo, 'receipt.jpg')
-      return http<ReceiptScan>('/receipts/scan', { method: 'POST', body })
+      return http<ReceiptScan>('/receipts/scan', { method: 'POST', body, signal })
     },
   },
 }
