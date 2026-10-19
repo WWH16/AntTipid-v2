@@ -1,19 +1,29 @@
 # Backend (FastAPI)
 
-Only `POST /api/receipts/scan` exists so far. It reads the photo with free vision models on OpenRouter
-and returns the result; nothing is stored (there is no database yet). The frontend calls it even in mock mode.
+Only `POST /api/receipts/scan` exists so far. It reads the photo with free vision models on OpenRouter,
+falling back to Gemini, and returns the result; nothing is stored (there is no database yet).
+The frontend calls it even in mock mode.
 
 ## Run
 
 ```bash
 python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt   # macOS/Linux: .venv/bin/python
-cp .env.example .env                                       # then set OPENROUTER_API_KEY
+cp .env.example .env                                       # then set GEMINI_API_KEY and/or OPENROUTER_API_KEY
 .venv/Scripts/python -m uvicorn main:app --reload --port 8000
 ```
 
 The Vite dev server proxies `/api` to `http://localhost:8000`, so no CORS setup is needed in development.
 Check the output parsing with `.venv/Scripts/python test_receipts.py`.
+
+## Deploy on Vercel
+
+Two Vercel projects from this repo:
+
+1. **Backend**: new project, Root Directory `backend`. Vercel detects FastAPI from `main.py`.
+   Add `GEMINI_API_KEY` and/or `OPENROUTER_API_KEY` under Settings > Environment Variables.
+2. **Frontend**: Root Directory `frontend`. In `frontend/vercel.json`, replace `BACKEND-PROJECT` with the
+   backend project's domain. Its `/api/*` requests are then proxied there (same origin, so no CORS).
 
 ## Routes still to build
 

@@ -1,4 +1,4 @@
-"""Read receipt photos with free vision models on OpenRouter. Nothing is stored."""
+"""Read receipt photos with free vision models on OpenRouter, falling back to Gemini. Nothing is stored."""
 
 import base64
 import json
@@ -14,19 +14,28 @@ from pydantic.alias_generators import to_camel
 
 log = logging.getLogger("receipts")
 
-# Free vision models, tried in order. Benchmarked on a real SM receipt (2026-10-19), reasoning off:
-# Dots read every field right in ~3-4s; Nemotron got amounts right but sometimes missed the date.
-# Gemma was rate-limited upstream, so untested.
-# ponytail: free models come and go; when all fail, re-check https://openrouter.ai/models?q=free with image input.
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+# Thinking slows reading (Dots: 3s off vs 26s on) and eats the token budget; each provider turns it down differently.
+GEMINI_FAST = {"reasoning_effort": "low"}
+OPENROUTER_FAST = {"reasoning": {"enabled": False}}
+
+# Tried in order: OpenRouter's free models first, Gemini if they all fail. A model whose key isn't set is skipped.
+# Benchmarked on a real SM receipt (2026-10-19): Dots read every field right in ~3-4s; Nemotron got amounts
+# right but sometimes missed the date; Gemini Flash-Lite read every field right in ~2s.
+# (Gemma 4 was dropped: always rate-limited upstream on the free tier.)
+# ponytail: model names change; when all fail, check https://openrouter.ai/models?q=free (image input)
+# and https://aistudio.google.com for current ones.
 MODELS = [
-    "dots-studio/dots-3-note-preview:free",
-    "nvidia/nemotron-3.5-super-vl:free",
-    "google/gemma-4-31b-it:free",
-    "google/gemma-4-26b-a4b-it:free",
+    (OPENROUTER_URL, "OPENROUTER_API_KEY", "dots-studio/dots-3-note-preview:free", OPENROUTER_FAST),
+    (OPENROUTER_URL, "OPENROUTER_API_KEY", "nvidia/nemotron-3.5-super-vl:free", OPENROUTER_FAST),
+    # Flash-Lite read the SM receipt right in ~2s; 3.8 Flash took 9s once and timed out once.
+    # Each has its own free-tier quota, so one still answers when the other is rate-limited.
+    (GEMINI_URL, "GEMINI_API_KEY", "gemini-3.5-flash-lite", GEMINI_FAST),
+    (GEMINI_URL, "GEMINI_API_KEY", "gemini-3.8-flash", GEMINI_FAST),
 ]
 # A free model sometimes hangs instead of failing; don't let one stall the whole scan.
 PER_MODEL_TIMEOUT_S = 25
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 WALLET_TYPES = ["cash", "e_wallet", "bank", "credit_card", "savings"]
 # ponytail: mirrors the frontend's default expense categories; read the user's own from the DB once it exists.
@@ -85,22 +94,24 @@ class ScanFailed(RuntimeError):
     """No model gave a usable answer."""
 
 
-async def _ask_model(client: httpx.AsyncClient, model: str, image_url: str) -> dict:
+async def _ask_model(client: httpx.AsyncClient, url: str, api_key: str, model: str, fast: dict, image_url: str) -> dict:
     """Ask one model. Raises on HTTP errors, timeouts, empty or non-JSON replies so the caller moves on."""
-    res = await client.post(OPENROUTER_URL, json={
+    res = await client.post(url, headers={"Authorization": f"Bearer {api_key}"}, json={
         "model": model,
-        # Reasoning took Dots from 3s to 26s and spent the token budget before any answer; reading needs none.
-        "reasoning": {"enabled": False},
-        # Also stops OpenRouter reserving credit for the model's max output (402 on a low balance).
-        "max_tokens": 1000,
+        **fast,
+        # Room for a long receipt plus any thinking left on; also stops OpenRouter reserving credit
+        # for the model's max output (402 on a low balance).
+        "max_tokens": 2000,
         "messages": [{"role": "user", "content": [
             {"type": "text", "text": PROMPT},
             {"type": "image_url", "image_url": {"url": image_url}},
         ]}],
     })
+    if res.is_error:
+        raise ScanFailed(f"{model}: HTTP {res.status_code} {res.text[:200]}")
     body = res.json()
-    if res.is_error or "error" in body:
-        raise ScanFailed(f"{model}: {body.get('error', {}).get('message', res.status_code)}")
+    if "error" in body:  # OpenRouter reports upstream failures inside a 200
+        raise ScanFailed(f"{model}: {body['error']}")
     content = body["choices"][0]["message"]["content"] or ""
     # Some models wrap JSON in a ```json fence.
     raw = json.loads(re.sub(r"^\s*```(?:json)?|```\s*$", "", content))
@@ -110,17 +121,17 @@ async def _ask_model(client: httpx.AsyncClient, model: str, image_url: str) -> d
 
 
 async def scan_receipt(image: bytes, content_type: str) -> ReceiptScan:
-    api_key = os.environ.get("OPENROUTER_API_KEY")
-    if not api_key:
-        raise ScanFailed("OPENROUTER_API_KEY is not set (see backend/.env.example)")
+    models = [(url, os.environ[key], model, fast) for url, key, model, fast in MODELS if os.environ.get(key)]
+    if not models:
+        raise ScanFailed("Set GEMINI_API_KEY or OPENROUTER_API_KEY (see backend/.env.example)")
     image_url = f"data:{content_type};base64,{base64.b64encode(image).decode()}"
     errors = []
-    async with httpx.AsyncClient(headers={"Authorization": f"Bearer {api_key}"}, timeout=PER_MODEL_TIMEOUT_S) as client:
-        for model in MODELS:
+    async with httpx.AsyncClient(timeout=PER_MODEL_TIMEOUT_S) as client:
+        for url, api_key, model, fast in models:
             start = time.perf_counter()
             try:
-                raw = await _ask_model(client, model, image_url)
-            except (httpx.HTTPError, ScanFailed, ValueError, KeyError, IndexError) as e:
+                raw = await _ask_model(client, url, api_key, model, fast, image_url)
+            except (httpx.HTTPError, ScanFailed, ValueError, KeyError, IndexError, TypeError) as e:
                 errors.append(f"{e!r}")
                 log.warning("scan: %s failed after %.1fs: %r", model, time.perf_counter() - start, e)
                 continue

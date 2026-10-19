@@ -1,11 +1,14 @@
 """AntTipid API. Only receipt scanning is real so far; the frontend mocks everything else."""
 
 import logging
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, HTTPException, UploadFile
 
-load_dotenv()
+# Explicit path: a bare load_dotenv() searches from the working directory under `uvicorn --reload`
+# and misses this file when started from the repo root. On Vercel there is no .env; this is a no-op.
+load_dotenv(Path(__file__).with_name(".env"))
 logging.basicConfig(level=logging.INFO)
 
 from receipts import NotAReceipt, ReceiptScan, ScanFailed, scan_receipt  # noqa: E402  (needs the env loaded)
