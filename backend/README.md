@@ -22,8 +22,8 @@ Two Vercel projects from this repo:
 
 1. **Backend**: new project, Root Directory `backend`. Vercel detects FastAPI from `main.py`.
    Add `GEMINI_API_KEY` and/or `OPENROUTER_API_KEY` under Settings > Environment Variables.
-2. **Frontend**: Root Directory `frontend`. In `frontend/vercel.json`, replace `BACKEND-PROJECT` with the
-   backend project's domain. Its `/api/*` requests are then proxied there (same origin, so no CORS).
+2. **Frontend**: Root Directory `frontend`. `frontend/vercel.json` points at the
+   backend project (`ant-tipid-v2-backend.vercel.app`), so `/api/*` is proxied there (same origin, no CORS).
 
 ## Routes still to build
 
