@@ -8,6 +8,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { done } from '@/lib/done'
@@ -65,6 +66,7 @@ export function DeleteTransactionDialog({ t, open, onOpenChange, onDeleted }: {
 }
 
 const ACTIONS_WIDTH = 144 // two 72px action buttons revealed by a left swipe
+const SWIPE_ACTION = 'h-full flex-1 flex-col gap-1 rounded-none text-xs'
 
 /** One transaction as a shadcn Item; tap opens details, swipe left (touch) reveals Edit and Delete. */
 export function TransactionItem({ t }: { t: Transaction }) {
@@ -115,12 +117,8 @@ export function TransactionItem({ t }: { t: Transaction }) {
     <div role="listitem" className="relative overflow-hidden rounded-lg">
       {open && (
         <div className="absolute inset-y-0 right-0 flex" style={{ width: ACTIONS_WIDTH }}>
-          <button type="button" onClick={() => { setOffset(0); openAdd({ edit: t }) }} className="flex flex-1 flex-col items-center justify-center gap-1 bg-secondary text-xs font-medium text-secondary-foreground">
-            <Pencil className="size-4" /> Edit
-          </button>
-          <button type="button" onClick={() => setConfirming(true)} className="flex flex-1 flex-col items-center justify-center gap-1 bg-destructive text-xs font-medium text-primary-foreground">
-            <Trash2 className="size-4" /> Delete
-          </button>
+          <Button variant="secondary" className={SWIPE_ACTION} onClick={() => { setOffset(0); openAdd({ edit: t }) }}><Pencil /> Edit</Button>
+          <Button variant="destructive" className={cn(SWIPE_ACTION, 'bg-destructive text-primary-foreground hover:bg-destructive/90')} onClick={() => setConfirming(true)}><Trash2 /> Delete</Button>
         </div>
       )}
       <Item

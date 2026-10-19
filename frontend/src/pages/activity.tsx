@@ -18,6 +18,8 @@ import { Separator } from '@/components/ui/separator'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { dayLabel, money, monthLabel } from '@/lib/format'
+import { sumOf } from '@/lib/transactions'
+import { cn } from '@/lib/utils'
 import type { Transaction, TransactionFilters, TransactionKind } from '@/types'
 
 export function ActivityPage() {
@@ -58,9 +60,9 @@ export function ActivityPage() {
 
       <MonthSwitcher month={month} onChange={setMonth}>
         <p className="text-sm text-muted-foreground">
-          Spent <span className="font-medium text-foreground tabular-nums">{money(sum(data, 'expense'))}</span>
+          Spent <span className="font-medium text-foreground tabular-nums">{money(sumOf(data, 'expense'))}</span>
           {', earned '}
-          <span className="font-medium text-foreground tabular-nums">{money(sum(data, 'income'))}</span>
+          <span className="font-medium text-foreground tabular-nums">{money(sumOf(data, 'income'))}</span>
         </p>
       </MonthSwitcher>
 
@@ -93,7 +95,7 @@ export function ActivityPage() {
               <TabsTrigger value="transfer">Transfers</TabsTrigger>
             </TabsList>
           </Tabs>
-          <div id="more-filters" className={`flex-1 grid-cols-2 gap-2 md:grid md:max-w-md ${moreFilters ? 'grid' : 'hidden'}`}>
+          <div id="more-filters" className={cn('flex-1 grid-cols-2 gap-2 md:grid md:max-w-md', moreFilters ? 'grid' : 'hidden')}>
             <SimpleSelect aria-label="Wallet" value={walletId} onChange={setWalletId} options={[{ value: 'all', label: 'All wallets' }, ...wallets.map((w) => ({ value: w.id, label: w.name }))]} />
             <SimpleSelect aria-label="Category" value={categoryId} onChange={setCategoryId} options={[{ value: 'all', label: 'All categories' }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
           </div>
@@ -109,7 +111,7 @@ export function ActivityPage() {
         <Card>
           <CardContent className="grid gap-2 md:gap-4">
             {groupByDay(data).map(([day, items], i) => {
-              const spent = sum(items, 'expense')
+              const spent = sumOf(items, 'expense')
               return (
                 <section key={day} className="grid gap-1">
                   {i > 0 && <Separator className="mb-2 md:mb-3" />}
@@ -127,9 +129,6 @@ export function ActivityPage() {
     </>
   )
 }
-
-const sum = (list: Transaction[] | undefined, kind: TransactionKind) =>
-  (list ?? []).filter((t) => t.kind === kind).reduce((s, t) => s + t.amount, 0)
 
 function groupByDay(list: Transaction[]) {
   const groups = new Map<string, Transaction[]>()

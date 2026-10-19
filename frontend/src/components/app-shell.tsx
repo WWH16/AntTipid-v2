@@ -136,7 +136,7 @@ function UserMenu() {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate('/settings')}><Settings /> Settings</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { signOut(); navigate('/sign-in') }}><LogOut /> Sign out</DropdownMenuItem>
+            <DropdownMenuItem onClick={signOut}><LogOut /> Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

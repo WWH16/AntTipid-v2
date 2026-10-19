@@ -1,29 +1,29 @@
 // Wallets, categories and account. The tab is kept in the URL (?tab=categories) so links land on the right one.
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Balance } from '@/components/balance'
 import { DetailList } from '@/components/detail-list'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { CategoryMedia } from '@/components/category-icon'
 import { CATEGORY_ICONS } from '@/lib/category-icons'
 import { PageHeader } from '@/components/page-header'
+import { MoneyInput } from '@/components/money-input'
 import { SimpleSelect } from '@/components/simple-select'
-import { Badge } from '@/components/ui/badge'
+import { WalletItem } from '@/components/wallet-item'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
+import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { BrandMark } from '@/components/brand-icons'
 import { done } from '@/lib/done'
-import { WALLET_TYPES, walletTypeLabel } from '@/lib/wallets'
+import { WALLET_TYPES } from '@/lib/wallets'
 import type { Category, CategoryKind, Wallet, WalletType } from '@/types'
 
 type Dlg =
@@ -94,21 +94,14 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
       <CardContent>
         <ItemGroup>
           {wallets.map((w) => (
-            <Item key={w.id} size="sm">
-              <ItemContent>
-                <ItemTitle>{w.name} {w.archived && <Badge variant="outline">Archived</Badge>}</ItemTitle>
-                <ItemDescription>{walletTypeLabel(w.type)}</ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <Balance value={w.balance} />
-                <RowMenu label={`Options for ${w.name}`}>
-                  <DropdownMenuItem onClick={() => onEdit({ type: 'wallet', wallet: w })}><Pencil /> Rename</DropdownMenuItem>
-                  {w.archived
-                    ? <DropdownMenuItem onClick={() => setArchived(w, false)}><ArchiveRestore /> Restore</DropdownMenuItem>
-                    : <DropdownMenuItem onClick={() => setArchived(w, true)}><Archive /> Archive</DropdownMenuItem>}
-                </RowMenu>
-              </ItemActions>
-            </Item>
+            <WalletItem key={w.id} w={w}>
+              <RowMenu label={`Options for ${w.name}`}>
+                <DropdownMenuItem onClick={() => onEdit({ type: 'wallet', wallet: w })}><Pencil /> Rename</DropdownMenuItem>
+                {w.archived
+                  ? <DropdownMenuItem onClick={() => setArchived(w, false)}><ArchiveRestore /> Restore</DropdownMenuItem>
+                  : <DropdownMenuItem onClick={() => setArchived(w, true)}><Archive /> Archive</DropdownMenuItem>}
+              </RowMenu>
+            </WalletItem>
           ))}
         </ItemGroup>
       </CardContent>
@@ -161,7 +154,6 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
 
 function AccountTab() {
   const { user, signOut } = useApp()
-  const navigate = useNavigate()
   return (
     <Card className="max-w-md">
       <CardHeader>
@@ -173,7 +165,7 @@ function AccountTab() {
         <DetailList rows={[['Name', user?.name], ['Email', user?.email], ['Currency', 'Philippine peso (₱)']]} />
       </CardContent>
       <CardFooter>
-        <Button variant="outline" onClick={() => { signOut(); navigate('/sign-in') }}>Sign out</Button>
+        <Button variant="outline" onClick={signOut}>Sign out</Button>
       </CardFooter>
     </Card>
   )
@@ -209,8 +201,8 @@ function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () => void 
             <SimpleSelect id="wallet-type" value={type} onChange={setType} options={WALLET_TYPES} />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="wallet-balance">Current balance (₱)</Label>
-            <Input id="wallet-balance" inputMode="decimal" placeholder="0" value={balance} onChange={(e) => setBalance(e.target.value.replace(/[^\d.-]/g, ''))} />
+            <Label htmlFor="wallet-balance">Current balance</Label>
+            <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} />
           </div>
         </div>
       )}

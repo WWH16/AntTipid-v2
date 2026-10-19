@@ -5,23 +5,22 @@ import { PenLine, ScanLine, Settings } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
-import { Balance } from '@/components/balance'
 import { BudgetItem } from '@/components/budget'
-import { budgetState } from '@/lib/budget'
+import { budgetPercent, budgetState } from '@/lib/budget'
 import { PageHeader } from '@/components/page-header'
 import { HeroCard } from '@/components/hero-card'
 import { BrandMark } from '@/components/brand-icons'
 import { BillsSlide, Carousel, SpendingSlide } from '@/components/home-carousel'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
+import { WalletItem } from '@/components/wallet-item'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
+import { ItemGroup } from '@/components/ui/item'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { currentMonth, longDate, money, todayIso } from '@/lib/format'
-import { walletTypeLabel } from '@/lib/wallets'
 import type { MonthSummary } from '@/types'
 
 export function HomePage() {
@@ -103,7 +102,7 @@ export function HomePage() {
             <CardContent>
               {budgets.loading ? <LoadingRows rows={2} /> : attention.length ? (
                 <ItemGroup>
-                  {attention.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId ?? undefined)} />)}
+                  {attention.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} />)}
                 </ItemGroup>
               ) : (
                 <p className="text-sm text-muted-foreground">All budgets are on track.</p>
@@ -122,17 +121,7 @@ export function HomePage() {
             </CardHeader>
             <CardContent>
               <ItemGroup>
-                {activeWallets.map((w) => (
-                  <Item key={w.id} size="sm">
-                    <ItemContent>
-                      <ItemTitle>{w.name}</ItemTitle>
-                      <ItemDescription>{walletTypeLabel(w.type)}</ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Balance value={w.balance} />
-                    </ItemActions>
-                  </Item>
-                ))}
+                {activeWallets.map((w) => <WalletItem key={w.id} w={w} />)}
               </ItemGroup>
             </CardContent>
           </Card>
@@ -163,7 +152,7 @@ function SafeToSpend({ s }: { s?: MonthSummary }) {
   const left = s.budget - s.spent
   const daysLeft = s.daysInMonth - s.dayOfMonth + 1 // today still counts
   const perDay = Math.max(0, left) / daysLeft
-  const usedPct = Math.min(100, Math.round((s.spent / s.budget) * 100))
+  const usedPct = budgetPercent({ spent: s.spent, limit: s.budget })
   const timePct = Math.round((s.dayOfMonth / s.daysInMonth) * 100)
   const gap = (s.budget * s.dayOfMonth) / s.daysInMonth - s.spent
   const over = left < 0

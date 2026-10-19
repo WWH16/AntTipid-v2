@@ -11,9 +11,10 @@ import { LoadingRows } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { Button } from '@/components/ui/button'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
-import { ItemGroup } from '@/components/ui/item'
+import { Item, ItemContent, ItemGroup } from '@/components/ui/item'
 import { Progress, ProgressLabel } from '@/components/ui/progress'
-import { dayLabel, money, monthLabel, shiftMonth } from '@/lib/format'
+import { dayIso, dayLabel, money, monthLabel, shiftMonth } from '@/lib/format'
+import { sumOf } from '@/lib/transactions'
 import { moneyTooltip, monthTotals } from '@/lib/report'
 import type { MonthlyReport } from '@/types'
 
@@ -40,36 +41,30 @@ export function CategoryBreakdown({ items, onSelect }: { items: MonthlyReport['b
             </span>
           </Progress>
         )
-        return onSelect ? (
-          <button
+        return (
+          <Item
             key={categoryId}
-            type="button"
-            onClick={() => onSelect(categoryId)}
-            aria-label={`${cat?.name ?? 'Other'}: ${money(amount, { whole: true })}. Show details`}
-            className="-mx-2 rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            size="xs"
+            className={onSelect ? '-mx-2 px-2 text-left hover:bg-muted' : '-mx-2 px-2'}
+            render={onSelect ? <button type="button" onClick={() => onSelect(categoryId)} aria-label={`${cat?.name ?? 'Other'}: ${money(amount, { whole: true })}. Show details`} /> : undefined}
           >
-            {bar}
-          </button>
-        ) : (
-          <div key={categoryId} className="py-2">{bar}</div>
+            <ItemContent>{bar}</ItemContent>
+          </Item>
         )
       })}
     </div>
   )
 }
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
 /** Everything spent on one day. */
 export function DayDetail({ month, day, onClose }: { month: string; day: number; onClose: () => void }) {
-  const date = `${month}-${pad(day)}`
+  const date = dayIso(month, day)
   const { data } = useQuery(`tx:${month}`, () => api.transactions.list({ month }))
   const items = (data ?? []).filter((t) => t.date === date)
-  const spent = items.filter((t) => t.kind === 'expense').reduce((s, t) => s + t.amount, 0)
+  const spent = sumOf(items, 'expense')
   return (
     <ResponsivePanel
-      open
-      onOpenChange={(o) => { if (!o) onClose() }}
+      onClose={onClose}
       title={dayLabel(date)}
       description={spent ? `${money(spent)} spent this day` : 'Nothing spent this day'}
     >
@@ -95,7 +90,7 @@ export function CategoryDetail({ month, categoryId, onClose }: { month: string; 
   const expenses = (all ?? []).filter((t) => t.kind === 'expense')
   const history = Array.from({ length: 6 }, (_, i) => {
     const m = shiftMonth(month, i - 5)
-    return { month: m, spent: expenses.filter((t) => t.date.startsWith(m)).reduce((s, t) => s + t.amount, 0) }
+    return { month: m, spent: sumOf(expenses.filter((t) => t.date.startsWith(m)), 'expense') }
   })
   const thisMonth = expenses.filter((t) => t.date.startsWith(month))
   const total = history.at(-1)?.spent ?? 0
@@ -104,8 +99,7 @@ export function CategoryDetail({ month, categoryId, onClose }: { month: string; 
 
   return (
     <ResponsivePanel
-      open
-      onOpenChange={(o) => { if (!o) onClose() }}
+      onClose={onClose}
       title={cat?.name ?? 'Category'}
       description={`Spending in ${monthLabel(month)}`}
     >
@@ -155,8 +149,7 @@ export function MonthDetail({ month, onClose, onOpen }: { month: string; onClose
   const totals = data?.trend.at(-1)
   return (
     <ResponsivePanel
-      open
-      onOpenChange={(o) => { if (!o) onClose() }}
+      onClose={onClose}
       title={monthLabel(month)}
       description="Income, spending and where it went"
       footer={<Button onClick={() => onOpen(month)}>Show full report for {monthLabel(month, 'short')}</Button>}

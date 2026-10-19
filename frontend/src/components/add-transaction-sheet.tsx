@@ -7,12 +7,12 @@ import { toast } from 'sonner'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { CategoryIcon } from '@/components/category-icon'
+import { MoneyInput } from '@/components/money-input'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { SimpleSelect } from '@/components/simple-select'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
 import { Label } from '@/components/ui/label'
 import { ReceiptItems } from '@/components/receipt-items'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -103,17 +103,14 @@ function AddFlow() {
     setMode('form')
   }
 
-  const onOpenChange = (open: boolean) => { if (!open) closeAdd() }
-
-  if (mode === 'scan') return <ScanStep onOpenChange={onOpenChange} onBack={() => setMode('form')} onDone={applyReceipt} />
+  if (mode === 'scan') return <ScanStep onClose={closeAdd} onBack={() => setMode('form')} onDone={applyReceipt} />
 
   const walletOptions = activeWallets.map((w) => ({ value: w.id, label: w.name }))
   const shownCategories = categories.filter((c) => c.kind === (kind === 'income' ? 'income' : 'expense'))
 
   return (
     <ResponsivePanel
-      open
-      onOpenChange={onOpenChange}
+      onClose={closeAdd}
       title={editing ? 'Edit transaction' : 'Add transaction'}
       description={receipt
         ? receipt.lowConfidence
@@ -139,18 +136,7 @@ function AddFlow() {
 
         <div className="grid gap-2">
           <Label htmlFor="amount">Amount</Label>
-          <InputGroup>
-            <InputGroupAddon><InputGroupText>₱</InputGroupText></InputGroupAddon>
-            <InputGroupInput
-              id="amount"
-              autoFocus={!editing}
-              inputMode="decimal"
-              autoComplete="off"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1'))}
-            />
-          </InputGroup>
+          <MoneyInput id="amount" autoFocus={!editing} placeholder="0.00" value={amount} onChange={setAmount} />
           {kind === 'expense' && !editing && !receipt && (
             <Button type="button" variant="link" className="justify-self-start px-0" onClick={() => setMode('scan')}>
               <ScanLine /> Scan a receipt instead
@@ -221,7 +207,7 @@ function AddFlow() {
 // After this long, say the wait is normal and offer a way out.
 const SLOW_AFTER_S = 12
 
-function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean) => void; onBack: () => void; onDone: (r: ReceiptScan) => void }) {
+function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: () => void; onDone: (r: ReceiptScan) => void }) {
   const [state, setState] = useState<'idle' | 'camera' | 'preparing' | 'reading' | 'error'>('idle')
   const [cameraError, setCameraError] = useState('')
   const [scanError, setScanError] = useState('')
@@ -345,8 +331,7 @@ function ScanStep({ onOpenChange, onBack, onDone }: { onOpenChange: (o: boolean)
 
   return (
     <ResponsivePanel
-      open
-      onOpenChange={(o) => { if (!o) stopCamera(); onOpenChange(o) }}
+      onClose={onClose}
       title="Scan a receipt"
       description="Use your camera or upload a photo. The store, date and items are filled in for you."
       footer={footer}

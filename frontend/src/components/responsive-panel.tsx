@@ -11,11 +11,10 @@ let livePanels = 0
  * Back button (Android) or swipe-back (iPhone) closes the top panel instead of leaving the page.
  * Panels that replace each other in the same flow (add form and receipt scan) share one entry.
  */
-function useBackToClose(open: boolean, onOpenChange: (open: boolean) => void) {
-  const close = useRef(onOpenChange)
-  useEffect(() => { close.current = onOpenChange })
+function useBackToClose(onClose: () => void) {
+  const close = useRef(onClose)
+  useEffect(() => { close.current = onClose })
   useEffect(() => {
-    if (!open) return
     const depth = ++livePanels
     if ((history.state?.panelDepth ?? 0) >= depth) history.replaceState({ ...history.state, panelDepth: depth }, '')
     else history.pushState({ ...history.state, panelDepth: depth }, '')
@@ -23,7 +22,7 @@ function useBackToClose(open: boolean, onOpenChange: (open: boolean) => void) {
     const onPop = () => {
       if ((history.state?.panelDepth ?? 0) < depth) {
         closedByBack = true
-        close.current(false)
+        close.current()
       }
     }
     window.addEventListener('popstate', onPop)
@@ -33,22 +32,23 @@ function useBackToClose(open: boolean, onOpenChange: (open: boolean) => void) {
       // Closed with X, Cancel or Save: drop this panel's history entry, unless another panel took it over.
       if (!closedByBack) setTimeout(() => { if ((history.state?.panelDepth ?? 0) > livePanels) history.back() })
     }
-  }, [open])
+  }, [])
 }
 
-export function ResponsivePanel({ open, onOpenChange, title, description, footer, children }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+/** Always open while mounted: render it to show it, unmount it to hide it. */
+export function ResponsivePanel({ onClose, title, description, footer, children }: {
+  onClose: () => void
   title: string
   description: string
   footer?: ReactNode
   children: ReactNode
 }) {
   const isMobile = useIsMobile()
-  useBackToClose(open, onOpenChange)
+  useBackToClose(onClose)
+  const onOpenChange = (open: boolean) => { if (!open) onClose() }
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
+      <Drawer open onOpenChange={onOpenChange}>
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>{title}</DrawerTitle>
@@ -61,7 +61,7 @@ export function ResponsivePanel({ open, onOpenChange, title, description, footer
     )
   }
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open onOpenChange={onOpenChange}>
       <SheetContent>
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>

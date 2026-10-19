@@ -4,6 +4,8 @@ import type {
   Budget, BudgetStatus, Category, MonthSummary, MonthlyReport, NewTransaction,
   Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
+import { currentMonth, dayIso, isoDate, shiftMonth } from '@/lib/format'
+import { sumOf } from '@/lib/transactions'
 
 const categories: Category[] = [
   { id: 'food', name: 'Food & dining', kind: 'expense', icon: 'food' },
@@ -39,7 +41,6 @@ const budgets: Budget[] = [
   { id: 'b-shop', categoryId: 'shopping', limit: 4000, warnAt: 80 },
 ]
 
-const iso = (d: Date) => d.toISOString().slice(0, 10)
 const monthOf = (date: string) => date.slice(0, 7)
 
 // Repeating pattern of everyday spending, laid over the last six months.
@@ -62,7 +63,7 @@ function seed(): Transaction[] {
   for (let back = 5; back >= 0; back--) {
     const first = new Date(today.getFullYear(), today.getMonth() - back, 1)
     const last = back === 0 ? today.getDate() : new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
-    const day = (d: number) => iso(new Date(first.getFullYear(), first.getMonth(), Math.min(d, last), 12))
+    const day = (d: number) => isoDate(new Date(first.getFullYear(), first.getMonth(), Math.min(d, last)))
     out.push({ id: `t${n++}`, kind: 'income', amount: 32000, title: 'Payroll – Acme Corp', date: day(1), walletId: 'bpi', categoryId: 'salary', note: '', source: 'manual' })
     if (last >= 15) out.push({ id: `t${n++}`, kind: 'income', amount: back % 2 ? 6500 : 4200, title: 'Logo project', date: day(15), walletId: 'gcash', categoryId: 'freelance', note: '', source: 'manual' })
     if (last >= 5) out.push({ id: `t${n++}`, kind: 'transfer', amount: 5000, title: 'Top up GCash', date: day(5), walletId: 'bpi', toWalletId: 'gcash', note: '', source: 'manual' })
@@ -95,15 +96,10 @@ function balanceOf(walletId: string) {
   }, opening[walletId] ?? 0)
 }
 
-const isCurrentMonth = (month: string) => month === iso(new Date()).slice(0, 7)
-
-const incomeIn = (month: string) =>
-  transactions.filter((t) => t.kind === 'income' && monthOf(t.date) === month).reduce((s, t) => s + t.amount, 0)
+const incomeIn = (month: string) => sumOf(transactions.filter((t) => monthOf(t.date) === month), 'income')
 
 const spentIn = (month: string, categoryId?: string | null) =>
-  transactions
-    .filter((t) => t.kind === 'expense' && monthOf(t.date) === month && (!categoryId || t.categoryId === categoryId))
-    .reduce((s, t) => s + t.amount, 0)
+  sumOf(transactions.filter((t) => monthOf(t.date) === month && (!categoryId || t.categoryId === categoryId)), 'expense')
 
 export const mock = {
   signIn: (email: string, _password?: string) => delay<User>({ name: 'Andrea Santos', email }),
@@ -185,8 +181,6 @@ export const mock = {
 
   summary: (month: string) => {
     const [y, m] = month.split('-').map(Number)
-    const now = new Date()
-    const isCurrent = now.getFullYear() === y && now.getMonth() + 1 === m
     const daysInMonth = new Date(y, m, 0).getDate()
     return delay<MonthSummary>({
       month,
@@ -194,7 +188,7 @@ export const mock = {
       spent: spentIn(month),
       budget: budgets.find((b) => b.categoryId === null)?.limit ?? 0,
       daysInMonth,
-      dayOfMonth: isCurrent ? now.getDate() : daysInMonth,
+      dayOfMonth: month === currentMonth() ? new Date().getDate() : daysInMonth,
     })
   },
 
@@ -206,16 +200,16 @@ export const mock = {
     }
     const [y, m] = month.split('-').map(Number)
     const trend = Array.from({ length: 6 }, (_, i) => {
-      const key = iso(new Date(y, m - 6 + i, 15)).slice(0, 7)
+      const key = shiftMonth(month, i - 5)
       return { month: key, income: incomeIn(key), spent: spentIn(key) }
     })
     return delay<MonthlyReport>({
       month,
       byCategory: [...totals].map(([categoryId, total]) => ({ categoryId, total })).sort((a, b) => b.total - a.total),
       trend,
-      daily: Array.from({ length: isCurrentMonth(month) ? new Date().getDate() : new Date(y, m, 0).getDate() }, (_, i) => {
-        const date = `${month}-${String(i + 1).padStart(2, '0')}`
-        return { day: i + 1, spent: transactions.filter((t) => t.kind === 'expense' && t.date === date).reduce((s, t) => s + t.amount, 0) }
+      daily: Array.from({ length: month === currentMonth() ? new Date().getDate() : new Date(y, m, 0).getDate() }, (_, i) => {
+        const date = dayIso(month, i + 1)
+        return { day: i + 1, spent: sumOf(transactions.filter((t) => t.date === date), 'expense') }
       }),
     })
   },

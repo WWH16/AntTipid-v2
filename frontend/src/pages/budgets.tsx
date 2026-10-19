@@ -6,6 +6,7 @@ import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { BudgetBadge, BudgetItem } from '@/components/budget'
 import { budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
+import { MoneyInput } from '@/components/money-input'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
 import { SimpleSelect } from '@/components/simple-select'
@@ -14,7 +15,6 @@ import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { ItemGroup } from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
@@ -35,17 +35,16 @@ export function BudgetsPage() {
   const byCategory = (data ?? [])
     .filter((b) => b.categoryId !== null)
     .sort((a, b) => SEVERITY[budgetState(a)] - SEVERITY[budgetState(b)] || b.spent / b.limit - a.spent / a.limit)
-  const needing = byCategory.filter((b) => budgetState(b) !== 'ok').map((b) => category(b.categoryId ?? undefined)?.name ?? 'Other')
-  const needLook = needing.length
+  const needing = byCategory.filter((b) => budgetState(b) !== 'ok').map((b) => category(b.categoryId)?.name ?? 'Other')
   const unbudgeted = categories.filter((c) => c.kind === 'expense' && !data?.some((b) => b.categoryId === c.id))
 
   return (
     <>
       <PageHeader
         page="Budgets"
-        headline={!data ? 'Budgets' : !data.length ? 'No budgets yet' : needLook ? `${needLook} ${needLook === 1 ? 'budget needs' : 'budgets need'} a look` : 'Every budget is on track'}
-        description={needLook
-          ? `${new Intl.ListFormat('en').format(needing)} ${needLook === 1 ? 'is' : 'are'} near or over the limit in ${monthLabel(month)}.`
+        headline={!data ? 'Budgets' : !data.length ? 'No budgets yet' : needing.length ? `${needing.length} ${needing.length === 1 ? 'budget needs' : 'budgets need'} a look` : 'Every budget is on track'}
+        description={needing.length
+          ? `${new Intl.ListFormat('en').format(needing)} ${needing.length === 1 ? 'is' : 'are'} near or over the limit in ${monthLabel(month)}.`
           : data?.length ? `Nothing near its limit in ${monthLabel(month)}.` : 'Set a limit for the month or for one category.'}
         action={<Button onClick={() => setEditing({})}><Plus /> New budget</Button>}
       />
@@ -80,7 +79,7 @@ export function BudgetsPage() {
             <CardContent className="grid gap-4">
               {byCategory.length ? (
                 <ItemGroup>
-                  {byCategory.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId ?? undefined)} onSelect={() => setEditing({ budget: b })} />)}
+                  {byCategory.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} onSelect={() => setEditing({ budget: b })} />)}
                 </ItemGroup>
               ) : (
                 <EmptyState title="No category budgets" body="Limit what goes to food, transport or anything else." action={<Button variant="outline" onClick={() => setEditing({})}>Add a category budget</Button>} />
@@ -154,8 +153,8 @@ function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable<Editin
       )}
       <div className="grid grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="limit">Monthly limit (₱)</Label>
-          <Input id="limit" inputMode="decimal" placeholder="5000" value={limit} onChange={(e) => setLimit(e.target.value.replace(/[^\d.]/g, ''))} />
+          <Label htmlFor="limit">Monthly limit</Label>
+          <MoneyInput id="limit" placeholder="5000" value={limit} onChange={setLimit} />
         </div>
         <div className="grid gap-2">
           <Label htmlFor="warn">Warn me at</Label>

@@ -36,8 +36,7 @@ function Details({ id }: { id: string }) {
 
   return (
     <ResponsivePanel
-      open
-      onOpenChange={(o) => { if (!o) closeDetail() }}
+      onClose={closeDetail}
       title={t?.title ?? 'Transaction'}
       description="Transaction details"
       footer={t && (

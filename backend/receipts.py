@@ -23,13 +23,11 @@ OPENROUTER_FAST = {"reasoning": {"enabled": False}}
 # Tried in order: OpenRouter's free models first, Gemini if they all fail. A model whose key isn't set is skipped.
 # Benchmarked on a real SM receipt (2026-10-19): Dots read every field right in ~3-4s; Nemotron got amounts
 # right but sometimes missed the date; Gemini Flash-Lite read every field right in ~2s.
-# (Gemma 4 was dropped: always rate-limited upstream on the free tier.)
 # ponytail: model names change; when all fail, check https://openrouter.ai/models?q=free (image input)
 # and https://aistudio.google.com for current ones.
 MODELS = [
     (OPENROUTER_URL, "OPENROUTER_API_KEY", "dots-studio/dots-3-note-preview:free", OPENROUTER_FAST),
     (OPENROUTER_URL, "OPENROUTER_API_KEY", "nvidia/nemotron-3.5-super-vl:free", OPENROUTER_FAST),
-    # Flash-Lite read the SM receipt right in ~2s; 3.8 Flash took 9s once and timed out once.
     # Each has its own free-tier quota, so one still answers when the other is rate-limited.
     (GEMINI_URL, "GEMINI_API_KEY", "gemini-3.5-flash-lite", GEMINI_FAST),
     (GEMINI_URL, "GEMINI_API_KEY", "gemini-3.8-flash", GEMINI_FAST),

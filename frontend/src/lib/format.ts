@@ -18,8 +18,11 @@ export const monthLabel = (month: string, style: 'long' | 'short' = 'long') =>
 export const shiftMonth = (month: string, by: number) => {
   const d = parse(month)
   d.setMonth(d.getMonth() + by)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  return isoDate(d).slice(0, 7)
 }
+
+/** Day `day` of `month` (YYYY-MM) as YYYY-MM-DD. */
+export const dayIso = (month: string, day: number) => `${month}-${String(day).padStart(2, '0')}`
 
 /** "Today", "Yesterday", or "Mon, 13 Oct". */
 export function dayLabel(iso: string) {

@@ -1,14 +1,12 @@
-// The swipeable hero on Home. Each slide answers a question the rest of Home doesn't:
-//   1. How much can I still spend?  (passed in)
-//   2. How is this week (or month) going compared with the last one?
-//   3. Which bills are still coming this month?
+// The swipeable hero on Home. Each slide answers a question the rest of Home doesn't.
 import { useRef, useState, type ReactNode } from 'react'
 import { HeroCard } from '@/components/hero-card'
 import { Badge } from '@/components/ui/badge'
 import { CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { isoDate, money } from '@/lib/format'
+import { currentMonth, isoDate, money, monthLabel, shiftMonth } from '@/lib/format'
+import { sumOf } from '@/lib/transactions'
 import { cn } from '@/lib/utils'
 import type { MonthSummary, Transaction } from '@/types'
 
@@ -83,7 +81,7 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
 
   const spentOn = (d: Date) => {
     const date = isoDate(d)
-    return transactions.filter((t) => t.kind === 'expense' && t.date === date).reduce((s, t) => s + t.amount, 0)
+    return sumOf(transactions.filter((t) => t.date === date), 'expense')
   }
   const shifted = (days: number, months = 0) => new Date(today.getFullYear(), today.getMonth() + months, today.getDate() + days)
 
@@ -96,7 +94,7 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
     for (let i = 0; i <= todayIdx; i++) previous += spentOn(shifted(i - todayIdx - 7))
   } else {
     const days = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
-    const monthName = today.toLocaleDateString('en-PH', { month: 'short' })
+    const monthName = monthLabel(currentMonth(), 'short')
     // One bar per week of the month: days 1–7, 8–14, 15–21, 22–28, 29 to the end.
     const dayTotal = (d: number) => spentOn(new Date(today.getFullYear(), today.getMonth(), d))
     bars = []
@@ -133,7 +131,7 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
         </CardAction>
       </CardHeader>
       <CardContent>
-        <ol className={cn('flex h-24 items-end gap-2')} aria-label={period === 'week' ? 'Spending per day this week' : 'Spending per week this month'}>
+        <ol className="flex h-24 items-end gap-2" aria-label={period === 'week' ? 'Spending per day this week' : 'Spending per week this month'}>
           {bars.map((d, i) => (
             <li key={d.label} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5">
               <span className="sr-only">{d.label}: {d.spent === null ? 'not yet' : money(d.spent, { whole: true })}</span>
@@ -170,8 +168,8 @@ const BILL_CATEGORIES = ['bills', 'load']
 export function BillsSlide({ transactions, summary }: { transactions?: Transaction[]; summary?: MonthSummary }) {
   const [today] = useState(() => new Date())
   if (!transactions || !summary) return <Skeleton className="h-64 w-full rounded-xl" />
-  const thisMonth = isoDate(today).slice(0, 7)
-  const lastMonth = isoDate(new Date(today.getFullYear(), today.getMonth() - 1, 15)).slice(0, 7)
+  const thisMonth = currentMonth()
+  const lastMonth = shiftMonth(thisMonth, -1)
   const isBill = (t: Transaction) => t.kind === 'expense' && BILL_CATEGORIES.includes(t.categoryId ?? '')
   const paidThisMonth = new Set(transactions.filter((t) => isBill(t) && t.date.startsWith(thisMonth)).map((t) => t.title))
   const upcoming = transactions
@@ -180,7 +178,7 @@ export function BillsSlide({ transactions, summary }: { transactions?: Transacti
     .filter((b, i, all) => all.findIndex((x) => x.title === b.title) === i)
     .sort((a, b) => a.day - b.day)
   const total = upcoming.reduce((s, b) => s + b.amount, 0)
-  const monthName = today.toLocaleDateString('en-PH', { month: 'short' })
+  const monthName = monthLabel(thisMonth, 'short')
   const leftAfter = summary.budget ? summary.budget - summary.spent - total : null
 
   return (
