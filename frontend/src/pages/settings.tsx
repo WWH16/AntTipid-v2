@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { BusyButton } from '@/components/busy-button'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DetailList } from '@/components/detail-list'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
@@ -10,11 +12,11 @@ import { CategoryMedia } from '@/components/category-icon'
 import { CATEGORY_ICONS } from '@/lib/category-icons'
 import { PageHeader } from '@/components/page-header'
 import { MoneyInput } from '@/components/money-input'
+import { ResponsivePanel } from '@/components/responsive-panel'
 import { SimpleSelect } from '@/components/simple-select'
 import { WalletItem } from '@/components/wallet-item'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item'
@@ -22,6 +24,7 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { BrandMark } from '@/components/brand-icons'
+import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
 import { WALLET_TYPES } from '@/lib/wallets'
 import type { Category, CategoryKind, Wallet, WalletType } from '@/types'
@@ -55,12 +58,8 @@ export function SettingsPage() {
         <TabsContent value="account"><AccountTab /></TabsContent>
       </Tabs>
 
-      <Dialog open={dlg !== null} onOpenChange={(o) => { if (!o) setDlg(null) }}>
-        <DialogContent>
-          {dlg?.type === 'wallet' && <WalletForm key={dlg.wallet?.id ?? 'new'} wallet={dlg.wallet} onClose={() => setDlg(null)} />}
-          {dlg?.type === 'category' && <CategoryForm key={dlg.category?.id ?? 'new'} category={dlg.category} kind={dlg.kind} onClose={() => setDlg(null)} />}
-        </DialogContent>
-      </Dialog>
+      {dlg?.type === 'wallet' && <WalletForm key={dlg.wallet?.id ?? 'new'} wallet={dlg.wallet} onClose={() => setDlg(null)} />}
+      {dlg?.type === 'category' && <CategoryForm key={dlg.category?.id ?? 'new'} category={dlg.category} kind={dlg.kind} onClose={() => setDlg(null)} />}
     </>
   )
 }
@@ -79,9 +78,18 @@ function RowMenu({ label, children }: { label: string; children: React.ReactNode
 function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
   const { wallets } = useRefData()
 
+  // Reversible, so no confirm step: the toast offers Undo instead.
   async function setArchived(w: Wallet, value: boolean) {
-    await api.wallets.update(w.id, { archived: value })
-    done(value ? 'Wallet archived' : 'Wallet restored', { description: value ? `${w.name} is hidden from new transactions. Its history stays.` : w.name })
+    try {
+      await api.wallets.update(w.id, { archived: value })
+      done(value ? 'Wallet archived' : 'Wallet restored', {
+        description: value ? `${w.name} is hidden from new transactions. Its history stays.` : w.name,
+        action: { label: 'Undo', onClick: () => setArchived(w, !value) },
+        duration: 8000, // long enough to notice and reach the Undo button
+      })
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
   }
 
   return (
@@ -111,15 +119,7 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
 
 function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
   const { categories } = useRefData()
-
-  async function remove(c: Category) {
-    try {
-      await api.categories.remove(c.id)
-      done('Category deleted', { description: c.name })
-    } catch (e) {
-      toast.error(`Couldn't delete ${c.name}`, { description: (e as Error).message })
-    }
-  }
+  const [deleting, setDeleting] = useState<Category | null>(null)
 
   return (
     <div className="grid max-w-4xl items-start gap-6 md:grid-cols-2">
@@ -128,7 +128,7 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
           <CardHeader>
             <CardTitle role="heading" aria-level={2}>{kind === 'expense' ? 'Spending categories' : 'Income categories'}</CardTitle>
             <CardDescription>{kind === 'expense' ? 'Shown when you add an expense.' : 'Shown when you add income.'}</CardDescription>
-            <CardAction><Button variant="outline" size="sm" aria-label={kind === 'expense' ? 'Add spending category' : 'Add income category'} onClick={() => onEdit({ type: 'category', kind })}><Plus /><span className="hidden sm:inline">Add</span></Button></CardAction>
+            <CardAction><Button variant="outline" size="sm" aria-label={kind === 'expense' ? 'Add spending category' : 'Add income category'} onClick={() => onEdit({ type: 'category', kind })}><Plus /><span className="hidden sm:inline">Add category</span></Button></CardAction>
           </CardHeader>
           <CardContent>
             <ItemGroup>
@@ -139,7 +139,7 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
                   <ItemActions>
                     <RowMenu label={`Options for ${c.name}`}>
                       <DropdownMenuItem onClick={() => onEdit({ type: 'category', category: c, kind })}><Pencil /> Rename</DropdownMenuItem>
-                      <DropdownMenuItem variant="destructive" onClick={() => remove(c)}><Trash2 /> Delete</DropdownMenuItem>
+                      <DropdownMenuItem variant="destructive" onClick={() => setDeleting(c)}><Trash2 /> Delete</DropdownMenuItem>
                     </RowMenu>
                   </ItemActions>
                 </Item>
@@ -148,6 +148,17 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
           </CardContent>
         </Card>
       ))}
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => { if (!o) setDeleting(null) }}
+        title={`Delete ${deleting?.name ?? 'this category'}?`}
+        description="It disappears from the category list. This can't be undone."
+        confirm="Delete category"
+        onConfirm={async () => {
+          await api.categories.remove(deleting!.id)
+          done('Category deleted', { description: deleting!.name })
+        }}
+      />
     </div>
   )
 }
@@ -175,75 +186,81 @@ function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () => void 
   const [name, setName] = useState(wallet?.name ?? '')
   const [type, setType] = useState<string>(wallet?.type ?? 'e_wallet')
   const [balance, setBalance] = useState('')
+  const [run, busy] = useAction()
+  const label = wallet ? 'Rename wallet' : 'Add wallet'
 
-  async function save() {
-    if (!name.trim()) return
+  const save = () => run(async () => {
     if (wallet) await api.wallets.update(wallet.id, { name: name.trim() })
     else await api.wallets.create({ name: name.trim(), type: type as WalletType, balance: Number(balance) || 0 })
     onClose()
     done(wallet ? 'Wallet renamed' : 'Wallet added', { description: name.trim() })
-  }
+  })
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save() }} className="grid gap-4">
-      <DialogHeader>
-        <DialogTitle>{wallet ? 'Rename wallet' : 'Add wallet'}</DialogTitle>
-        <DialogDescription>{wallet ? 'The new name shows on all its transactions.' : 'Anywhere you keep money: cash, GCash, a bank account or a card.'}</DialogDescription>
-      </DialogHeader>
-      <div className="grid gap-2">
-        <Label htmlFor="wallet-name">Name</Label>
-        <Input id="wallet-name" autoFocus placeholder="e.g. GCash, BPI Savings" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      {!wallet && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="wallet-type">Type</Label>
-            <SimpleSelect id="wallet-type" value={type} onChange={setType} options={WALLET_TYPES} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="wallet-balance">Current balance</Label>
-            <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} />
-          </div>
+    <ResponsivePanel
+      onClose={onClose}
+      title={label}
+      description={wallet ? 'The new name shows on all its transactions.' : 'Anywhere you keep money: cash, GCash, a bank account or a card.'}
+      footer={<BusyButton type="submit" form="wallet-form" busy={busy} disabled={!name.trim()}>{label}</BusyButton>}
+    >
+      <form id="wallet-form" onSubmit={(e) => { e.preventDefault(); if (name.trim()) save() }} className="grid gap-4 pb-4">
+        <div className="grid gap-2">
+          <Label htmlFor="wallet-name">Name</Label>
+          <Input id="wallet-name" autoFocus placeholder="e.g. GCash, BPI Savings" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-      )}
-      <DialogFooter><Button type="submit" disabled={!name.trim()}>{wallet ? 'Save name' : 'Add wallet'}</Button></DialogFooter>
-    </form>
+        {!wallet && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="wallet-type">Type</Label>
+              <SimpleSelect id="wallet-type" value={type} onChange={setType} options={WALLET_TYPES} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="wallet-balance">Current balance</Label>
+              <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} />
+            </div>
+          </div>
+        )}
+      </form>
+    </ResponsivePanel>
   )
 }
 
 function CategoryForm({ category, kind, onClose }: { category?: Category; kind: CategoryKind; onClose: () => void }) {
   const [name, setName] = useState(category?.name ?? '')
   const [icon, setIcon] = useState(category?.icon ?? 'other')
+  const [run, busy] = useAction()
+  const label = category ? 'Rename category' : kind === 'expense' ? 'Add spending category' : 'Add income category'
 
-  async function save() {
-    if (!name.trim()) return
+  const save = () => run(async () => {
     if (category) await api.categories.update(category.id, { name: name.trim() })
     else await api.categories.create({ name: name.trim(), kind, icon })
     onClose()
     done(category ? 'Category renamed' : 'Category added', { description: name.trim() })
-  }
+  })
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save() }} className="grid gap-4">
-      <DialogHeader>
-        <DialogTitle>{category ? 'Rename category' : kind === 'expense' ? 'Add spending category' : 'Add income category'}</DialogTitle>
-        <DialogDescription>{category ? 'Past transactions keep this category under its new name.' : 'It appears in the category list when you add a transaction.'}</DialogDescription>
-      </DialogHeader>
-      <div className="grid gap-2">
-        <Label htmlFor="cat-name">Name</Label>
-        <Input id="cat-name" autoFocus placeholder="e.g. Pets, Tuition" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-      {!category && (
+    <ResponsivePanel
+      onClose={onClose}
+      title={label}
+      description={category ? 'Past transactions keep this category under its new name.' : 'It appears in the category list when you add a transaction.'}
+      footer={<BusyButton type="submit" form="category-form" busy={busy} disabled={!name.trim()}>{label}</BusyButton>}
+    >
+      <form id="category-form" onSubmit={(e) => { e.preventDefault(); if (name.trim()) save() }} className="grid gap-4 pb-4">
         <div className="grid gap-2">
-          <Label id="icon-label">Icon</Label>
-          <ToggleGroup aria-labelledby="icon-label" variant="outline" className="flex-wrap" value={[icon]} onValueChange={(v) => setIcon((v as string[])[0] ?? icon)}>
-            {Object.entries(CATEGORY_ICONS).map(([key, Icon]) => (
-              <ToggleGroupItem key={key} value={key} aria-label={key[0].toUpperCase() + key.slice(1)}><Icon /></ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <Label htmlFor="cat-name">Name</Label>
+          <Input id="cat-name" autoFocus placeholder="e.g. Pets, Tuition" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-      )}
-      <DialogFooter><Button type="submit" disabled={!name.trim()}>{category ? 'Save name' : 'Add category'}</Button></DialogFooter>
-    </form>
+        {!category && (
+          <div className="grid gap-2">
+            <Label id="icon-label">Icon</Label>
+            <ToggleGroup aria-labelledby="icon-label" variant="outline" className="flex-wrap" value={[icon]} onValueChange={(v) => setIcon((v as string[])[0] ?? icon)}>
+              {Object.entries(CATEGORY_ICONS).map(([key, Icon]) => (
+                <ToggleGroupItem key={key} value={key} aria-label={key[0].toUpperCase() + key.slice(1)}><Icon /></ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+        )}
+      </form>
+    </ResponsivePanel>
   )
 }

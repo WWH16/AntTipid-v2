@@ -3,7 +3,8 @@ import { Badge } from '@/components/ui/badge'
 import { BrandMark } from '@/components/brand-icons'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemFooter, ItemTitle } from '@/components/ui/item'
 import { Progress } from '@/components/ui/progress'
-import { budgetPercent, budgetRemaining, budgetState, type BudgetState } from '@/lib/budget'
+import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, type BudgetState } from '@/lib/budget'
+import { cn } from '@/lib/utils'
 import { money } from '@/lib/format'
 import type { BudgetStatus, Category } from '@/types'
 
@@ -35,7 +36,7 @@ export function BudgetItem({ b, category, onSelect }: { b: BudgetStatus; categor
         <ItemDescription className="tabular-nums">{budgetRemaining(b)} of {money(b.limit, { whole: true })}</ItemDescription>
       </ItemContent>
       <ItemActions><BudgetBadge state={budgetState(b)} /></ItemActions>
-      <ItemFooter><Progress value={budgetPercent(b)} className="w-full" aria-label={`${category?.name} budget used`} /></ItemFooter>
+      <ItemFooter><Progress value={budgetPercent(b)} className={cn('w-full', OVER_BAR[budgetState(b)])} aria-label={`${category?.name} budget used`} /></ItemFooter>
     </Item>
   )
 }

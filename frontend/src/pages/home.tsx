@@ -131,7 +131,7 @@ export function HomePage() {
   )
 }
 
-/** What's left to spend, plus budget used vs. month gone, so being ahead of or behind pace is visible. */
+/** What's left to spend, plus budget used vs. month gone, so spending faster than the month is visible. */
 function SafeToSpend({ s }: { s?: MonthSummary }) {
   if (!s) return <Skeleton className="h-56 w-full rounded-xl" />
 
@@ -166,7 +166,7 @@ function SafeToSpend({ s }: { s?: MonthSummary }) {
         </CardTitle>
         <CardAction>
           <Badge variant="secondary">
-            {over ? 'Over budget' : gap >= 0 ? 'Under pace' : 'Ahead of pace'}
+            {over ? 'Over budget' : gap >= 0 ? 'On track' : 'Spending fast'}
           </Badge>
         </CardAction>
       </CardHeader>
@@ -185,8 +185,8 @@ function SafeToSpend({ s }: { s?: MonthSummary }) {
           {over
             ? `You've spent ${money(s.spent, { whole: true })} of ${money(s.budget, { whole: true })}.`
             : gap >= 0
-              ? `${money(gap, { whole: true })} under pace. Up to ${money(perDay, { whole: true })} a day keeps you on budget.`
-              : `${money(-gap, { whole: true })} ahead of pace. Keep to ${money(perDay, { whole: true })} a day to finish on budget.`}
+              ? `${money(gap, { whole: true })} below the on-budget pace. Up to ${money(perDay, { whole: true })} a day keeps you on budget.`
+              : `${money(-gap, { whole: true })} above the on-budget pace. Keep to ${money(perDay, { whole: true })} a day to finish on budget.`}
         </p>
         <p className="text-muted-foreground">
           {money(s.spent, { whole: true })} spent of {money(s.budget, { whole: true })}, {daysLeft === 1 ? 'last day of the month' : `${daysLeft} days left`}

@@ -4,7 +4,7 @@ import { useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { BudgetBadge } from '@/components/budget'
-import { budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
+import { OVER_BAR, budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
 import { CategoryMedia } from '@/components/category-icon'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { LoadingRows } from '@/components/states'
@@ -111,7 +111,7 @@ export function CategoryDetail({ month, categoryId, onClose }: { month: string; 
           </div>
 
           {budget && (
-            <Progress value={budgetPercent(budget)}>
+            <Progress value={budgetPercent(budget)} className={OVER_BAR[budgetState(budget)]}>
               <ProgressLabel>Budget {money(budget.limit, { whole: true })}</ProgressLabel>
               <span className="ml-auto flex items-center gap-2 text-sm tabular-nums">{budgetRemaining(budget)} <BudgetBadge state={budgetState(budget)} /></span>
             </Progress>

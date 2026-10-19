@@ -3,9 +3,9 @@
 // Wallet defaults to the last one used and the date to today.
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Check, Loader2, ScanLine, Upload } from 'lucide-react'
-import { toast } from 'sonner'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
+import { BusyButton } from '@/components/busy-button'
 import { CategoryIcon } from '@/components/category-icon'
 import { MoneyInput } from '@/components/money-input'
 import { ResponsivePanel } from '@/components/responsive-panel'
@@ -18,6 +18,7 @@ import { ReceiptItems } from '@/components/receipt-items'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
 import { money, todayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/labels'
@@ -48,7 +49,7 @@ function AddFlow() {
   const [title, setTitle] = useState(editing?.title ?? '')
   const [note, setNote] = useState(editing?.note ?? '')
   const [receipt, setReceipt] = useState<ReceiptScan | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [run, saving] = useAction()
 
   // Fall back to the first wallet when nothing was used before (or the remembered one is gone).
   const walletId = editing || activeWallets.some((w) => w.id === pickedWallet) ? pickedWallet : (activeWallets[0]?.id ?? '')
@@ -61,9 +62,7 @@ function AddFlow() {
     kind === 'transfer' && toWalletId === walletId ? 'Pick two different wallets' :
     null
 
-  async function save() {
-    if (missing) return
-    setSaving(true)
+  const save = () => run(async () => {
     const body: NewTransaction = {
       kind,
       amount: Math.round(value * 100) / 100,
@@ -77,19 +76,14 @@ function AddFlow() {
       // Items stay their own list, never folded into the note: the note is the user's free text.
       items: kind === 'expense' ? (receipt?.items ?? editing?.items) : undefined,
     }
-    try {
-      const saved = editing ? await api.transactions.update(editing.id, body) : await api.transactions.create(body)
-      try { localStorage.setItem(LAST_WALLET, walletId) } catch { /* private mode */ }
-      closeAdd()
-      done(editing ? 'Changes saved' : `${KIND_LABEL[kind]} saved`, {
-        description: `${money(body.amount)}, ${body.title}`,
-        action: { label: 'View', onClick: () => openDetail(saved.id) },
-      })
-    } catch (e) {
-      toast.error((e as Error).message)
-      setSaving(false)
-    }
-  }
+    const saved = editing ? await api.transactions.update(editing.id, body) : await api.transactions.create(body)
+    try { localStorage.setItem(LAST_WALLET, walletId) } catch { /* private mode */ }
+    closeAdd()
+    done(editing ? 'Changes saved' : `${KIND_LABEL[kind]} saved`, {
+      description: `${money(body.amount)}, ${body.title}`,
+      action: { label: 'View', onClick: () => openDetail(saved.id) },
+    })
+  })
 
   function applyReceipt(r: ReceiptScan) {
     setReceipt(r)
@@ -120,14 +114,13 @@ function AddFlow() {
       footer={
         <>
           {missing && <p className="text-sm text-muted-foreground" aria-live="polite">{missing}.</p>}
-          <Button type="submit" form="add-form" disabled={!!missing || saving}>
-            {saving && <Loader2 className="animate-spin" />}
+          <BusyButton type="submit" form="add-form" busy={saving} disabled={!!missing}>
             {editing ? 'Save changes' : `Save ${KIND_LABEL[kind].toLowerCase()}`}
-          </Button>
+          </BusyButton>
         </>
       }
     >
-      <form id="add-form" className="grid gap-6 pb-4" onSubmit={(e) => { e.preventDefault(); save() }}>
+      <form id="add-form" className="grid gap-6 pb-4" onSubmit={(e) => { e.preventDefault(); if (!missing) save() }}>
         <Tabs value={kind} onValueChange={(v) => { setKind(v as TransactionKind); setCategoryId('') }}>
           <TabsList className="w-full">
             {(Object.keys(KIND_LABEL) as TransactionKind[]).map((k) => <TabsTrigger key={k} value={k}>{KIND_LABEL[k]}</TabsTrigger>)}

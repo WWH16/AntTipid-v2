@@ -5,19 +5,22 @@ import { useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { BudgetBadge, BudgetItem } from '@/components/budget'
-import { budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
+import { BusyButton } from '@/components/busy-button'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { OVER_BAR, budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
 import { MoneyInput } from '@/components/money-input'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
+import { ResponsivePanel } from '@/components/responsive-panel'
 import { SimpleSelect } from '@/components/simple-select'
 import { HeroCard } from '@/components/hero-card'
 import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ItemGroup } from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
+import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
 import { money, monthLabel } from '@/lib/format'
 import type { BudgetStatus } from '@/types'
@@ -60,7 +63,7 @@ export function BudgetsPage() {
                 <CardAction><BudgetBadge state={budgetState(overall)} solid /></CardAction>
               </CardHeader>
               <CardContent>
-                <Progress value={budgetPercent(overall)} aria-label="Budget used" />
+                <Progress value={budgetPercent(overall)} className={OVER_BAR[budgetState(overall)]} aria-label="Budget used" />
               </CardContent>
               <CardFooter className="justify-between gap-2 text-sm">
                 <span className="text-muted-foreground tabular-nums">{money(overall.spent, { whole: true })} of {money(overall.limit, { whole: true })}</span>
@@ -101,11 +104,7 @@ export function BudgetsPage() {
         </div>
       )}
 
-      <Dialog open={editing !== null} onOpenChange={(o) => { if (!o) setEditing(null) }}>
-        <DialogContent>
-          {editing && <BudgetForm key={editing.budget?.id ?? String(editing.categoryId)} editing={editing} onClose={() => setEditing(null)} budgets={data ?? []} />}
-        </DialogContent>
-      </Dialog>
+      {editing && <BudgetForm key={editing.budget?.id ?? String(editing.categoryId)} editing={editing} onClose={() => setEditing(null)} budgets={data ?? []} />}
     </>
   )
 }
@@ -125,46 +124,59 @@ function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable<Editin
   const name = target === 'all' ? 'Monthly budget' : `${category(target)?.name ?? ''} budget`
   const valid = target && Number(limit) > 0
 
-  async function save() {
-    if (!valid) return
+  const [run, busy] = useAction()
+  const [confirming, setConfirming] = useState(false)
+
+  const save = () => run(async () => {
     await api.budgets.save({ id: b?.id, categoryId: target === 'all' ? null : target, limit: Number(limit), warnAt: Number(warnAt) })
     onClose()
-    done(b ? 'Budget updated' : 'Budget added', { description: `${name}: ${money(Number(limit), { whole: true })} a month` })
-  }
+    done(b ? 'Changes saved' : 'Budget added', { description: `${name}: ${money(Number(limit), { whole: true })} a month` })
+  })
 
-  async function remove() {
-    if (!b) return
-    await api.budgets.remove(b.id)
+  const remove = async () => {
+    await api.budgets.remove(b!.id)
     onClose()
     done('Budget removed', { description: name })
   }
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save() }} className="grid gap-4">
-      <DialogHeader>
-        <DialogTitle>{b ? `Edit ${name.toLowerCase()}` : 'New budget'}</DialogTitle>
-        <DialogDescription>The limit repeats every month. You'll see a warning once spending passes the warning point.</DialogDescription>
-      </DialogHeader>
-      {!b && (
-        <div className="grid gap-2">
-          <Label htmlFor="budget-for">Budget for</Label>
-          <SimpleSelect id="budget-for" value={target} onChange={setTarget} options={options} placeholder="Choose a category" />
+    <ResponsivePanel
+      onClose={onClose}
+      title={b ? `Edit ${name.toLowerCase()}` : 'New budget'}
+      description="The limit repeats every month. You'll see a warning once spending passes the warning point."
+      footer={
+        <>
+          <BusyButton type="submit" form="budget-form" busy={busy} disabled={!valid}>{b ? 'Save changes' : 'Add budget'}</BusyButton>
+          {b && <Button variant="destructive" onClick={() => setConfirming(true)}>Remove budget</Button>}
+        </>
+      }
+    >
+      <form id="budget-form" onSubmit={(e) => { e.preventDefault(); if (valid) save() }} className="grid gap-4 pb-4">
+        {!b && (
+          <div className="grid gap-2">
+            <Label htmlFor="budget-for">Budget for</Label>
+            <SimpleSelect id="budget-for" value={target} onChange={setTarget} options={options} placeholder="Choose a category" />
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="limit">Monthly limit</Label>
+            <MoneyInput id="limit" autoFocus placeholder="5000" value={limit} onChange={setLimit} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="warn">Warn me at</Label>
+            <SimpleSelect id="warn" value={warnAt} onChange={setWarnAt} options={[70, 75, 80, 90].map((p) => ({ value: String(p), label: `${p}% used` }))} />
+          </div>
         </div>
-      )}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="limit">Monthly limit</Label>
-          <MoneyInput id="limit" placeholder="5000" value={limit} onChange={setLimit} />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="warn">Warn me at</Label>
-          <SimpleSelect id="warn" value={warnAt} onChange={setWarnAt} options={[70, 75, 80, 90].map((p) => ({ value: String(p), label: `${p}% used` }))} />
-        </div>
-      </div>
-      <DialogFooter>
-        {b && <Button type="button" variant="destructive" onClick={remove}>Remove budget</Button>}
-        <Button type="submit" disabled={!valid}>{b ? 'Save changes' : 'Add budget'}</Button>
-      </DialogFooter>
-    </form>
+      </form>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={`Remove the ${name.toLowerCase()}?`}
+        description="Your spending stays. Only the limit and its warnings go away."
+        confirm="Remove budget"
+        onConfirm={remove}
+      />
+    </ResponsivePanel>
   )
 }

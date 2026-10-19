@@ -17,3 +17,6 @@ export function budgetRemaining(b: Pick<BudgetStatus, 'spent' | 'limit'>) {
   const left = b.limit - b.spent
   return left >= 0 ? `${money(left, { whole: true })} left` : `${money(-left, { whole: true })} over`
 }
+
+/** Progress bar tone per state, matching the badge: red when over, default otherwise. */
+export const OVER_BAR: Record<BudgetState, string> = { ok: '', near: '', over: '[&_[data-slot=progress-indicator]]:bg-destructive!' }

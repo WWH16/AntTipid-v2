@@ -1,13 +1,9 @@
 import { useRef, useState, type PointerEvent } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { CategoryMedia } from '@/components/category-icon'
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -26,19 +22,7 @@ export function SignedAmount({ t, className }: { t: Transaction; className?: str
   )
 }
 
-/** Shared by the swipe action and the details panel. Returns true when deleted. */
-async function deleteTransaction(t: Transaction) {
-  try {
-    await api.transactions.remove(t.id)
-    done('Transaction deleted', { description: t.title })
-    return true
-  } catch (e) {
-    toast.error((e as Error).message)
-    return false
-  }
-}
-
-/** Confirm step before a delete; same wording wherever a transaction is deleted. */
+/** Confirm step before a delete; shared by the swipe action and the details panel. */
 export function DeleteTransactionDialog({ t, open, onOpenChange, onDeleted }: {
   t?: Transaction
   open: boolean
@@ -46,22 +30,19 @@ export function DeleteTransactionDialog({ t, open, onOpenChange, onDeleted }: {
   onDeleted?: () => void
 }) {
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete this transaction?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {t?.title} will be removed and your wallet balance and budgets will update. This can't be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Keep it</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={async () => { if (t && (await deleteTransaction(t))) onDeleted?.() }}>
-            Delete transaction
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Delete this transaction?"
+      description={`${t?.title} will be removed and your wallet balance and budgets will update. This can't be undone.`}
+      confirm="Delete transaction"
+      onConfirm={async () => {
+        if (!t) return
+        await api.transactions.remove(t.id)
+        done('Transaction deleted', { description: t.title })
+        onDeleted?.()
+      }}
+    />
   )
 }
 
