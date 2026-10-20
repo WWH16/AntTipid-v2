@@ -46,7 +46,17 @@ function Details({ id }: { id: string }) {
         </>
       )}
     >
-      {error ? <p className="text-sm text-destructive">This transaction no longer exists.</p> : !t ? <Skeleton className="h-40 w-full" /> : (
+      {error ? <p className="text-sm text-destructive">This transaction no longer exists.</p> : !t ? (
+        <div aria-busy className="grid gap-4 pb-4">
+          <Skeleton className="h-8 w-36" />
+          <Separator />
+          <div className="grid gap-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex justify-between gap-4"><Skeleton className="h-4 w-20" /><Skeleton className="h-4 w-32" /></div>
+            ))}
+          </div>
+        </div>
+      ) : (
         <div className="grid gap-4 pb-4">
           <div className="flex items-center justify-between gap-2">
             <SignedAmount t={t} className="text-2xl font-semibold" />

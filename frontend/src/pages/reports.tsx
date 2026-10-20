@@ -7,10 +7,11 @@ import { useQuery } from '@/api/use-query'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
 import { CategoryBreakdown, CategoryDetail, DayDetail, MonthDetail, type ReportDetail } from '@/components/report-details'
-import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
+import { EmptyState, ErrorState, LoadingCard, LoadingItems } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { money, monthLabel } from '@/lib/format'
 import { moneyTooltip, monthTotals } from '@/lib/report'
@@ -27,6 +28,29 @@ const paceConfig = {
 
 // Recharts passes the hovered x value as activeLabel on chart clicks.
 type ChartClick = { activeLabel?: string | number } | null
+
+/** Totals, the month chart, then breakdown and trend side by side, like the loaded report. */
+function LoadingReport() {
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        {[0, 1, 2].map((i) => (
+          <Card key={i} aria-busy>
+            <CardHeader>
+              <Skeleton className="h-4 w-14" />
+              <Skeleton className="h-5 w-20 sm:h-7 sm:w-28" />
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+      <LoadingCard><Skeleton className="h-56 w-full sm:h-64" /></LoadingCard>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <LoadingCard><LoadingItems rows={4} amount={false} progress /></LoadingCard>
+        <LoadingCard><Skeleton className="h-64 w-full" /></LoadingCard>
+      </div>
+    </>
+  )
+}
 
 export function ReportsPage() {
   const [month, setMonth] = useMonth()
@@ -64,7 +88,7 @@ export function ReportsPage() {
       />
       <MonthSwitcher month={month} onChange={setMonth} />
 
-      {error ? <ErrorState error={error} /> : loading && !data ? <LoadingRows rows={6} /> : data && (
+      {error ? <ErrorState error={error} /> : loading && !data ? <LoadingReport /> : data && (
         <>
           <div className="grid grid-cols-3 gap-2 sm:gap-4">
             {monthTotals(thisMonth?.income ?? 0, thisMonth?.spent ?? 0).map(([label, value, tone]) => (

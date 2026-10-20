@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/page-header'
 import { HeroCard } from '@/components/hero-card'
 import { BrandMark } from '@/components/brand-icons'
 import { BillsSlide, Carousel, SpendingSlide } from '@/components/home-carousel'
-import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
+import { EmptyState, ErrorState, LoadingHero, LoadingItems } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { WalletItem } from '@/components/wallet-item'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { ItemGroup } from '@/components/ui/item'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
-import { Skeleton } from '@/components/ui/skeleton'
 import { currentMonth, longDate, money, todayIso } from '@/lib/format'
 import type { MonthSummary } from '@/types'
 
@@ -29,7 +28,7 @@ export function HomePage() {
   const summary = useQuery(`summary:${month}`, () => api.reports.summary(month))
   const budgets = useQuery(`budgets:${month}`, () => api.budgets.list(month))
   const recent = useQuery('recent', () => api.transactions.list({}))
-  const { wallets, category } = useRefData()
+  const { wallets, category, loading: refLoading } = useRefData()
 
   const attention = (budgets.data ?? []).filter((b) => b.categoryId && budgetState(b) !== 'ok')
   const activeWallets = wallets.filter((w) => !w.archived)
@@ -78,7 +77,7 @@ export function HomePage() {
               </CardAction>
             </CardHeader>
             <CardContent>
-              {recent.loading ? <LoadingRows rows={5} /> : recent.data?.length ? (
+              {recent.loading ? <LoadingItems rows={5} /> : recent.data?.length ? (
                 <ItemGroup>{recent.data.slice(0, 6).map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
               ) : (
                 <EmptyState title="Nothing recorded yet" body="Add your first expense and it shows up here." action={<Button onClick={() => openAdd()}>Add transaction</Button>} />
@@ -100,7 +99,7 @@ export function HomePage() {
               </CardAction>
             </CardHeader>
             <CardContent>
-              {budgets.loading ? <LoadingRows rows={2} /> : attention.length ? (
+              {budgets.loading ? <LoadingItems rows={2} progress /> : attention.length ? (
                 <ItemGroup>
                   {attention.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} />)}
                 </ItemGroup>
@@ -114,15 +113,17 @@ export function HomePage() {
           <Card className="order-4 lg:order-none">
             <CardHeader>
               <CardTitle role="heading" aria-level={2}>Wallets</CardTitle>
-              <CardDescription className="tabular-nums">{money(total)} across {activeWallets.length} wallets</CardDescription>
+              <CardDescription className="tabular-nums">{refLoading ? 'Loading balances' : `${money(total)} across ${activeWallets.length} wallets`}</CardDescription>
               <CardAction>
                 <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/settings" />}>Manage</Button>
               </CardAction>
             </CardHeader>
             <CardContent>
-              <ItemGroup>
-                {activeWallets.map((w) => <WalletItem key={w.id} w={w} />)}
-              </ItemGroup>
+              {refLoading ? <LoadingItems rows={3} /> : (
+                <ItemGroup>
+                  {activeWallets.map((w) => <WalletItem key={w.id} w={w} />)}
+                </ItemGroup>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -133,7 +134,7 @@ export function HomePage() {
 
 /** What's left to spend, plus budget used vs. month gone, so spending faster than the month is visible. */
 function SafeToSpend({ s }: { s?: MonthSummary }) {
-  if (!s) return <Skeleton className="h-56 w-full rounded-xl" />
+  if (!s) return <LoadingHero />
 
   if (!s.budget) {
     return (

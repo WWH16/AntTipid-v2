@@ -7,12 +7,13 @@ import { BudgetBadge } from '@/components/budget'
 import { OVER_BAR, budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
 import { CategoryMedia } from '@/components/category-icon'
 import { ResponsivePanel } from '@/components/responsive-panel'
-import { LoadingRows } from '@/components/states'
+import { LoadingItems } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { Button } from '@/components/ui/button'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { Item, ItemContent, ItemGroup } from '@/components/ui/item'
 import { Progress, ProgressLabel } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
 import { dayIso, dayLabel, money, monthLabel, shiftMonth } from '@/lib/format'
 import { sumOf } from '@/lib/transactions'
 import { moneyTooltip, monthTotals } from '@/lib/report'
@@ -68,7 +69,7 @@ export function DayDetail({ month, day, onClose }: { month: string; day: number;
       title={dayLabel(date)}
       description={spent ? `${money(spent)} spent this day` : 'Nothing spent this day'}
     >
-      {!data ? <LoadingRows rows={3} /> : items.length ? (
+      {!data ? <LoadingItems rows={3} /> : items.length ? (
         <ItemGroup className="pb-4">{items.map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
       ) : (
         <p className="pb-4 text-sm text-muted-foreground">No transactions on this day.</p>
@@ -103,7 +104,13 @@ export function CategoryDetail({ month, categoryId, onClose }: { month: string; 
       title={cat?.name ?? 'Category'}
       description={`Spending in ${monthLabel(month)}`}
     >
-      {!all ? <LoadingRows rows={4} /> : (
+      {!all ? (
+        <div aria-busy className="grid gap-6 pb-4">
+          <div className="grid gap-1.5"><Skeleton className="h-8 w-32" /><Skeleton className="h-4 w-64 max-w-full" /></div>
+          <Skeleton className="h-40 w-full" />
+          <LoadingItems rows={2} />
+        </div>
+      ) : (
         <div className="grid gap-6 pb-4">
           <div>
             <p className="text-2xl font-semibold tabular-nums">{money(total, { whole: true })}</p>
@@ -154,7 +161,14 @@ export function MonthDetail({ month, onClose, onOpen }: { month: string; onClose
       description="Income, spending and where it went"
       footer={<Button onClick={() => onOpen(month)}>Show full report for {monthLabel(month, 'short')}</Button>}
     >
-      {!data || !totals ? <LoadingRows rows={4} /> : (
+      {!data || !totals ? (
+        <div aria-busy className="grid gap-6 pb-4">
+          <div className="grid grid-cols-3 gap-2">
+            {[0, 1, 2].map((i) => <div key={i} className="grid gap-1.5"><Skeleton className="h-4 w-14" /><Skeleton className="h-5 w-20" /></div>)}
+          </div>
+          <LoadingItems rows={4} amount={false} progress />
+        </div>
+      ) : (
         <div className="grid gap-6 pb-4">
           <dl className="grid grid-cols-3 gap-2 text-sm">
             {monthTotals(totals.income, totals.spent).map(([label, value, tone]) => (

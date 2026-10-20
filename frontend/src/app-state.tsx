@@ -83,6 +83,7 @@ export function useRefData() {
   return {
     wallets: walletList,
     categories: categoryList,
+    loading: wallets.loading || categories.loading,
     wallet: (id?: string) => walletList.find((w) => w.id === id),
     category: (id?: string | null) => categoryList.find((c) => c.id === id),
   }

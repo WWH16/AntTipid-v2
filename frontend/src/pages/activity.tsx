@@ -9,13 +9,14 @@ import { useQuery } from '@/api/use-query'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
 import { SimpleSelect } from '@/components/simple-select'
-import { EmptyState, ErrorState, LoadingRows } from '@/components/states'
+import { EmptyState, ErrorState, LoadingItems } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { ItemGroup } from '@/components/ui/item'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { dayLabel, money, monthLabel } from '@/lib/format'
@@ -104,7 +105,7 @@ export function ActivityPage() {
         </div>
       </div>
 
-      {error ? <ErrorState error={error} /> : loading && !data ? <LoadingRows rows={6} /> : !data?.length ? (
+      {error ? <ErrorState error={error} /> : loading && !data ? <LoadingDays /> : !data?.length ? (
         filtered
           ? <EmptyState title="No matches" body={`Nothing in ${monthLabel(month)} matches these filters.`} action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
           : <EmptyState title={`Nothing recorded in ${monthLabel(month)}`} body="Transactions you add for this month are listed here." action={<Button onClick={() => openAdd()}>Add transaction</Button>} />
@@ -128,6 +129,26 @@ export function ActivityPage() {
         </Card>
       )}
     </>
+  )
+}
+
+/** Two day groups, like the loaded list. */
+function LoadingDays() {
+  return (
+    <Card aria-busy>
+      <CardContent className="grid gap-2 md:gap-4">
+        {[3, 2].map((rows, i) => (
+          <div key={rows} className="grid gap-1">
+            {i > 0 && <Separator className="mb-2 md:mb-3" />}
+            <div className="flex justify-between gap-4 px-3">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+            <LoadingItems rows={rows} />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   )
 }
 

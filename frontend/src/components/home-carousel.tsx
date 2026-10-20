@@ -4,7 +4,7 @@ import { useRefData } from '@/app-state'
 import { HeroCard } from '@/components/hero-card'
 import { Badge } from '@/components/ui/badge'
 import { CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import { LoadingHero } from '@/components/states'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { currentMonth, isoDate, money, monthLabel, shiftMonth } from '@/lib/format'
 import { sumOf } from '@/lib/transactions'
@@ -78,7 +78,7 @@ type Period = 'week' | 'month'
 export function SpendingSlide({ transactions }: { transactions?: Transaction[] }) {
   const [today] = useState(() => new Date())
   const [period, setPeriod] = useState<Period>('week')
-  if (!transactions) return <Skeleton className="h-64 w-full rounded-xl" />
+  if (!transactions) return <LoadingHero />
 
   const spentOn = (d: Date) => {
     const date = isoDate(d)
@@ -169,7 +169,7 @@ const BILL_ICONS = ['bills', 'phone']
 export function BillsSlide({ transactions, summary }: { transactions?: Transaction[]; summary?: MonthSummary }) {
   const { category } = useRefData()
   const [today] = useState(() => new Date())
-  if (!transactions || !summary) return <Skeleton className="h-64 w-full rounded-xl" />
+  if (!transactions || !summary) return <LoadingHero />
   const thisMonth = currentMonth()
   const lastMonth = shiftMonth(thisMonth, -1)
   const isBill = (t: Transaction) => t.kind === 'expense' && BILL_ICONS.includes(category(t.categoryId)?.icon ?? '')

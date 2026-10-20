@@ -15,6 +15,7 @@ import { MoneyInput } from '@/components/money-input'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { SimpleSelect } from '@/components/simple-select'
 import { WalletItem } from '@/components/wallet-item'
+import { LoadingItems } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -38,14 +39,14 @@ export function SettingsPage() {
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') ?? 'wallets'
   const [dlg, setDlg] = useState<Dlg>(null)
-  const { wallets, categories } = useRefData()
+  const { wallets, categories, loading } = useRefData()
 
   return (
     <>
       <PageHeader
         page="Settings"
         headline="How your money is organised"
-        description={`${wallets.filter((w) => !w.archived).length} wallets and ${categories.length} categories`}
+        description={loading ? 'Your wallets and categories' : `${wallets.filter((w) => !w.archived).length} wallets and ${categories.length} categories`}
       />
       <Tabs value={tab} onValueChange={(v) => setParams({ tab: String(v) }, { replace: true })}>
         <TabsList className="w-full sm:w-auto">
@@ -76,7 +77,7 @@ function RowMenu({ label, children }: { label: string; children: React.ReactNode
 }
 
 function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
-  const { wallets } = useRefData()
+  const { wallets, loading } = useRefData()
 
   // Reversible, so no confirm step: the toast offers Undo instead.
   async function setArchived(w: Wallet, value: boolean) {
@@ -100,7 +101,7 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
         <CardAction>{/* Icon only on phones so the description keeps the width. */}<Button variant="outline" size="sm" aria-label="Add wallet" onClick={() => onEdit({ type: 'wallet' })}><Plus /><span className="hidden sm:inline">Add wallet</span></Button></CardAction>
       </CardHeader>
       <CardContent>
-        <ItemGroup>
+        {loading ? <LoadingItems rows={3} /> : <ItemGroup>
           {wallets.map((w) => (
             <WalletItem key={w.id} w={w}>
               <RowMenu label={`Options for ${w.name}`}>
@@ -111,14 +112,14 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
               </RowMenu>
             </WalletItem>
           ))}
-        </ItemGroup>
+        </ItemGroup>}
       </CardContent>
     </Card>
   )
 }
 
 function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
-  const { categories } = useRefData()
+  const { categories, loading } = useRefData()
   const [deleting, setDeleting] = useState<Category | null>(null)
 
   return (
@@ -131,7 +132,7 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
             <CardAction><Button variant="outline" size="sm" aria-label={kind === 'expense' ? 'Add spending category' : 'Add income category'} onClick={() => onEdit({ type: 'category', kind })}><Plus /><span className="hidden sm:inline">Add category</span></Button></CardAction>
           </CardHeader>
           <CardContent>
-            <ItemGroup>
+            {loading ? <LoadingItems rows={kind === 'expense' ? 5 : 3} amount={false} /> : <ItemGroup>
               {categories.filter((c) => c.kind === kind).map((c) => (
                 <Item key={c.id} size="sm">
                   <CategoryMedia category={c} />
@@ -144,7 +145,7 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
                   </ItemActions>
                 </Item>
               ))}
-            </ItemGroup>
+            </ItemGroup>}
           </CardContent>
         </Card>
       ))}

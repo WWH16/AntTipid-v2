@@ -2,7 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useApp } from '@/app-state'
 import { AppShell } from '@/components/app-shell'
-import { LoadingRows } from '@/components/states'
+import { LoadingPage } from '@/components/states'
 
 // Each page is its own file, downloaded the first time it is opened.
 const HomePage = lazy(() => import('@/pages/home').then((m) => ({ default: m.HomePage })))
@@ -12,11 +12,11 @@ const ReportsPage = lazy(() => import('@/pages/reports').then((m) => ({ default:
 const SettingsPage = lazy(() => import('@/pages/settings').then((m) => ({ default: m.SettingsPage })))
 const SignInPage = lazy(() => import('@/pages/sign-in').then((m) => ({ default: m.SignInPage })))
 
-const page = (el: ReactNode) => <Suspense fallback={<LoadingRows rows={6} />}>{el}</Suspense>
+const page = (el: ReactNode) => <Suspense fallback={<LoadingPage />}>{el}</Suspense>
 
 function RequireUser({ children }: { children: ReactNode }) {
   const { user, ready } = useApp()
-  if (!ready) return <LoadingRows rows={6} />
+  if (!ready) return <LoadingPage />
   return user ? children : <Navigate to="/sign-in" replace />
 }
 

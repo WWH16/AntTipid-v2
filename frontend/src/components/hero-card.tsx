@@ -14,6 +14,7 @@ export function HeroCard({ className, ...props }: ComponentProps<typeof Card>) {
         '[&_.text-muted-foreground]:text-primary-foreground/70 [&_[data-slot=card-description]]:text-primary-foreground/70',
         '[&_[data-slot=progress-track]]:bg-primary-foreground/15 [&_[data-slot=progress-indicator]]:bg-sidebar-primary',
         '[&_[data-slot=card-footer]]:border-primary-foreground/15 [&_[data-slot=card-footer]]:bg-transparent',
+        '[&_[data-slot=skeleton]]:bg-primary-foreground/15',
         className,
       )}
       {...props}
