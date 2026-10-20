@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ReceiptItems } from '@/components/receipt-items'
+import { ReceiptItems, ReceiptItemsEditor } from '@/components/receipt-items'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -22,7 +22,7 @@ import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
 import { money, todayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/labels'
-import { shrinkPhoto, suggestWalletId } from '@/lib/receipt'
+import { cleanReceiptItems, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
 
 const LAST_WALLET = 'anttipid-last-wallet'
@@ -50,6 +50,7 @@ function AddFlow() {
   const [note, setNote] = useState(editing?.note ?? '')
   const [receipt, setReceipt] = useState<ReceiptScan | null>(null)
   const [receiptPhoto, setReceiptPhoto] = useState<Blob | null>(null)
+  const [items, setItems] = useState<DraftReceiptItem[]>(() => toDraftItems(editing?.items))
   const [run, saving] = useAction()
 
   // Fall back to the first wallet when nothing was used before (or the remembered one is gone).
@@ -75,7 +76,7 @@ function AddFlow() {
       note: note.trim(),
       source: kind === 'expense' && (receipt || editing?.source === 'receipt') ? 'receipt' : 'manual',
       // Items stay their own list, never folded into the note: the note is the user's free text.
-      items: kind === 'expense' ? (receipt?.items ?? editing?.items) : undefined,
+      items: kind === 'expense' ? cleanReceiptItems(items, Boolean(editing?.items?.length)) : undefined,
     }
     const saved = editing ? await api.transactions.update(editing.id, body) : await api.transactions.create(body)
     if (receiptPhoto && body.source === 'receipt') await api.transactions.uploadReceipt(saved.id, receiptPhoto)
@@ -90,6 +91,7 @@ function AddFlow() {
   function applyReceipt(r: ReceiptScan, photo: Blob) {
     setReceipt(r)
     setReceiptPhoto(photo)
+    setItems(toDraftItems(r.items))
     setKind('expense')
     setAmount(r.total.toFixed(2))
     setTitle(r.merchant)
@@ -187,6 +189,14 @@ function AddFlow() {
           <Label htmlFor="title">Description (optional)</Label>
           <Input id="title" placeholder={kind === 'transfer' ? 'e.g. Top up GCash' : 'e.g. Lunch at Jollibee'} value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
+        {kind === 'expense' && (receipt !== null || editing?.source === 'receipt' || items.length > 0) && (
+          <ReceiptItemsEditor
+            items={items}
+            amount={value}
+            onChange={setItems}
+            onUseSubtotal={(sub) => setAmount(sub.toFixed(2))}
+          />
+        )}
         <div className="grid gap-2">
           <Label htmlFor="note">Note (optional)</Label>
           <Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} />

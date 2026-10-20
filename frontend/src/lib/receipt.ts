@@ -1,5 +1,35 @@
 // Receipt helpers on the phone side. Reading the receipt happens on the backend (POST /receipts/scan).
-import type { ReceiptScan, Wallet } from '@/types'
+import type { ReceiptItem, ReceiptScan, Wallet } from '@/types'
+
+export interface DraftReceiptItem {
+  name: string
+  qty: string
+  price: string
+}
+
+export const toDraftItems = (items: ReceiptItem[] = []): DraftReceiptItem[] =>
+  items.map((i) => ({ name: i.name, qty: String(i.qty), price: String(i.price) }))
+
+export function itemsTotal(items: DraftReceiptItem[]): number {
+  const sum = items.reduce((acc, i) => {
+    const qty = Number(i.qty)
+    const price = Number(i.price)
+    return qty > 0 && price >= 0 ? acc + qty * price : acc
+  }, 0)
+  return Math.round(sum * 100) / 100
+}
+
+export function cleanReceiptItems(items: DraftReceiptItem[], hadItems = false): ReceiptItem[] | undefined {
+  const cleaned = items
+    .filter((i) => i.name.trim() !== '' && i.qty.trim() !== '' && i.price.trim() !== '')
+    .map((i) => ({
+      name: i.name.trim(),
+      qty: Number(i.qty),
+      price: Math.round(Number(i.price) * 100) / 100,
+    }))
+    .filter((i) => i.qty > 0 && Number.isFinite(i.price) && i.price >= 0)
+  return cleaned.length > 0 ? cleaned : hadItems ? [] : undefined
+}
 
 /**
  * Encode a canvas to a WebP data URL at 0.75 quality (~35% smaller than JPEG at 0.8),

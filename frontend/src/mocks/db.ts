@@ -105,6 +105,7 @@ const spentIn = (month: string, categoryId?: string | null) =>
 export const mock = {
   signIn: (email: string, _password?: string) => delay<User>({ name: 'Andrea Santos', email }),
   signUp: (name: string, email: string, _password: string) => delay<User | null>({ name, email }),
+  updateUser: (name: string, email = 'andrea@example.com') => delay<User>({ name, email }),
   signOut: () => delay(null),
 
   listWallets: () => delay<Wallet[]>(wallets.map((w) => ({ ...w, balance: balanceOf(w.id) }))),
@@ -114,10 +115,12 @@ export const mock = {
     wallets.push({ id, name: w.name, type: w.type, archived: false })
     return delay({ ...w, id, archived: false })
   },
-  updateWallet: (id: string, patch: Partial<Pick<Wallet, 'name' | 'archived'>>) => {
+  updateWallet: (id: string, patch: Partial<Pick<Wallet, 'name' | 'type' | 'balance' | 'archived'>>) => {
     const w = wallets.find((x) => x.id === id)
     if (!w) return fail('Wallet not found')
-    Object.assign(w, patch)
+    const { balance, ...rest } = patch
+    Object.assign(w, rest)
+    if (balance !== undefined) opening[id] = (opening[id] ?? 0) + (balance - balanceOf(id))
     return delay({ ...w, balance: balanceOf(id) })
   },
 
@@ -127,7 +130,7 @@ export const mock = {
     categories.push(created)
     return delay(created)
   },
-  updateCategory: (id: string, patch: Partial<Pick<Category, 'name'>>) => {
+  updateCategory: (id: string, patch: Partial<Pick<Category, 'name' | 'icon'>>) => {
     const c = categories.find((x) => x.id === id)
     if (!c) return fail('Category not found')
     Object.assign(c, patch)

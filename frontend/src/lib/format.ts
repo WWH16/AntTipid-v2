@@ -4,6 +4,24 @@ const pesoWhole = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 
 /** ₱1,234.50 — or ₱1,235 with whole: true for headline numbers. */
 export const money = (n: number, opts: { whole?: boolean } = {}) => (opts.whole ? pesoWhole : peso).format(n)
 
+/** Keeps digits, one decimal point, and a leading minus when allowNegative is set. */
+export function cleanMoneyInput(v: string, allowNegative = false): string {
+  const sign = allowNegative && v.trimStart().startsWith('-') ? '-' : ''
+  return sign + v.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1')
+}
+
+/** Formats a numeric input string with thousand commas (e.g. "15000.5" -> "15,000.5") while typing. */
+export function formatMoneyInput(v: string, allowNegative = false): string {
+  const cleaned = cleanMoneyInput(v, allowNegative)
+  if (!cleaned || cleaned === '-') return cleaned
+  const sign = cleaned.startsWith('-') ? '-' : ''
+  const unsigned = sign ? cleaned.slice(1) : cleaned
+  const dot = unsigned.indexOf('.')
+  const intPart = (dot === -1 ? unsigned : unsigned.slice(0, dot)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const decPart = dot === -1 ? '' : unsigned.slice(dot)
+  return sign + intPart + decPart
+}
+
 /** Local calendar date as YYYY-MM-DD (not UTC). */
 export const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`

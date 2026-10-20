@@ -1,20 +1,23 @@
 import type { ComponentProps } from 'react'
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from '@/components/ui/input-group'
+import { cleanMoneyInput, formatMoneyInput } from '@/lib/format'
 
-/** Peso amount field: keeps digits and one decimal point (and a leading minus with allowNegative). */
+/** Peso amount field: shows thousand commas while keeping raw digits and one decimal point in state. */
 export function MoneyInput({ value, onChange, allowNegative, ...props }: Omit<ComponentProps<typeof InputGroupInput>, 'value' | 'onChange'> & {
   value: string
   onChange: (value: string) => void
   allowNegative?: boolean
 }) {
-  const clean = (v: string) => {
-    const sign = allowNegative && v.trimStart().startsWith('-') ? '-' : ''
-    return sign + v.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1')
-  }
   return (
     <InputGroup>
       <InputGroupAddon><InputGroupText>₱</InputGroupText></InputGroupAddon>
-      <InputGroupInput inputMode="decimal" autoComplete="off" value={value} onChange={(e) => onChange(clean(e.target.value))} {...props} />
+      <InputGroupInput
+        inputMode="decimal"
+        autoComplete="off"
+        value={formatMoneyInput(value, allowNegative)}
+        onChange={(e) => onChange(cleanMoneyInput(e.target.value, allowNegative))}
+        {...props}
+      />
     </InputGroup>
   )
 }

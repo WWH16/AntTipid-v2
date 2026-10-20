@@ -29,6 +29,11 @@ export const api = {
       if (error) throw new Error(authMessage(error))
       return data.session && data.user ? toUser(data.user) : null
     }),
+    updateUser: pick(mock.updateUser, async (name: string, _email?: string): Promise<User> => {
+      const { data, error } = await supabase!.auth.updateUser({ data: { name } })
+      if (error || !data.user) throw new Error(error ? authMessage(error) : "Couldn't update your profile.")
+      return toUser(data.user)
+    }),
     signOut: pick(mock.signOut, async () => { await supabase!.auth.signOut(); return null }),
   },
   wallets: {

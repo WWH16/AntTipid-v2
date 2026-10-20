@@ -21,9 +21,7 @@ router = APIRouter()
 
 # ---------------------------------------------------------------------------------------------- wallets
 
-WALLET_SELECT = """
-select w.id, w.name, w.type, w.archived,
-  w.opening_balance + coalesce((
+WALLET_NET = """coalesce((
     select sum(case
       when t.kind = 'income' and t.wallet_id = w.id then t.amount
       when t.kind in ('expense', 'transfer') and t.wallet_id = w.id then -t.amount
@@ -31,7 +29,11 @@ select w.id, w.name, w.type, w.archived,
       else 0 end)
     from transactions t
     where t.user_id = w.user_id and (t.wallet_id = w.id or t.to_wallet_id = w.id)
-  ), 0) as balance
+  ), 0)"""
+
+WALLET_SELECT = f"""
+select w.id, w.name, w.type, w.archived,
+  w.opening_balance + {WALLET_NET} as balance
 from wallets w
 where w.user_id = %(uid)s
 """
@@ -62,8 +64,14 @@ def update_wallet(wallet_id: UUID, body: WalletPatch, user: User):
     patch = body.model_dump(exclude_unset=True, exclude_none=True)
     with user_tx(user) as conn:
         if patch:
-            sets = ", ".join(f"{col} = %({col})s" for col in patch)  # columns come from the model, not the client
-            conn.execute(f"update wallets set {sets} where id = %(id)s and user_id = %(uid)s", {**patch, "id": wallet_id, "uid": user.id})
+            sets = [
+                f"opening_balance = %(balance)s - {WALLET_NET}" if col == "balance" else f"{col} = %({col})s"
+                for col in patch
+            ]  # columns come from the model, not the client
+            conn.execute(
+                f"update wallets w set {', '.join(sets)} where w.id = %(id)s and w.user_id = %(uid)s",
+                {**patch, "id": wallet_id, "uid": user.id},
+            )
         r = conn.execute(WALLET_SELECT + " and w.id = %(id)s", {"uid": user.id, "id": wallet_id}).fetchone()
         if not r:
             raise HTTPException(404, "Wallet not found")

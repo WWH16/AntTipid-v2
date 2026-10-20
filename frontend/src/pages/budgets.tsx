@@ -166,7 +166,7 @@ export function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable
         <div className="grid grid-cols-2 gap-4">
           <div className="grid gap-2">
             <Label htmlFor="limit">Monthly limit</Label>
-            <MoneyInput id="limit" autoFocus placeholder="5000" value={limit} onChange={setLimit} />
+            <MoneyInput id="limit" autoFocus placeholder="5,000" value={limit} onChange={setLimit} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="warn">Warn me at</Label>

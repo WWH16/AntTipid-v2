@@ -1,5 +1,5 @@
 // Every transaction for a month, newest first, grouped by day. Filters sit above the list.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Download, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useApp, useMonth, useRefData } from '@/app-state'
@@ -32,20 +32,25 @@ export function ActivityPage() {
   const [walletId, setWalletId] = useState('all')
   const [categoryId, setCategoryId] = useState('all')
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [moreFilters, setMoreFilters] = useState(false)
   const isMobile = useIsMobile()
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 250)
+    return () => clearTimeout(id)
+  }, [search])
 
   const filters: TransactionFilters = {
     month,
     kind: kind === 'all' ? undefined : kind,
     walletId: walletId === 'all' ? undefined : walletId,
     categoryId: categoryId === 'all' ? undefined : categoryId,
-    search: search || undefined,
+    search: debouncedSearch.trim() || undefined,
   }
-  // ponytail: refetches per keystroke; debounce once this hits the real API.
   const { data, error, loading } = useQuery(`tx:${JSON.stringify(filters)}`, () => api.transactions.list(filters))
   const filtered = kind !== 'all' || walletId !== 'all' || categoryId !== 'all' || !!search
-  const clear = () => { setKind('all'); setWalletId('all'); setCategoryId('all'); setSearch('') }
+  const clear = () => { setKind('all'); setWalletId('all'); setCategoryId('all'); setSearch(''); setDebouncedSearch('') }
 
   return (
     <>
@@ -73,7 +78,17 @@ export function ActivityPage() {
         <div className="flex gap-2">
           <InputGroup>
             <InputGroupAddon><Search /></InputGroupAddon>
-            <InputGroupInput type="search" placeholder="Search by description or note" aria-label="Search transactions" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <InputGroupInput
+              type="search"
+              placeholder="Search by description or note"
+              aria-label="Search transactions"
+              value={search}
+              onChange={(e) => {
+                const v = e.target.value
+                setSearch(v)
+                if (!v.trim()) setDebouncedSearch('')
+              }}
+            />
           </InputGroup>
           <Button
             variant={walletId !== 'all' || categoryId !== 'all' ? 'secondary' : 'outline'}

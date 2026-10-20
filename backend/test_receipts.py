@@ -96,6 +96,22 @@ def test_auth_jwt_verification():
         assert client.get("/api/wallets", headers={"Authorization": f"Bearer {_make_token(uid, exp_offset=-120)}"}).status_code == 401
 
 
+def test_wallet_patch_accepts_type_and_balance():
+    import pytest
+    from pydantic import ValidationError
+    from models import ReceiptItem, TransactionIn, WalletPatch
+
+    patch_in = WalletPatch.model_validate({"name": "Pocket Cash", "type": "savings", "balance": 1250.5})
+    assert patch_in.model_dump(exclude_unset=True) == {"name": "Pocket Cash", "type": "savings", "balance": 1250.5}
+
+    with pytest.raises(ValidationError):
+        TransactionIn.model_validate({
+            "kind": "expense", "amount": 100, "title": "Lunch", "date": "2026-10-20",
+            "walletId": str(uuid.uuid4()), "categoryId": str(uuid.uuid4()),
+            "items": [{"name": "Rice", "qty": 1e9, "price": 50}],
+        })
+
+
 def test_routes_and_user_isolation():
     if not os.environ.get("DATABASE_URL"):
         print("Skipping live DB route tests (set DATABASE_URL in backend/.env to run them)")
@@ -126,7 +142,8 @@ def test_routes_and_user_isolation():
             new_cat = client.post("/api/categories", json={"name": "Pets", "kind": "expense", "icon": "other"}, headers=ha)
             assert new_cat.status_code == 201
             pet_id = new_cat.json()["id"]
-            assert client.patch(f"/api/categories/{pet_id}", json={"name": "Pets & vet"}, headers=ha).json()["name"] == "Pets & vet"
+            patched_cat = client.patch(f"/api/categories/{pet_id}", json={"name": "Pets & vet", "icon": "health"}, headers=ha).json()
+            assert patched_cat["name"] == "Pets & vet" and patched_cat["icon"] == "health"
             assert client.delete(f"/api/categories/{pet_id}", headers=ha).status_code == 204
 
             # 2. Wallets: create, list with computed balance, update
@@ -155,6 +172,13 @@ def test_routes_and_user_isolation():
             balances = {w["id"]: w["balance"] for w in client.get("/api/wallets", headers=ha).json()}
             assert balances[w1["id"]] == 1000 + 5000 - 250 - 300
             assert balances[w2["id"]] == 500 + 300
+
+            # Reconciling a wallet's balance and changing its type adjusts opening_balance so the shown balance matches
+            reconciled = client.patch(
+                f"/api/wallets/{w2['id']}", json={"name": "Pocket Cash", "type": "savings", "balance": 1250.5}, headers=ha
+            ).json()
+            assert reconciled["type"] == "savings" and reconciled["balance"] == 1250.5
+            assert next(w["balance"] for w in client.get("/api/wallets", headers=ha).json() if w["id"] == w2["id"]) == 1250.5
 
             # Search finds receipt line items; category in use cannot be deleted (409)
             found = client.get("/api/transactions", params={"month": "2026-10", "search": "chickenjoy"}, headers=ha).json()

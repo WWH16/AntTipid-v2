@@ -49,8 +49,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const value: AppState = {
     user,
     ready,
-    // Real mode: onAuthStateChange already set the user.
-    signIn: (u) => { if (!supabase) { setUser(u); try { sessionStorage.setItem(KEY, JSON.stringify(u)) } catch { /* private mode */ } } },
+    // Updates state immediately (and sessionStorage in mock mode).
+    signIn: (u) => { setUser(u); if (!supabase) { try { sessionStorage.setItem(KEY, JSON.stringify(u)) } catch { /* private mode */ } } },
     signOut: () => {
       setUser(null)
       setAdd(null)

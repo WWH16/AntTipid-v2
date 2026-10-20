@@ -20,7 +20,13 @@ NoteStr = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200
 Money = Annotated[float, Gt(0), Lt(1e12)]
 Balance = Annotated[float, Gt(-1e12), Lt(1e12)]
 Percent = Annotated[int, Ge(1), Le(100)]
-ItemList = Annotated[list[ReceiptItem], MaxLen(200)]
+class ReceiptItemIn(CamelModel):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    qty: Annotated[float, Gt(0), Lt(1e7)]
+    price: Annotated[float, Ge(0), Lt(1e12)]
+
+
+ItemList = Annotated[list[ReceiptItemIn], MaxLen(200)]
 Month = Annotated[str, StringConstraints(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")]
 
 
@@ -40,6 +46,8 @@ class WalletIn(CamelModel):
 
 class WalletPatch(CamelModel):
     name: Name | None = None
+    type: WalletType | None = None
+    balance: Balance | None = None
     archived: bool | None = None
 
 

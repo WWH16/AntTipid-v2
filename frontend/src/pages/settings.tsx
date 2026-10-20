@@ -27,12 +27,14 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { BrandMark } from '@/components/brand-icons'
 import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
+import { money } from '@/lib/format'
 import { WALLET_TYPES } from '@/lib/wallets'
 import type { Category, CategoryKind, Wallet, WalletType } from '@/types'
 
 type Dlg =
   | { type: 'wallet'; wallet?: Wallet }
   | { type: 'category'; category?: Category; kind: CategoryKind }
+  | { type: 'account' }
   | null
 
 export function SettingsPage() {
@@ -57,11 +59,12 @@ export function SettingsPage() {
         </TabsList>
         <TabsContent value="wallets"><WalletsTab onEdit={setDlg} /></TabsContent>
         <TabsContent value="categories"><CategoriesTab onEdit={setDlg} /></TabsContent>
-        <TabsContent value="account"><AccountTab /></TabsContent>
+        <TabsContent value="account"><AccountTab onEdit={() => setDlg({ type: 'account' })} /></TabsContent>
       </Tabs>
 
       {dlg?.type === 'wallet' && <WalletForm key={dlg.wallet?.id ?? 'new'} wallet={dlg.wallet} onClose={() => setDlg(null)} />}
       {dlg?.type === 'category' && <CategoryForm key={dlg.category?.id ?? 'new'} category={dlg.category} kind={dlg.kind} onClose={() => setDlg(null)} />}
+      {dlg?.type === 'account' && <AccountForm onClose={() => setDlg(null)} />}
     </>
   )
 }
@@ -108,7 +111,7 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
           {wallets.map((w) => (
             <WalletItem key={w.id} w={w}>
               <RowMenu label={`Options for ${w.name}`}>
-                <DropdownMenuItem onClick={() => onEdit({ type: 'wallet', wallet: w })}><Pencil /> Rename</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onEdit({ type: 'wallet', wallet: w })}><Pencil /> Edit</DropdownMenuItem>
                 {w.archived
                   ? <DropdownMenuItem onClick={() => setArchived(w, false)}><ArchiveRestore /> Restore</DropdownMenuItem>
                   : <DropdownMenuItem onClick={() => setArchived(w, true)}><Archive /> Archive</DropdownMenuItem>}
@@ -146,7 +149,7 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
                   <ItemContent><ItemTitle>{c.name}</ItemTitle></ItemContent>
                   <ItemActions>
                     <RowMenu label={`Options for ${c.name}`}>
-                      <DropdownMenuItem onClick={() => onEdit({ type: 'category', category: c, kind })}><Pencil /> Rename</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onEdit({ type: 'category', category: c, kind })}><Pencil /> Edit</DropdownMenuItem>
                       <DropdownMenuItem variant="destructive" onClick={() => setDeleting(c)}><Trash2 /> Delete</DropdownMenuItem>
                     </RowMenu>
                   </ItemActions>
@@ -171,63 +174,104 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
   )
 }
 
-function AccountTab() {
+function AccountTab({ onEdit }: { onEdit: () => void }) {
   const { user, signOut } = useApp()
   return (
     <Card className="max-w-md">
       <CardHeader>
         <CardTitle role="heading" aria-level={2}>Account</CardTitle>
-        <CardDescription>Signed in to this prototype.</CardDescription>
+        <CardDescription>Your account details</CardDescription>
         <CardAction><BrandMark mark="outline" className="size-12" /></CardAction>
       </CardHeader>
       <CardContent>
         <DetailList rows={[['Name', user?.name], ['Email', user?.email], ['Currency', 'Philippine peso (₱)']]} />
       </CardContent>
-      <CardFooter>
+      <CardFooter className="gap-2">
+        <Button variant="outline" onClick={onEdit}><Pencil /> Edit name</Button>
         <Button variant="outline" onClick={signOut}>Sign out</Button>
       </CardFooter>
     </Card>
   )
 }
 
-export function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () => void }) {
-  const [name, setName] = useState(wallet?.name ?? '')
-  const [type, setType] = useState<string>(wallet?.type ?? 'e_wallet')
-  const [balance, setBalance] = useState('')
+function AccountForm({ onClose }: { onClose: () => void }) {
+  const { user, signIn } = useApp()
+  const [name, setName] = useState(user?.name ?? '')
   const [run, busy] = useAction()
-  const label = wallet ? 'Rename wallet' : 'Add wallet'
 
   const save = () => run(async () => {
-    if (wallet) await api.wallets.update(wallet.id, { name: name.trim() })
-    else await api.wallets.create({ name: name.trim(), type: type as WalletType, balance: Number(balance) || 0 })
+    const trimmed = name.trim()
+    const updated = await api.auth.updateUser(trimmed, user?.email)
+    signIn(updated)
     onClose()
-    done(wallet ? 'Wallet renamed' : 'Wallet added', { description: name.trim() })
+    done('Name updated', { description: trimmed })
   })
 
   return (
     <ResponsivePanel
       onClose={onClose}
-      title={label}
-      description={wallet ? 'The new name shows on all its transactions.' : 'Anywhere you keep money: cash, GCash, a bank account or a card.'}
-      footer={<BusyButton type="submit" form="wallet-form" busy={busy} disabled={!name.trim()}>{label}</BusyButton>}
+      title="Edit name"
+      description="Shown on Home and in your account details."
+      footer={<BusyButton type="submit" form="account-form" busy={busy} disabled={!name.trim()}>Save changes</BusyButton>}
     >
-      <form id="wallet-form" onSubmit={(e) => { e.preventDefault(); if (name.trim()) save() }} className="grid gap-4 pb-4">
+      <form id="account-form" onSubmit={(e) => { e.preventDefault(); if (name.trim()) save() }} className="grid gap-4 pb-4">
+        <div className="grid gap-2">
+          <Label htmlFor="account-name">Name</Label>
+          <Input id="account-name" autoFocus placeholder="Andrea Santos" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+      </form>
+    </ResponsivePanel>
+  )
+}
+
+export function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () => void }) {
+  const [name, setName] = useState(wallet?.name ?? '')
+  const [type, setType] = useState<string>(wallet?.type ?? 'e_wallet')
+  const [balance, setBalance] = useState(wallet ? String(wallet.balance) : '')
+  const [run, busy] = useAction()
+  const title = wallet ? 'Edit wallet' : 'Add wallet'
+  const balanceBlank = balance.trim() === ''
+  const balanceNum = Number(balance)
+  const valid = Boolean(name.trim()) && (balanceBlank || Number.isFinite(balanceNum))
+
+  const save = () => run(async () => {
+    const trimmed = name.trim()
+    const shownBalance = balanceBlank ? (wallet?.balance ?? 0) : balanceNum
+    if (wallet) {
+      await api.wallets.update(wallet.id, {
+        name: trimmed,
+        type: type as WalletType,
+        ...(!balanceBlank && balanceNum !== wallet.balance ? { balance: balanceNum } : {}),
+      })
+    } else {
+      await api.wallets.create({ name: trimmed, type: type as WalletType, balance: shownBalance })
+    }
+    onClose()
+    done(wallet ? 'Changes saved' : 'Wallet added', { description: `${trimmed} · ${money(shownBalance)}` })
+  })
+
+  return (
+    <ResponsivePanel
+      onClose={onClose}
+      title={title}
+      description={wallet ? 'Update the name, type or current balance.' : 'Anywhere you keep money: cash, GCash, a bank account or a card.'}
+      footer={<BusyButton type="submit" form="wallet-form" busy={busy} disabled={!valid}>{wallet ? 'Save changes' : 'Add wallet'}</BusyButton>}
+    >
+      <form id="wallet-form" onSubmit={(e) => { e.preventDefault(); if (valid) save() }} className="grid gap-4 pb-4">
         <div className="grid gap-2">
           <Label htmlFor="wallet-name">Name</Label>
           <Input id="wallet-name" autoFocus placeholder="e.g. GCash, BPI Savings" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        {!wallet && (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="wallet-type">Type</Label>
-              <SimpleSelect id="wallet-type" value={type} onChange={setType} options={WALLET_TYPES} />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="wallet-balance">Current balance</Label>
-              <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} />
-            </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="wallet-type">Type</Label>
+            <SimpleSelect id="wallet-type" value={type} onChange={setType} options={WALLET_TYPES} />
           </div>
-        )}
+          <div className="grid gap-2">
+            <Label htmlFor="wallet-balance">Current balance</Label>
+            <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} />
+          </div>
+        </div>
       </form>
     </ResponsivePanel>
   )
@@ -237,37 +281,36 @@ function CategoryForm({ category, kind, onClose }: { category?: Category; kind: 
   const [name, setName] = useState(category?.name ?? '')
   const [icon, setIcon] = useState(category?.icon ?? 'other')
   const [run, busy] = useAction()
-  const label = category ? 'Rename category' : kind === 'expense' ? 'Add spending category' : 'Add income category'
+  const title = category ? 'Edit category' : kind === 'expense' ? 'Add spending category' : 'Add income category'
 
   const save = () => run(async () => {
-    if (category) await api.categories.update(category.id, { name: name.trim() })
-    else await api.categories.create({ name: name.trim(), kind, icon })
+    const trimmed = name.trim()
+    if (category) await api.categories.update(category.id, { name: trimmed, icon })
+    else await api.categories.create({ name: trimmed, kind, icon })
     onClose()
-    done(category ? 'Category renamed' : 'Category added', { description: name.trim() })
+    done(category ? 'Changes saved' : 'Category added', { description: trimmed })
   })
 
   return (
     <ResponsivePanel
       onClose={onClose}
-      title={label}
-      description={category ? 'Past transactions keep this category under its new name.' : 'It appears in the category list when you add a transaction.'}
-      footer={<BusyButton type="submit" form="category-form" busy={busy} disabled={!name.trim()}>{label}</BusyButton>}
+      title={title}
+      description={category ? 'Past transactions keep this category under its updated name and icon.' : 'It appears in the category list when you add a transaction.'}
+      footer={<BusyButton type="submit" form="category-form" busy={busy} disabled={!name.trim()}>{category ? 'Save changes' : title}</BusyButton>}
     >
       <form id="category-form" onSubmit={(e) => { e.preventDefault(); if (name.trim()) save() }} className="grid gap-4 pb-4">
         <div className="grid gap-2">
           <Label htmlFor="cat-name">Name</Label>
           <Input id="cat-name" autoFocus placeholder="e.g. Pets, Tuition" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        {!category && (
-          <div className="grid gap-2">
-            <Label id="icon-label">Icon</Label>
-            <ToggleGroup aria-labelledby="icon-label" variant="outline" className="flex-wrap" value={[icon]} onValueChange={(v) => setIcon((v as string[])[0] ?? icon)}>
-              {Object.entries(CATEGORY_ICONS).map(([key, Icon]) => (
-                <ToggleGroupItem key={key} value={key} aria-label={key[0].toUpperCase() + key.slice(1)}><Icon /></ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
-        )}
+        <div className="grid gap-2">
+          <Label id="icon-label">Icon</Label>
+          <ToggleGroup aria-labelledby="icon-label" variant="outline" className="flex-wrap" value={[icon]} onValueChange={(v) => setIcon((v as string[])[0] ?? icon)}>
+            {Object.entries(CATEGORY_ICONS).map(([key, Icon]) => (
+              <ToggleGroupItem key={key} value={key} aria-label={key[0].toUpperCase() + key.slice(1)}><Icon /></ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </div>
       </form>
     </ResponsivePanel>
   )
