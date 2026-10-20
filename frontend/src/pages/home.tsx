@@ -1,7 +1,7 @@
 // Home answers one question first: how much can I still spend this month? Then what needs attention, then details.
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PenLine, ScanLine, Settings } from 'lucide-react'
+import { Check, PenLine, ScanLine, Settings } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -17,10 +17,13 @@ import { WalletItem } from '@/components/wallet-item'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { ItemGroup } from '@/components/ui/item'
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { currentMonth, longDate, money, todayIso } from '@/lib/format'
-import type { MonthSummary } from '@/types'
+import { cn } from '@/lib/utils'
+import { BudgetForm } from '@/pages/budgets'
+import { WalletForm } from '@/pages/settings'
+import type { BudgetStatus, MonthSummary } from '@/types'
 
 export function HomePage() {
   const month = currentMonth()
@@ -36,6 +39,14 @@ export function HomePage() {
 
   const [hour] = useState(() => new Date().getHours())
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+
+  const [setupHidden, setSetupHidden] = useState(() => { try { return localStorage.getItem(SETUP_HIDDEN) === '1' } catch { return false } })
+  const setup = !refLoading && summary.data && recent.data && !setupHidden
+    ? { hasWallet: activeWallets.length > 0, hasBudget: summary.data.budget > 0, hasExpense: recent.data.some((t) => t.kind === 'expense') }
+    : null
+  const showSetup = setup && !(setup.hasWallet && setup.hasBudget && setup.hasExpense)
+  // While setup is showing, its budget step stands in for the "Set a monthly budget" slide.
+  const noLeftSlide = !!showSetup && !setup.hasBudget
 
   return (
     <>
@@ -53,11 +64,22 @@ export function HomePage() {
       {/* minmax(0, …) tracks: the carousel scrolls inside its column instead of widening the page. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="contents lg:grid lg:grid-cols-1 lg:content-start lg:gap-6">
+          {showSetup && (
+            <SetupSteps
+              {...setup}
+              budgets={budgets.data ?? []}
+              onHide={() => {
+                setSetupHidden(true)
+                try { localStorage.setItem(SETUP_HIDDEN, '1') } catch { /* private mode */ }
+              }}
+            />
+          )}
           <div className="order-1 grid grid-cols-1 gap-3 lg:order-none">
             <Carousel
+              key={String(noLeftSlide)} // starts again on "Left to spend" the moment setup finishes
               label="Your month so far"
               slides={[
-                { title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} /> },
+                ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} /> }]),
                 { title: 'Spending', content: <SpendingSlide transactions={recent.data} /> },
                 { title: 'Bills coming up', content: <BillsSlide transactions={recent.data} summary={summary.data} /> },
               ]}
@@ -204,5 +226,56 @@ function SafeToSpend({ s }: { s?: MonthSummary }) {
         </p>
       </CardFooter>
     </HeroCard>
+  )
+}
+
+const SETUP_HIDDEN = 'anttipid-setup-hidden'
+
+/** First run: the three steps until Home can show what's left to spend each day. */
+function SetupSteps({ hasWallet, hasBudget, hasExpense, budgets, onHide }: {
+  hasWallet: boolean; hasBudget: boolean; hasExpense: boolean; budgets: BudgetStatus[]; onHide: () => void
+}) {
+  const { openAdd } = useApp()
+  const [form, setForm] = useState<'wallet' | 'budget' | null>(null)
+
+  const steps = [
+    { done: hasWallet, title: 'Add a wallet', body: 'Cash, GCash or a bank account.', action: 'Add wallet', onClick: () => setForm('wallet') },
+    { done: hasBudget, title: 'Set a monthly budget', body: 'One limit for this month.', action: 'Set budget', onClick: () => setForm('budget') },
+    { done: hasExpense, title: 'Record an expense', body: 'Type it in or scan the receipt.', action: 'Add expense', onClick: () => openAdd({ kind: 'expense' }), blocked: !hasWallet },
+  ]
+  const next = steps.findIndex((s) => !s.done)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle role="heading" aria-level={2}>Get set up</CardTitle>
+        <CardDescription>{steps.filter((s) => s.done).length} of 3 done. Then Home shows how much you can spend each day.</CardDescription>
+        <CardAction><Button variant="ghost" size="sm" onClick={onHide}>Hide</Button></CardAction>
+      </CardHeader>
+      <CardContent>
+        <ItemGroup>
+          {steps.map((s, i) => (
+            <Item key={s.title} size="sm" role="listitem">
+              <ItemMedia>
+                <span className={cn('flex size-7 items-center justify-center rounded-full border text-sm font-medium tabular-nums', s.done && 'border-primary bg-primary text-primary-foreground')}>
+                  {s.done ? <Check className="size-4" /> : i + 1}
+                </span>
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle className={cn(s.done && 'text-muted-foreground')}>{s.done && <span className="sr-only">Done: </span>}{s.title}</ItemTitle>
+                {!s.done && <ItemDescription>{s.blocked ? 'Add a wallet first.' : s.body}</ItemDescription>}
+              </ItemContent>
+              {!s.done && (
+                <ItemActions>
+                  <Button size="sm" variant={i === next ? 'default' : 'outline'} disabled={s.blocked} onClick={s.onClick}>{s.action}</Button>
+                </ItemActions>
+              )}
+            </Item>
+          ))}
+        </ItemGroup>
+      </CardContent>
+      {form === 'wallet' && <WalletForm onClose={() => setForm(null)} />}
+      {form === 'budget' && <BudgetForm editing={{ categoryId: null }} budgets={budgets} onClose={() => setForm(null)} />}
+    </Card>
   )
 }

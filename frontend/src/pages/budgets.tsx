@@ -114,7 +114,7 @@ export function BudgetsPage() {
   )
 }
 
-function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable<Editing>; onClose: () => void; budgets: BudgetStatus[] }) {
+export function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable<Editing>; onClose: () => void; budgets: BudgetStatus[] }) {
   const { categories, category } = useRefData()
   const b = editing.budget
   const [target, setTarget] = useState(b ? (b.categoryId ?? 'all') : editing.categoryId === null ? 'all' : (editing.categoryId ?? ''))

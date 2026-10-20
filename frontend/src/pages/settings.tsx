@@ -190,7 +190,7 @@ function AccountTab() {
   )
 }
 
-function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () => void }) {
+export function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () => void }) {
   const [name, setName] = useState(wallet?.name ?? '')
   const [type, setType] = useState<string>(wallet?.type ?? 'e_wallet')
   const [balance, setBalance] = useState('')
