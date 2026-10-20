@@ -49,6 +49,7 @@ function AddFlow() {
   const [title, setTitle] = useState(editing?.title ?? '')
   const [note, setNote] = useState(editing?.note ?? '')
   const [receipt, setReceipt] = useState<ReceiptScan | null>(null)
+  const [receiptPhoto, setReceiptPhoto] = useState<Blob | null>(null)
   const [run, saving] = useAction()
 
   // Fall back to the first wallet when nothing was used before (or the remembered one is gone).
@@ -72,11 +73,12 @@ function AddFlow() {
       toWalletId: kind === 'transfer' ? toWalletId : undefined,
       categoryId: kind === 'transfer' ? undefined : categoryId,
       note: note.trim(),
-      source: receipt || editing?.source === 'receipt' ? 'receipt' : 'manual',
+      source: kind === 'expense' && (receipt || editing?.source === 'receipt') ? 'receipt' : 'manual',
       // Items stay their own list, never folded into the note: the note is the user's free text.
       items: kind === 'expense' ? (receipt?.items ?? editing?.items) : undefined,
     }
     const saved = editing ? await api.transactions.update(editing.id, body) : await api.transactions.create(body)
+    if (receiptPhoto && body.source === 'receipt') await api.transactions.uploadReceipt(saved.id, receiptPhoto)
     try { localStorage.setItem(LAST_WALLET, walletId) } catch { /* private mode */ }
     closeAdd()
     done(editing ? 'Changes saved' : `${KIND_LABEL[kind]} saved`, {
@@ -85,8 +87,9 @@ function AddFlow() {
     })
   })
 
-  function applyReceipt(r: ReceiptScan) {
+  function applyReceipt(r: ReceiptScan, photo: Blob) {
     setReceipt(r)
+    setReceiptPhoto(photo)
     setKind('expense')
     setAmount(r.total.toFixed(2))
     setTitle(r.merchant)
@@ -200,7 +203,7 @@ function AddFlow() {
 // After this long, say the wait is normal and offer a way out.
 const SLOW_AFTER_S = 12
 
-function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: () => void; onDone: (r: ReceiptScan) => void }) {
+function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: () => void; onDone: (r: ReceiptScan, photo: Blob) => void }) {
   const [state, setState] = useState<'idle' | 'camera' | 'preparing' | 'reading' | 'error'>('idle')
   const [cameraError, setCameraError] = useState('')
   const [scanError, setScanError] = useState('')
@@ -211,6 +214,7 @@ function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: ()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const photoRef = useRef<Blob | null>(null)
 
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -235,6 +239,7 @@ function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: ()
     try {
       // Shrink once: the small copy is both the preview and the upload, so the phone never renders the full photo.
       photo = await shrinkPhoto(file)
+      photoRef.current = photo
     } catch {
       setScanError("Couldn't open this photo. Pick a JPEG or PNG image.")
       setState('error')
@@ -292,6 +297,7 @@ function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: ()
   function reset() {
     stopCamera()
     abortRef.current?.abort()
+    photoRef.current = null
     setPreview(null)
     setResult(null)
     setState('idle')
@@ -305,7 +311,7 @@ function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: ()
       </>
     ) : result ? (
       <>
-        <Button onClick={() => onDone(result)}>Use these details</Button>
+        <Button onClick={() => onDone(result, photoRef.current!)}>Use these details</Button>
         <Button variant="outline" onClick={reset}>Scan another receipt</Button>
       </>
     ) : state === 'preparing' || state === 'reading' ? (

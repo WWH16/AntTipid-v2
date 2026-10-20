@@ -15,7 +15,8 @@ const SignInPage = lazy(() => import('@/pages/sign-in').then((m) => ({ default: 
 const page = (el: ReactNode) => <Suspense fallback={<LoadingRows rows={6} />}>{el}</Suspense>
 
 function RequireUser({ children }: { children: ReactNode }) {
-  const { user } = useApp()
+  const { user, ready } = useApp()
+  if (!ready) return <LoadingRows rows={6} />
   return user ? children : <Navigate to="/sign-in" replace />
 }
 

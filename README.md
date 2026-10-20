@@ -1,21 +1,33 @@
-# AntTipid v2 (prototype)
+# AntTipid v2
 
-Frontend-only redesign of AntTipid, a personal money tracker in Philippine pesos. Runs on mock data.
+Personal money tracker in Philippine pesos, built with React + Vite + Tailwind v4 + shadcn/ui (Base UI) on the frontend, FastAPI on the backend, and Supabase (Auth, Postgres, Storage).
 
 ```
 frontend/   React + Vite + Tailwind v4 + shadcn/ui (Base UI)
-backend/    empty; FastAPI goes here (see backend/README.md for the routes the frontend expects)
+backend/    FastAPI + psycopg (Supabase transaction pooler) + Supabase Storage
+supabase/   SQL migrations (tables, RLS policies, default category trigger, receipts bucket)
 ```
 
-## Run
+## Run locally
+
+1. Apply `supabase/migrations/20261020000000_init.sql` in your Supabase project's SQL Editor.
+2. Configure environment files:
+   - Copy `backend/.env.example` to `backend/.env` and set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DATABASE_URL` (transaction pooler, port `6543`), and `OPENROUTER_API_KEY` or `GEMINI_API_KEY`.
+   - Copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_USE_MOCK=false`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_ANON_KEY`.
+3. Start both servers:
 
 ```bash
+# Terminal 1: backend on :8000
+cd backend
+.venv/Scripts/python -m uvicorn main:app --reload --port 8000
+
+# Terminal 2: frontend on :5173 (proxies /api to :8000)
 cd frontend
 npm install
 npm run dev
 ```
 
-Sign in with any email and password. Mock data resets on page reload.
+For offline UI work without Supabase, set `VITE_USE_MOCK=true` in `frontend/.env.local`.
 
 ## Screens
 
@@ -27,11 +39,3 @@ Sign in with any email and password. Mock data resets on page reload.
 | Budgets | Whole-month budget, category budgets worst first, quick-add for unbudgeted categories |
 | Reports | Earned/spent/saved, spending by category, 6-month income vs spending (chart or table) |
 | Settings | Wallets, categories, account |
-
-Phone: bottom bar with a centre Add button. Tablet: icon rail. Laptop: sidebar.
-
-## Connecting the backend
-
-All network calls live in `frontend/src/api/endpoints.ts`. Each one runs the mock handler from
-`frontend/src/mocks/db.ts` while `VITE_USE_MOCK` is not `false`, and the real `fetch` otherwise.
-Copy `frontend/.env.example` to `frontend/.env` and set `VITE_USE_MOCK=false` once FastAPI is up.

@@ -60,6 +60,17 @@ function Details({ id }: { id: string }) {
               <ReceiptItems items={t.items} total={t.amount} />
             </>
           )}
+          {t.receiptUrl && (
+            <>
+              <Separator />
+              <div className="grid gap-2 text-sm">
+                <p className="text-muted-foreground">Receipt photo</p>
+                <a href={t.receiptUrl} target="_blank" rel="noreferrer" className="justify-self-start">
+                  <img src={t.receiptUrl} alt={`Receipt for ${t.title}`} className="max-h-48 rounded-md border object-cover" />
+                </a>
+              </div>
+            </>
+          )}
           {t.note && (
             <>
               <Separator />

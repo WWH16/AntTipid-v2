@@ -1,5 +1,5 @@
 // In-memory stand-in for the FastAPI backend. Each exported handler matches one endpoint in api/endpoints.ts.
-// ponytail: data resets on page reload; swap VITE_USE_MOCK=false once the backend exists.
+// ponytail: data resets on page reload. For offline UI work only; VITE_USE_MOCK=false is the normal setting.
 import type {
   Budget, BudgetStatus, Category, MonthSummary, MonthlyReport, NewTransaction,
   Transaction, TransactionFilters, User, Wallet,
@@ -80,6 +80,7 @@ function seed(): Transaction[] {
 let transactions = seed()
 for (const id in target) opening[id] = target[id] - balanceOf(id)
 let nextId = 10_000
+const receiptPhotos = new Map<string, string>() // transaction id -> object URL of its photo
 
 const delay = <T,>(value: T, ms = 180) => new Promise<T>((r) => setTimeout(() => r(structuredClone(value)), ms))
 const fail = (message: string) => Promise.reject(new Error(message))
@@ -103,6 +104,8 @@ const spentIn = (month: string, categoryId?: string | null) =>
 
 export const mock = {
   signIn: (email: string, _password?: string) => delay<User>({ name: 'Andrea Santos', email }),
+  signUp: (name: string, email: string, _password: string) => delay<User | null>({ name, email }),
+  signOut: () => delay(null),
 
   listWallets: () => delay<Wallet[]>(wallets.map((w) => ({ ...w, balance: balanceOf(w.id) }))),
   createWallet: (w: Pick<Wallet, 'name' | 'type' | 'balance'>) => {
@@ -148,7 +151,7 @@ export const mock = {
   },
   getTransaction: (id: string) => {
     const t = transactions.find((x) => x.id === id)
-    return t ? delay(t) : fail('Transaction not found')
+    return t ? delay({ ...t, receiptUrl: receiptPhotos.get(id) }) : fail('Transaction not found')
   },
   createTransaction: (t: NewTransaction) => {
     const created = { ...t, id: `t${nextId++}` }
@@ -163,6 +166,15 @@ export const mock = {
   },
   deleteTransaction: (id: string) => {
     transactions = transactions.filter((t) => t.id !== id)
+    const photo = receiptPhotos.get(id)
+    if (photo) { URL.revokeObjectURL(photo); receiptPhotos.delete(id) }
+    return delay(null)
+  },
+  // Kept as an in-memory object URL, standing in for the signed Storage URL.
+  uploadReceipt: (id: string, photo: Blob) => {
+    if (!transactions.some((t) => t.id === id)) return fail('Transaction not found')
+    if (photo.size > 1024 * 1024) return fail('That photo is over 1 MB.')
+    receiptPhotos.set(id, URL.createObjectURL(photo))
     return delay(null)
   },
 

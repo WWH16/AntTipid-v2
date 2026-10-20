@@ -36,7 +36,8 @@ MODELS = [
 PER_MODEL_TIMEOUT_S = 25
 
 WALLET_TYPES = ["cash", "e_wallet", "bank", "credit_card", "savings"]
-# ponytail: mirrors the frontend's default expense categories; read the user's own from the DB once it exists.
+# Default expense categories (id -> name), the same ones every new user is seeded with. Used when the caller
+# isn't signed in (mock mode); a signed-in caller's own categories are passed to scan_receipt instead.
 CATEGORIES = {
     "food": "Food & dining",
     "groceries": "Groceries",
@@ -48,13 +49,18 @@ CATEGORIES = {
     "fun": "Going out",
 }
 
-PROMPT = f"""Read this Philippine receipt photo (amounts in PHP). Reply with JSON only:
+
+def build_prompt(categories: dict[str, str]) -> str:
+    # The model picks a category by name: names read better than UUIDs and it can't mangle an id.
+    names = ", ".join(json.dumps(n, ensure_ascii=False) for n in categories.values())
+    category_line = f'"category": the best fit of {names}, or null' if categories else '"category": null'
+    return f"""Read this Philippine receipt photo (amounts in PHP). Reply with JSON only:
 {{
   "merchant": store name,
   "date": purchase date as "YYYY-MM-DD", often printed next to the time near the bottom. Ignore permit dates (DATE ISSUED, PTU, accreditation). Short dates are usually DD/MM/YY. null only if no purchase date is printed,
   "total": amount paid, as a number,
   "items": [{{ "name": string, "qty": number, "price": unit price as a number }}]. Skip subtotal, VAT, discount, change, payment and reference lines,
-  "categoryId": one of {", ".join(f'"{k}" ({v})' for k, v in CATEGORIES.items())}, or null,
+  {category_line},
   "paymentMethod": one of {", ".join(f'"{t}"' for t in WALLET_TYPES)}, or null if not printed,
   "paymentLabel": payment provider as printed, e.g. "GCash", "Maya", "VISA", "Cash", or null
 }}
@@ -92,7 +98,7 @@ class ScanFailed(RuntimeError):
     """No model gave a usable answer."""
 
 
-async def _ask_model(client: httpx.AsyncClient, url: str, api_key: str, model: str, fast: dict, image_url: str) -> dict:
+async def _ask_model(client: httpx.AsyncClient, url: str, api_key: str, model: str, fast: dict, prompt: str, image_url: str) -> dict:
     """Ask one model. Raises on HTTP errors, timeouts, empty or non-JSON replies so the caller moves on."""
     res = await client.post(url, headers={"Authorization": f"Bearer {api_key}"}, json={
         "model": model,
@@ -101,7 +107,7 @@ async def _ask_model(client: httpx.AsyncClient, url: str, api_key: str, model: s
         # for the model's max output (402 on a low balance).
         "max_tokens": 2000,
         "messages": [{"role": "user", "content": [
-            {"type": "text", "text": PROMPT},
+            {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": image_url}},
         ]}],
     })
@@ -118,24 +124,26 @@ async def _ask_model(client: httpx.AsyncClient, url: str, api_key: str, model: s
     return raw
 
 
-async def scan_receipt(image: bytes, content_type: str) -> ReceiptScan:
+async def scan_receipt(image: bytes, content_type: str, categories: dict[str, str] = CATEGORIES) -> ReceiptScan:
+    """Read one photo. `categories` maps the caller's expense category ids to names; the suggestion is one of those ids."""
     models = [(url, os.environ[key], model, fast) for url, key, model, fast in MODELS if os.environ.get(key)]
     if not models:
         raise ScanFailed("Set GEMINI_API_KEY or OPENROUTER_API_KEY (see backend/.env.example)")
     image_url = f"data:{content_type};base64,{base64.b64encode(image).decode()}"
+    prompt = build_prompt(categories)
     errors = []
     async with httpx.AsyncClient(timeout=PER_MODEL_TIMEOUT_S) as client:
         for url, api_key, model, fast in models:
             start = time.perf_counter()
             try:
-                raw = await _ask_model(client, url, api_key, model, fast, image_url)
+                raw = await _ask_model(client, url, api_key, model, fast, prompt, image_url)
             except (httpx.HTTPError, ScanFailed, ValueError, KeyError, IndexError, TypeError) as e:
                 errors.append(f"{e!r}")
                 log.warning("scan: %s failed after %.1fs: %r", model, time.perf_counter() - start, e)
                 continue
             log.info("scan: %s answered in %.1fs", model, time.perf_counter() - start)
             # A clean answer that isn't a receipt is final, not a reason to ask the next model.
-            return normalize_scan(raw)
+            return normalize_scan(raw, categories)
     raise ScanFailed("; ".join(errors))
 
 
@@ -146,7 +154,14 @@ def _num(value, default: float = 0.0) -> float:
         return default
 
 
-def normalize_scan(raw: dict) -> ReceiptScan:
+def _category_id(raw: dict, categories: dict[str, str]) -> str | None:
+    """The category the model picked, by name (case-insensitive); None if it isn't one of the user's."""
+    name = raw.get("category")
+    by_name = {v.strip().lower(): k for k, v in categories.items()}
+    return by_name.get(name.strip().lower()) if isinstance(name, str) else None
+
+
+def normalize_scan(raw: dict, categories: dict[str, str] = CATEGORIES) -> ReceiptScan:
     """Model output is untrusted: coerce types, drop unknown categories, flag totals the items don't add up to."""
     total = _num(raw.get("total"))
     if not total > 0:
@@ -164,7 +179,7 @@ def normalize_scan(raw: dict) -> ReceiptScan:
         date=day if isinstance(day, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day) else date.today().isoformat(),
         total=total,
         items=items,
-        suggested_category_id=raw.get("categoryId") if raw.get("categoryId") in CATEGORIES else None,
+        suggested_category_id=_category_id(raw, categories),
         payment_method=raw.get("paymentMethod") if raw.get("paymentMethod") in WALLET_TYPES else None,
         payment_label=label.strip() if isinstance(label, str) and label.strip() else None,
         # A misread digit (or an unlisted discount) shows up as items not adding up to the total.

@@ -1,9 +1,10 @@
 // Every transaction for a month, newest first, grouped by day. Filters sit above the list.
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Download, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useApp, useMonth, useRefData } from '@/app-state'
 import { USE_MOCK } from '@/api/client'
-import { api, exportCsvUrl } from '@/api/endpoints'
+import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
@@ -138,7 +139,7 @@ function groupByDay(list: Transaction[]) {
 
 function exportCsv(filters: TransactionFilters, rows: Transaction[]) {
   if (!USE_MOCK) {
-    window.location.href = exportCsvUrl(filters)
+    api.transactions.exportCsv(filters).catch((e: Error) => toast.error("Couldn't export the CSV", { description: e.message }))
     return
   }
   const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`

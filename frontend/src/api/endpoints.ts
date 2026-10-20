@@ -1,17 +1,35 @@
 // Every call the app makes. Each line is: mock handler when VITE_USE_MOCK is on, real FastAPI route otherwise.
 import { mock } from '@/mocks/db'
+import { authMessage, supabase, toUser } from '@/lib/supabase'
 import type {
   Budget, BudgetStatus, Category, MonthSummary, MonthlyReport, NewTransaction,
   ReceiptScan, Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
-import { API_URL, USE_MOCK, http, json } from './client'
+import { USE_MOCK, download, http, json } from './client'
 
 const pick = <A extends unknown[], R>(m: (...a: A) => Promise<R>, real: (...a: A) => Promise<R>) =>
   (...a: A) => (USE_MOCK ? m(...a) : real(...a))
 
+/** Photos go up with an extension matching their type (WebP, or JPEG from Safari). */
+const photoName = (photo: Blob, base: string) => `${base}.${photo.type === 'image/webp' ? 'webp' : 'jpg'}`
+
 export const api = {
+  // Sign-in is the one thing done with supabase-js directly; the session's token then goes to FastAPI on every call.
   auth: {
-    signIn: pick(mock.signIn, (email: string, password?: string) => http<User>('/auth/sign-in', json('POST', { email, password }))),
+    signIn: pick(mock.signIn, async (email: string, password?: string): Promise<User> => {
+      const { data, error } = await supabase!.auth.signInWithPassword({ email, password: password ?? '' })
+      if (error) throw new Error(authMessage(error))
+      return toUser(data.user)
+    }),
+    /** null: the account exists but the email link must be opened before signing in. */
+    signUp: pick(mock.signUp, async (name: string, email: string, password: string): Promise<User | null> => {
+      const { data, error } = await supabase!.auth.signUp({
+        email, password, options: { data: { name }, emailRedirectTo: `${location.origin}/sign-in` },
+      })
+      if (error) throw new Error(authMessage(error))
+      return data.session && data.user ? toUser(data.user) : null
+    }),
+    signOut: pick(mock.signOut, async () => { await supabase!.auth.signOut(); return null }),
   },
   wallets: {
     list: pick(mock.listWallets, () => http<Wallet[]>('/wallets')),
@@ -30,6 +48,14 @@ export const api = {
     create: pick(mock.createTransaction, (t: NewTransaction) => http<Transaction>('/transactions', json('POST', t))),
     update: pick(mock.updateTransaction, (id, patch) => http<Transaction>(`/transactions/${id}`, json('PATCH', patch))),
     remove: pick(mock.deleteTransaction, (id) => http<null>(`/transactions/${id}`, { method: 'DELETE' })),
+    /** Attach the scanned photo (the shrinkPhoto copy) once the transaction is saved. Max 1 MB. */
+    uploadReceipt: pick(mock.uploadReceipt, (id: string, photo: Blob) => {
+      const body = new FormData()
+      body.append('image', photo, photoName(photo, id))
+      return http<null>(`/transactions/${id}/receipt`, { method: 'POST', body })
+    }),
+    /** CSV of the filtered list. The mock builds the file in the browser instead (pages/activity.tsx). */
+    exportCsv: (f: TransactionFilters) => download('/transactions/export.csv', { ...f }, `anttipid-${f.month ?? 'all'}.csv`),
   },
   budgets: {
     list: pick(mock.listBudgets, (month: string) => http<BudgetStatus[]>('/budgets', { query: { month } })),
@@ -43,15 +69,11 @@ export const api = {
   },
   receipts: {
     // Always the real backend, even in mock mode: reading receipts needs the server's API key.
-    // Expects a photo already shrunk with shrinkPhoto (the scan panel reuses it for the preview).
+    // Expects a photo already shrunk with shrinkPhoto (the scan panel reuses it for the preview and the upload).
     scan: (photo: Blob, signal?: AbortSignal) => {
       const body = new FormData()
-      body.append('image', photo, 'receipt.jpg')
+      body.append('image', photo, photoName(photo, 'receipt'))
       return http<ReceiptScan>('/receipts/scan', { method: 'POST', body, signal })
     },
   },
 }
-
-/** CSV export is a plain link to the backend; the mock builds the file in the browser instead. */
-export const exportCsvUrl = (f: TransactionFilters) =>
-  `${API_URL}/transactions/export.csv?${new URLSearchParams(f as Record<string, string>)}`

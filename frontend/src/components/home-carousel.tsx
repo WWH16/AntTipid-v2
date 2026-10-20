@@ -1,5 +1,6 @@
 // The swipeable hero on Home. Each slide answers a question the rest of Home doesn't.
 import { useRef, useState, type ReactNode } from 'react'
+import { useRefData } from '@/app-state'
 import { HeroCard } from '@/components/hero-card'
 import { Badge } from '@/components/ui/badge'
 import { CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -159,18 +160,19 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
   )
 }
 
-const BILL_CATEGORIES = ['bills', 'load']
+const BILL_ICONS = ['bills', 'phone']
 
 /**
  * Bills paid last month that haven't shown up yet this month, expected on the same day of the month.
  * ponytail: matches by exact title; switch to the recurring-bill model once it exists.
  */
 export function BillsSlide({ transactions, summary }: { transactions?: Transaction[]; summary?: MonthSummary }) {
+  const { category } = useRefData()
   const [today] = useState(() => new Date())
   if (!transactions || !summary) return <Skeleton className="h-64 w-full rounded-xl" />
   const thisMonth = currentMonth()
   const lastMonth = shiftMonth(thisMonth, -1)
-  const isBill = (t: Transaction) => t.kind === 'expense' && BILL_CATEGORIES.includes(t.categoryId ?? '')
+  const isBill = (t: Transaction) => t.kind === 'expense' && BILL_ICONS.includes(category(t.categoryId)?.icon ?? '')
   const paidThisMonth = new Set(transactions.filter((t) => isBill(t) && t.date.startsWith(thisMonth)).map((t) => t.title))
   const upcoming = transactions
     .filter((t) => isBill(t) && t.date.startsWith(lastMonth) && !paidThisMonth.has(t.title))

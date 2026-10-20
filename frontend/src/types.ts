@@ -34,9 +34,10 @@ export interface Transaction {
   note: string
   source: 'manual' | 'receipt'
   items?: ReceiptItem[] // line items read from a scanned receipt; the amount stays the receipt total
+  receiptUrl?: string // read-only: signed link to the receipt photo, only on GET /transactions/{id}; expires in 10 minutes
 }
 
-export type NewTransaction = Omit<Transaction, 'id'>
+export type NewTransaction = Omit<Transaction, 'id' | 'receiptUrl'>
 
 export interface TransactionFilters {
   month?: string // YYYY-MM
