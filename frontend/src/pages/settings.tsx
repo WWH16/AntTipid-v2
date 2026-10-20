@@ -40,13 +40,14 @@ export function SettingsPage() {
   const tab = params.get('tab') ?? 'wallets'
   const [dlg, setDlg] = useState<Dlg>(null)
   const { wallets, categories, loading } = useRefData()
+  const active = wallets.filter((w) => !w.archived).length
 
   return (
     <>
       <PageHeader
         page="Settings"
         headline="How your money is organised"
-        description={loading ? 'Your wallets and categories' : `${wallets.filter((w) => !w.archived).length} wallets and ${categories.length} categories`}
+        description={loading ? 'Your wallets and categories' : `${active} ${active === 1 ? 'wallet' : 'wallets'} and ${categories.length} ${categories.length === 1 ? 'category' : 'categories'}`}
       />
       <Tabs value={tab} onValueChange={(v) => setParams({ tab: String(v) }, { replace: true })}>
         <TabsList className="w-full sm:w-auto">
@@ -101,7 +102,9 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
         <CardAction>{/* Icon only on phones so the description keeps the width. */}<Button variant="outline" size="sm" aria-label="Add wallet" onClick={() => onEdit({ type: 'wallet' })}><Plus /><span className="hidden sm:inline">Add wallet</span></Button></CardAction>
       </CardHeader>
       <CardContent>
-        {loading ? <LoadingItems rows={3} /> : <ItemGroup>
+        {loading ? <LoadingItems rows={3} /> : !wallets.length ? (
+          <p className="text-sm text-muted-foreground">No wallets yet. Add the cash, e-wallets and bank accounts you pay from.</p>
+        ) : <ItemGroup>
           {wallets.map((w) => (
             <WalletItem key={w.id} w={w}>
               <RowMenu label={`Options for ${w.name}`}>
@@ -132,7 +135,11 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
             <CardAction><Button variant="outline" size="sm" aria-label={kind === 'expense' ? 'Add spending category' : 'Add income category'} onClick={() => onEdit({ type: 'category', kind })}><Plus /><span className="hidden sm:inline">Add category</span></Button></CardAction>
           </CardHeader>
           <CardContent>
-            {loading ? <LoadingItems rows={kind === 'expense' ? 5 : 3} amount={false} /> : <ItemGroup>
+            {loading ? <LoadingItems rows={kind === 'expense' ? 5 : 3} amount={false} /> : !categories.some((c) => c.kind === kind) ? (
+              <p className="text-sm text-muted-foreground">
+                {kind === 'expense' ? 'No spending categories. Add one to record expenses.' : 'No income categories. Add one to record income.'}
+              </p>
+            ) : <ItemGroup>
               {categories.filter((c) => c.kind === kind).map((c) => (
                 <Item key={c.id} size="sm">
                   <CategoryMedia category={c} />

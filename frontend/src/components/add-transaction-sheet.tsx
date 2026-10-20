@@ -58,7 +58,7 @@ function AddFlow() {
   const missing =
     !(value > 0) ? 'Enter an amount' :
     kind !== 'transfer' && !categoryId ? 'Pick a category' :
-    !walletId ? 'Choose a wallet' :
+    !walletId ? (activeWallets.length ? 'Choose a wallet' : 'Add a wallet in Settings first') :
     kind === 'transfer' && !toWalletId ? 'Choose where the money goes' :
     kind === 'transfer' && toWalletId === walletId ? 'Pick two different wallets' :
     null

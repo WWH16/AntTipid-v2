@@ -80,7 +80,7 @@ export function HomePage() {
               {recent.loading ? <LoadingItems rows={5} /> : recent.data?.length ? (
                 <ItemGroup>{recent.data.slice(0, 6).map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
               ) : (
-                <EmptyState title="Nothing recorded yet" body="Add your first expense and it shows up here." action={<Button onClick={() => openAdd()}>Add transaction</Button>} />
+                <EmptyState title="Nothing recorded yet" body="Add your first expense or income and it shows up here." action={<Button onClick={() => openAdd()}>Add transaction</Button>} />
               )}
             </CardContent>
           </Card>
@@ -104,7 +104,11 @@ export function HomePage() {
                   {attention.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} />)}
                 </ItemGroup>
               ) : (
-                <p className="text-sm text-muted-foreground">All budgets are on track.</p>
+                <p className="text-sm text-muted-foreground">
+                  {(budgets.data ?? []).some((b) => b.categoryId)
+                    ? 'All budgets are on track.'
+                    : 'No category budgets yet. Give a category a limit and it shows up here when spending gets close.'}
+                </p>
               )}
             </CardContent>
           </Card>
@@ -113,16 +117,22 @@ export function HomePage() {
           <Card className="order-4 lg:order-none">
             <CardHeader>
               <CardTitle role="heading" aria-level={2}>Wallets</CardTitle>
-              <CardDescription className="tabular-nums">{refLoading ? 'Loading balances' : `${money(total)} across ${activeWallets.length} wallets`}</CardDescription>
+              <CardDescription className="tabular-nums">{refLoading ? 'Loading balances' : `${money(total)} across ${activeWallets.length} ${activeWallets.length === 1 ? 'wallet' : 'wallets'}`}</CardDescription>
               <CardAction>
                 <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/settings" />}>Manage</Button>
               </CardAction>
             </CardHeader>
             <CardContent>
-              {refLoading ? <LoadingItems rows={3} /> : (
+              {refLoading ? <LoadingItems rows={3} /> : activeWallets.length ? (
                 <ItemGroup>
                   {activeWallets.map((w) => <WalletItem key={w.id} w={w} />)}
                 </ItemGroup>
+              ) : (
+                <EmptyState
+                  title="No wallets yet"
+                  body="Add the cash, e-wallets and bank accounts you pay from. Every transaction needs one."
+                  action={<Button nativeButton={false} render={<Link to="/settings" />}>Add a wallet</Button>}
+                />
               )}
             </CardContent>
           </Card>

@@ -83,7 +83,7 @@ export function ReportsPage() {
     <>
       <PageHeader
         page="Reports"
-        headline={!data ? 'Reports' : top ? `${category(top.categoryId)?.name ?? 'Other'} took ${Math.round((top.total / spentTotal) * 100)}% of your spending` : `No spending in ${monthLabel(month)} yet`}
+        headline={!data ? 'Reports' : top ? `${category(top.categoryId)?.name ?? 'Other'} took ${Math.round((top.total / spentTotal) * 100)}% of your spending` : `No spending in ${monthLabel(month)}`}
         description={`${monthLabel(month)}. Tap any chart for details.`}
       />
       <MonthSwitcher month={month} onChange={setMonth} />
@@ -103,6 +103,7 @@ export function ReportsPage() {
             ))}
           </div>
 
+          {spentTotal > 0 && (
           <Card>
             <CardHeader>
               <CardTitle role="heading" aria-level={2}>Spending through the month</CardTitle>
@@ -133,6 +134,7 @@ export function ReportsPage() {
               </ChartContainer>
             </CardContent>
           </Card>
+          )}
 
           <div className="grid items-start gap-6 lg:grid-cols-2">
             <Card>
@@ -144,7 +146,7 @@ export function ReportsPage() {
                 {data.byCategory.length ? (
                   <CategoryBreakdown items={data.byCategory} onSelect={(categoryId) => setDetail({ type: 'category', categoryId })} />
                 ) : (
-                  <EmptyState title={`No spending in ${monthLabel(month)}`} body="Once you add expenses for this month, they're broken down here by category." />
+                  <EmptyState title={`No spending in ${monthLabel(month)}`} body="Expenses you add for this month are broken down here by category." />
                 )}
               </CardContent>
             </Card>

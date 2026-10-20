@@ -94,7 +94,7 @@ export function BudgetsPage() {
               )}
               {unbudgeted.length > 0 && (
                 <div className="grid gap-2">
-                  <p className="text-sm text-muted-foreground">No budget yet</p>
+                  <p className="text-sm text-muted-foreground">Categories without a budget</p>
                   <div className="flex flex-wrap gap-2">
                     {unbudgeted.map((c) => (
                       <Button key={c.id} variant="outline" size="sm" onClick={() => setEditing({ categoryId: c.id })}>
