@@ -47,7 +47,7 @@ def _check_category(conn, user: AuthUser, category_id: UUID | None) -> None:
 
 @router.post("/budgets", status_code=204)
 def create_budget(body: BudgetIn, user: User):
-    """Set the limit for a category (or the whole month). Saving one that exists updates it, like the mock."""
+    """Set the limit for a category (or the whole month). Saving one that exists updates it."""
     with user_tx(user) as conn:
         _check_category(conn, user, body.category_id)
         conn.execute(

@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Download, Search, SlidersHorizontal, X } from 'lucide-react'
 import { useApp, useMonth, useRefData } from '@/app-state'
-import { USE_MOCK } from '@/api/client'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { MonthSwitcher } from '@/components/month-switcher'
@@ -59,7 +58,7 @@ export function ActivityPage() {
         headline={!data ? monthLabel(month) : `${data.length} ${filtered ? (data.length === 1 ? 'match' : 'matches') : (data.length === 1 ? 'transaction' : 'transactions')} in ${monthLabel(month)}`}
         description={isMobile ? 'Tap a row for details, or swipe it left to edit or delete.' : 'Select a row to see its details.'}
         action={
-          <Button variant="outline" onClick={() => exportCsv(filters, data ?? [])} disabled={!data?.length}>
+          <Button variant="outline" onClick={() => exportCsv(filters)} disabled={!data?.length}>
             <Download /> <span className="sr-only sm:not-sr-only">Export CSV</span>
           </Button>
         }
@@ -173,17 +172,6 @@ function groupByDay(list: Transaction[]) {
   return [...groups]
 }
 
-function exportCsv(filters: TransactionFilters, rows: Transaction[]) {
-  if (!USE_MOCK) {
-    api.transactions.exportCsv(filters).catch((e: Error) => toast.error("Couldn't export the CSV", { description: e.message }))
-    return
-  }
-  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`
-  const csv = [['Date', 'Type', 'Description', 'Amount', 'Category', 'Wallet', 'Note'].join(','),
-    ...rows.map((t) => [t.date, t.kind, t.title, t.amount, t.categoryId ?? '', t.walletId, t.note].map(esc).join(','))].join('\n')
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-  a.download = `anttipid-${filters.month}.csv`
-  a.click()
-  URL.revokeObjectURL(a.href)
+function exportCsv(filters: TransactionFilters) {
+  api.transactions.exportCsv(filters).catch((e: Error) => toast.error("Couldn't export the CSV", { description: e.message }))
 }

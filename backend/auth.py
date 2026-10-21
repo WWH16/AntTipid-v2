@@ -82,8 +82,3 @@ def current_user(authorization: str | None = Header(default=None)) -> AuthUser:
 
 
 User = Annotated[AuthUser, Depends(current_user)]
-
-
-def optional_user(authorization: str | None = Header(default=None)) -> AuthUser | None:
-    """For routes that also work signed out (receipt scanning in mock mode)."""
-    return current_user(authorization) if _bearer(authorization) else None

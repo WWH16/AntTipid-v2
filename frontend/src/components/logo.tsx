@@ -1,5 +1,4 @@
-// Lockup geometry from public/brand/lockup-name*.svg (viewBox 12 14 438 132): the wordmark starts at x=175
-// and its baseline sits at y=92, so the tagline is offset by those ratios to sit right under "AntTipid".
+// Lockup geometry from public/brand/lockup-name*.svg (viewBox 12 14 438 132): wordmark starts at x=175, tagline sits at y=100 just under its y=92 baseline.
 const NAME_X = (175 - 12) / 132
 const BELOW_NAME = (146 - 100) / 132
 

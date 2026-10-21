@@ -24,21 +24,16 @@ interface AppState {
 }
 
 const Ctx = createContext<AppState | null>(null)
-const KEY = 'anttipid-user' // mock mode only; real sessions are kept by supabase-js
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
-    if (supabase) return null
-    try { return JSON.parse(sessionStorage.getItem(KEY) ?? 'null') } catch { return null }
-  })
-  const [ready, setReady] = useState(!supabase)
+  const [user, setUser] = useState<User | null>(null)
+  const [ready, setReady] = useState(false)
   const [add, setAdd] = useState<AddRequest | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
 
-  // Real mode: the Supabase session is the source of truth. This fires once with the saved session
+  // The Supabase session is the source of truth. This fires once with the saved session
   // (INITIAL_SESSION), then on every sign-in, sign-out and token refresh.
   useEffect(() => {
-    if (!supabase) return
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ? toUser(session.user) : null)
       setReady(true)
@@ -49,14 +44,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const value: AppState = {
     user,
     ready,
-    // Updates state immediately (and sessionStorage in mock mode).
-    signIn: (u) => { setUser(u); if (!supabase) { try { sessionStorage.setItem(KEY, JSON.stringify(u)) } catch { /* private mode */ } } },
+    // Updates state immediately, before onAuthStateChange catches up.
+    signIn: setUser,
     signOut: () => {
       setUser(null)
       setAdd(null)
       setDetailId(null)
-      if (supabase) void api.auth.signOut()
-      else try { sessionStorage.removeItem(KEY) } catch { /* private mode */ }
+      void api.auth.signOut()
     },
     add,
     openAdd: (r = {}) => { setDetailId(null); setAdd(r) },

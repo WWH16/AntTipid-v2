@@ -201,7 +201,7 @@ function AccountForm({ onClose }: { onClose: () => void }) {
 
   const save = () => run(async () => {
     const trimmed = name.trim()
-    const updated = await api.auth.updateUser(trimmed, user?.email)
+    const updated = await api.auth.updateUser(trimmed)
     signIn(updated)
     onClose()
     done('Name updated', { description: trimmed })

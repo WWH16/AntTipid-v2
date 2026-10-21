@@ -36,8 +36,8 @@ MODELS = [
 PER_MODEL_TIMEOUT_S = 25
 
 WALLET_TYPES = ["cash", "e_wallet", "bank", "credit_card", "savings"]
-# Default expense categories (id -> name), the same ones every new user is seeded with. Used when the caller
-# isn't signed in (mock mode); a signed-in caller's own categories are passed to scan_receipt instead.
+# Default expense categories (id -> name), the same ones every new user is seeded with. The scan route passes
+# the caller's own categories instead; these are the fallback for direct calls (tests).
 CATEGORIES = {
     "food": "Food & dining",
     "groceries": "Groceries",

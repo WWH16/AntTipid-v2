@@ -7,10 +7,9 @@ scanning needs a Supabase access token (auth.py). Route groups are in ledger.py 
 import logging
 import time
 from pathlib import Path
-from typing import Annotated
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, FastAPI, HTTPException, Query, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,9 +24,9 @@ from psycopg import errors  # noqa: E402
 
 import ledger  # noqa: E402
 import reports  # noqa: E402
-from auth import AuthUser, optional_user  # noqa: E402
+from auth import AuthUser, User  # noqa: E402
 from db import connect, user_tx  # noqa: E402
-from receipts import CATEGORIES, NotAReceipt, ReceiptScan, ScanFailed, scan_receipt  # noqa: E402  (needs the env loaded)
+from receipts import NotAReceipt, ReceiptScan, ScanFailed, scan_receipt  # noqa: E402  (needs the env loaded)
 
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
 log = logging.getLogger("api")
@@ -76,10 +75,8 @@ def check_email(request: Request, email: str = Query(..., max_length=255)):
         return {"exists": bool(r["exists"] if r else False)}
 
 
-def _user_categories(user: AuthUser | None) -> dict[str, str]:
-    """The caller's expense categories (id -> name) for the category suggestion; the defaults when signed out."""
-    if not user:
-        return CATEGORIES
+def _user_categories(user: AuthUser) -> dict[str, str]:
+    """The caller's expense categories (id -> name) for the category suggestion."""
     try:
         with user_tx(user) as conn:
             rows = conn.execute("select id, name from categories where user_id = %s and kind = 'expense'", (user.id,))
@@ -90,7 +87,7 @@ def _user_categories(user: AuthUser | None) -> dict[str, str]:
 
 
 @api.post("/receipts/scan", response_model=ReceiptScan)
-async def scan(image: UploadFile, user: Annotated[AuthUser | None, Depends(optional_user)]) -> ReceiptScan:
+async def scan(image: UploadFile, user: User) -> ReceiptScan:
     if image.content_type not in {"image/jpeg", "image/png", "image/webp"}:
         raise HTTPException(415, "Upload a JPEG, PNG or WebP photo.")
     data = await image.read()

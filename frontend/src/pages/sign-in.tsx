@@ -63,7 +63,6 @@ export function SignInPage() {
 
   // Listen for Supabase password recovery events (from email links)
   useEffect(() => {
-    if (!supabase) return
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setMode('reset')
     })

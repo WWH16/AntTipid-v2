@@ -2,7 +2,6 @@
   <title>AntTipid — Shield Lockup (Horizontal, no tagline)</title>
   <defs>
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&amp;display=swap');
       .brand-title {
         font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         font-weight: 800;

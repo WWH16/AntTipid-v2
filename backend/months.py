@@ -33,5 +33,5 @@ def days_in(month: str) -> int:
 
 
 def days_shown(month: str) -> int:
-    """Up to today in the current month, the whole month otherwise (matches the mock)."""
+    """Up to today in the current month, the whole month otherwise."""
     return today().day if month == current_month() else days_in(month)

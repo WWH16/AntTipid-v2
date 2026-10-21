@@ -21,7 +21,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
 import { money, todayIso } from '@/lib/format'
-import { KIND_LABEL } from '@/lib/labels'
+import { KIND_LABEL } from '@/lib/transactions'
 import { cleanReceiptItems, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
 

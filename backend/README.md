@@ -40,7 +40,6 @@ Two Vercel projects from this repo:
    - `SUPABASE_JWT_SECRET` — Legacy HS256 JWT secret (optional if the project uses asymmetric ES256/RS256 signing keys via JWKS)
    - `OPENROUTER_API_KEY` and/or `GEMINI_API_KEY` — Vision model key(s) for receipt scanning
 2. **Frontend** (Root Directory `frontend`): set these under **Settings > Environment Variables**:
-   - `VITE_USE_MOCK=false`
    - `VITE_SUPABASE_URL` — Project URL (`https://<project-ref>.supabase.co`)
    - `VITE_SUPABASE_ANON_KEY` — Project anon / publishable key
 

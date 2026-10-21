@@ -3,16 +3,14 @@
 import { createClient, type AuthError, type User as SupabaseUser } from '@supabase/supabase-js'
 import type { User } from '@/types'
 
-// Same rule as USE_MOCK in api/client.ts (not imported from there: client.ts imports this file).
-const mockMode = import.meta.env.VITE_USE_MOCK === 'true'
 const url = import.meta.env.VITE_SUPABASE_URL
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY
-if (!mockMode && (!url || !key)) {
-  throw new Error('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env.local, or VITE_USE_MOCK=true for sample data.')
+if (!url || !key) {
+  throw new Error('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env.local.')
 }
 
-/** null in mock mode: there is no sign-in to do. Sessions persist in localStorage and refresh themselves. */
-export const supabase = mockMode ? null : createClient(url, key)
+/** Sessions persist in localStorage and refresh themselves. */
+export const supabase = createClient(url, key)
 
 export const toUser = (u: SupabaseUser): User => ({
   name: (u.user_metadata?.name as string | undefined)?.trim() || (u.email ?? '').split('@')[0],

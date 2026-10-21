@@ -3,13 +3,11 @@
 import { supabase } from '@/lib/supabase'
 
 export const API_URL = import.meta.env.VITE_API_URL ?? '/api'
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 type Query = Record<string, string | number | undefined>
 
 /** The signed-in user's access token as a Bearer header. getSession() refreshes it first when it's about to expire. */
 async function authHeader(): Promise<Record<string, string>> {
-  if (!supabase) return {}
   const { data } = await supabase.auth.getSession()
   return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {}
 }
@@ -27,7 +25,7 @@ async function request(path: string, init: RequestInit & { query?: Query } = {})
   })
   if (!res.ok) {
     // The session is gone on the server's side (expired, revoked): drop it here too, which shows the sign-in page.
-    if (res.status === 401 && supabase) void supabase.auth.signOut({ scope: 'local' })
+    if (res.status === 401) void supabase.auth.signOut({ scope: 'local' })
     const body = await res.json().catch(() => null)
     throw new Error(typeof body?.detail === 'string' ? body.detail : `Request failed (${res.status})`)
   }
