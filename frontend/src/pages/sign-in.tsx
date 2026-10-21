@@ -127,6 +127,7 @@ export function SignInPage() {
                 onChange={(v) => { setEmail(v); setError(''); setNotice('') }}
               />
               <FormField
+                key={mode}
                 id="password"
                 type="password"
                 label="Password"
