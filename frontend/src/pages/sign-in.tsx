@@ -1,7 +1,7 @@
 // shadcn login-01 block: centred card with the form, switching between sign-in and sign-up.
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useApp } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { Logo } from '@/components/logo'
@@ -17,6 +17,7 @@ export function SignInPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
@@ -29,6 +30,7 @@ export function SignInPage() {
     setMode(next)
     setError('')
     setNotice('')
+    setShowPassword(false)
   }
 
   async function submit(e: React.FormEvent) {
@@ -102,13 +104,24 @@ export function SignInPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError('') }}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setError('') }}
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
               </div>
               {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
