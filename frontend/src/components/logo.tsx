@@ -8,7 +8,7 @@ export function LogoWithTagline() {
   return (
     <div className="flex flex-col items-center gap-1">
       <img src="/brand/lockup-name.svg" alt="AntTipid" className="h-14 w-auto" />
-      <p className="text-center text-base leading-tight font-medium tracking-tight text-balance text-[#2A4D12] dark:text-[#DCEFCF]">Expense &amp; budget tracker</p>
+      <p className="text-center text-sm leading-tight font-medium tracking-tight text-balance text-[#2A4D12] dark:text-[#DCEFCF]">Expense &amp; budget tracker</p>
     </div>
   )
 }
