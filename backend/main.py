@@ -11,6 +11,7 @@ from typing import Annotated
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 # Explicit path: a bare load_dotenv() searches from the working directory under `uvicorn --reload`
@@ -31,6 +32,12 @@ MAX_PHOTO_BYTES = 8 * 1024 * 1024
 log = logging.getLogger("api")
 
 app = FastAPI(title="AntTipid API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 api = APIRouter(prefix="/api")
 
 

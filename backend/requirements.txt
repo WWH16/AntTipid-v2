@@ -4,6 +4,7 @@ python-multipart==0.0.20
 httpx==0.28.*
 python-dotenv==1.1.*
 psycopg[binary]==3.2.*
+psycopg-pool==3.2.*
 pyjwt[crypto]==2.10.*
 # zoneinfo data for Asia/Manila on systems without a tz database (Windows)
 tzdata

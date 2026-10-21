@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["sin1"],
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://ant-tipid-v2-backend.vercel.app/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
