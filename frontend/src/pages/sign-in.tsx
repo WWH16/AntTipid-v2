@@ -1,14 +1,13 @@
 // shadcn login-01 block: centred card with the form, switching between sign-in and sign-up.
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Check, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 import { useApp } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
 import { cn } from '@/lib/utils'
 
 export const PASSWORD_RULES = [
@@ -26,8 +25,6 @@ export function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [mismatch, setMismatch] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -57,8 +54,6 @@ export function SignInPage() {
     setNotice('')
     setPassword('')
     setConfirmPassword('')
-    setShowPassword(false)
-    setShowConfirmPassword(false)
     setMismatch(false)
   }
 
@@ -113,49 +108,33 @@ export function SignInPage() {
           <CardContent>
             <form onSubmit={submit} noValidate className="grid gap-6">
               {isSignUp && (
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Andrea Santos"
-                    autoComplete="name"
-                    value={name}
-                    onChange={(e) => { setName(e.target.value); setError('') }}
-                  />
-                </div>
-              )}
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(''); setNotice('') }}
+                <FormField
+                  id="name"
+                  label="Name"
+                  placeholder="Andrea Santos"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(v) => { setName(v); setError('') }}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); setError('') }}
-                    className="pr-9"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </button>
-                </div>
+              )}
+              <FormField
+                id="email"
+                type="email"
+                label="Email"
+                placeholder="you@example.com"
+                autoComplete="email"
+                value={email}
+                onChange={(v) => { setEmail(v); setError(''); setNotice('') }}
+              />
+              <FormField
+                id="password"
+                type="password"
+                label="Password"
+                autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                value={password}
+                onChange={(v) => { setPassword(v); setError('') }}
+                toggleVisibility
+              >
                 {isSignUp && (
                   <ul className="grid grid-cols-2 gap-1.5 pt-1 text-xs" aria-label="Password requirements">
                     {PASSWORD_RULES.map((rule) => {
@@ -175,45 +154,21 @@ export function SignInPage() {
                     })}
                   </ul>
                 )}
-              </div>
+              </FormField>
               {isSignUp && (
-                <div className="grid gap-2">
-                  <Label htmlFor="confirmPassword">Confirm password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={(e) => { setConfirmPassword(e.target.value); setError('') }}
-                      className={cn(
-                        'pr-9',
-                        mismatch && 'border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20',
-                        isMatched && 'border-primary/60 focus-visible:border-primary focus-visible:ring-primary/20'
-                      )}
-                      aria-invalid={mismatch}
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      onClick={() => setShowConfirmPassword((v) => !v)}
-                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                    >
-                      {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
-                  </div>
-                  {mismatch && (
-                    <p role="alert" className="text-xs text-destructive">
-                      Passwords do not match
-                    </p>
-                  )}
-                  {isMatched && (
-                    <p role="status" className="flex items-center gap-1 text-xs text-primary">
-                      <Check className="size-3.5" />
-                      <span>Passwords match</span>
-                    </p>
-                  )}
-                </div>
+                <FormField
+                  id="confirmPassword"
+                  type="password"
+                  label="Confirm password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(v) => { setConfirmPassword(v); setError('') }}
+                  toggleVisibility
+                  hasError={mismatch}
+                  errorMessage={mismatch ? 'Passwords do not match' : undefined}
+                  isValid={isMatched}
+                  successMessage={isMatched ? 'Passwords match' : undefined}
+                />
               )}
               {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
