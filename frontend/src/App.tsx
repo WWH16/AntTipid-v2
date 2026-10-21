@@ -2,7 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useApp } from '@/app-state'
 import { AppShell } from '@/components/app-shell'
-import { LoadingPage } from '@/components/states'
+import { LoadingAuth, LoadingPage } from '@/components/states'
 
 // Each page is its own file, downloaded the first time it is opened.
 const HomePage = lazy(() => import('@/pages/home').then((m) => ({ default: m.HomePage })))
@@ -23,7 +23,7 @@ function RequireUser({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/sign-in" element={page(<SignInPage />)} />
+      <Route path="/sign-in" element={<Suspense fallback={<LoadingAuth />}><SignInPage /></Suspense>} />
       <Route element={<RequireUser><AppShell /></RequireUser>}>
         <Route index element={page(<HomePage />)} />
         <Route path="activity" element={page(<ActivityPage />)} />

@@ -5,6 +5,7 @@ import { Check, Loader2, Mail } from 'lucide-react'
 import { useApp } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { LogoWithTagline } from '@/components/logo'
+import { LoadingAuth } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormField } from '@/components/ui/form-field'
@@ -28,7 +29,7 @@ const COPY: Record<Exclude<AuthMode, 'emailSent'>, { title: string; description:
 }
 
 export function SignInPage() {
-  const { user, signIn } = useApp()
+  const { user, ready, signIn } = useApp()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const isResetLink = searchParams.get('mode') === 'reset'
@@ -68,7 +69,9 @@ export function SignInPage() {
     return () => data.subscription.unsubscribe()
   }, [])
 
-  // After the hooks: a recovery link signs the user in, and the reset form must stay up until the new password is saved.
+  // After the hooks: hold the form until the saved session is read, so a signed-in visitor isn't shown it on the way to /.
+  if (!ready) return <LoadingAuth />
+  // A recovery link signs the user in, and the reset form must stay up until the new password is saved.
   if (user && !isReset) return <Navigate to="/" replace />
 
   // Only flag a mismatch once the confirmation stops being a prefix of the password, so typing it isn't nagged.

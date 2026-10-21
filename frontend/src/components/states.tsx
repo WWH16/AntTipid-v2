@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { BrandMark } from '@/components/brand-icons'
 import { HeroCard } from '@/components/hero-card'
+import { LogoWithTagline } from '@/components/logo'
 import { cn } from '@/lib/utils'
 
 export function EmptyState({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
@@ -106,6 +107,35 @@ export function LoadingPage() {
         <Skeleton className="h-4 w-48" />
       </div>
       <LoadingCard><LoadingItems rows={5} /></LoadingCard>
+    </div>
+  )
+}
+
+/** The sign-in screen while its code downloads or the session is read: logo, then the card with two fields.
+ *  Bars sit inside the line boxes of the text they stand for (my-1), so the real card lands at the same height. */
+export function LoadingAuth() {
+  return (
+    <div aria-busy className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <div className="self-center"><LogoWithTagline /></div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="my-1 h-3.5 w-48" />
+            <Skeleton className="my-1 h-3 w-56 max-w-full" />
+          </CardHeader>
+          <CardContent className="grid gap-6">
+            {/* The password label row is 2px taller: "Forgot password?" sits beside it. */}
+            {['h-3.5 w-10', 'my-px h-3.5 w-16'].map((label) => (
+              <div key={label} className="grid gap-2">
+                <Skeleton className={label} />
+                <Skeleton className="h-9 w-full rounded-lg pointer-coarse:h-11" />
+              </div>
+            ))}
+            <Skeleton className="h-9 w-full rounded-lg pointer-coarse:h-11" />
+            <Skeleton className="mx-auto my-1 h-3 w-52" />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
