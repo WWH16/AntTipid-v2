@@ -10,6 +10,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+export const PASSWORD_RULES = [
+  { id: 'min-length', label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
+  { id: 'uppercase', label: 'One uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
+  { id: 'lowercase', label: 'One lowercase letter', test: (p: string) => /[a-z]/.test(p) },
+  { id: 'number', label: 'One number', test: (p: string) => /\d/.test(p) },
+]
+
 export function SignInPage() {
   const { user, signIn } = useApp()
   const navigate = useNavigate()
@@ -44,8 +51,11 @@ export function SignInPage() {
     setNotice('')
     if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address, like you@example.com.')
     if (!password) return setError('Enter your password.')
-    if (isSignUp && password.length < 6) return setError('Use at least 6 characters for your password.')
-    if (isSignUp && password !== confirmPassword) return setError('Passwords do not match.')
+    if (isSignUp) {
+      const failed = PASSWORD_RULES.find((r) => !r.test(password))
+      if (failed) return setError(`Password must have ${failed.label.toLowerCase()}.`)
+      if (password !== confirmPassword) return setError('Passwords do not match.')
+    }
     setBusy(true)
     try {
       if (isSignUp) {
