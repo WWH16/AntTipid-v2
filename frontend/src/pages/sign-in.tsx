@@ -1,7 +1,7 @@
 // shadcn login-01 block: centred card with the form, switching between sign-in and sign-up.
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Check, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useApp } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { Logo } from '@/components/logo'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 
 export const PASSWORD_RULES = [
   { id: 'min-length', label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -139,6 +140,25 @@ export function SignInPage() {
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 </div>
+                {isSignUp && (
+                  <ul className="grid grid-cols-2 gap-1.5 pt-1 text-xs" aria-label="Password requirements">
+                    {PASSWORD_RULES.map((rule) => {
+                      const met = rule.test(password)
+                      return (
+                        <li
+                          key={rule.id}
+                          className={cn(
+                            'flex items-center gap-1.5 transition-colors',
+                            met ? 'font-medium text-primary' : 'text-muted-foreground'
+                          )}
+                        >
+                          <Check className={cn('size-3.5 shrink-0', met ? 'text-primary' : 'opacity-30')} />
+                          <span>{rule.label}</span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
               </div>
               {isSignUp && (
                 <div className="grid gap-2">
