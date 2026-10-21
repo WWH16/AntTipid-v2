@@ -4,11 +4,13 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, Loader2, Mail } from 'lucide-react'
 import { useApp } from '@/app-state'
 import { api } from '@/api/endpoints'
+import { GoogleIcon } from '@/components/brand-icons'
 import { LogoWithTagline } from '@/components/logo'
 import { LoadingAuth } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormField } from '@/components/ui/form-field'
+import { Separator } from '@/components/ui/separator'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 
@@ -33,7 +35,7 @@ export function SignInPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const isResetLink = searchParams.get('mode') === 'reset'
-  // Supabase sends expired or used links back with #error_description=... instead of a session.
+  // Supabase sends expired links and unfinished Google sign-ins back with #error_description=... instead of a session.
   const linkError = new URLSearchParams(location.hash.slice(1)).get('error_description')
   const [mode, setMode] = useState<AuthMode>(() =>
     linkError ? (isResetLink ? 'forgot' : 'signIn')
@@ -44,7 +46,9 @@ export function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState(linkError ? 'That email link is invalid or has expired. Request a new one.' : '')
+  const [error, setError] = useState(!linkError ? ''
+    : isResetLink ? 'That email link is invalid or has expired. Request a new one.'
+    : 'Sign-in didn’t finish. Try again.')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -93,6 +97,19 @@ export function SignInPage() {
     if (i >= 0 && i < inputs.length - 1) {
       e.preventDefault()
       inputs[i + 1].focus()
+    }
+  }
+
+  /** On success the browser is already leaving for Google, so busy stays on. */
+  async function continueWithGoogle() {
+    setError('')
+    setNotice('')
+    setBusy(true)
+    try {
+      await api.auth.signInWithGoogle()
+    } catch (err) {
+      setError((err as Error).message)
+      setBusy(false)
     }
   }
 
@@ -220,7 +237,17 @@ export function SignInPage() {
             <CardTitle role="heading" aria-level={1}>{title}</CardTitle>
             <CardDescription>{description}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="grid gap-6">
+            {(isSignIn || isSignUp) && (
+              <>
+                <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={continueWithGoogle}>
+                  <GoogleIcon /> Continue with Google
+                </Button>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <Separator className="flex-1" /> or <Separator className="flex-1" />
+                </div>
+              </>
+            )}
             <form onSubmit={submit} onKeyDown={handleFormKeyDown} noValidate className="grid gap-6">
               {isSignUp && (
                 <FormField
