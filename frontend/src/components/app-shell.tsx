@@ -2,7 +2,7 @@ import { ChartColumn, ChevronsUpDown, House, ListOrdered, LogOut, PiggyBank, Plu
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '@/app-state'
 import { AddTransactionSheet } from '@/components/add-transaction-sheet'
-import { Logo } from '@/components/logo'
+import { LogoWithTagline } from '@/components/logo'
 import { TransactionSheet } from '@/components/transaction-sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -38,8 +38,8 @@ export function AppShell() {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" render={<NavLink to="/" />}>
-                <Logo tone="dark" className="h-11" />
+              <SidebarMenuButton size="lg" className="h-auto py-2" render={<NavLink to="/" />}>
+                <LogoWithTagline tone="dark" align="start" className="h-10" />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
