@@ -17,7 +17,9 @@ export function SignInPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
@@ -30,7 +32,10 @@ export function SignInPage() {
     setMode(next)
     setError('')
     setNotice('')
+    setPassword('')
+    setConfirmPassword('')
     setShowPassword(false)
+    setShowConfirmPassword(false)
   }
 
   async function submit(e: React.FormEvent) {
@@ -40,6 +45,7 @@ export function SignInPage() {
     if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address, like you@example.com.')
     if (!password) return setError('Enter your password.')
     if (isSignUp && password.length < 6) return setError('Use at least 6 characters for your password.')
+    if (isSignUp && password !== confirmPassword) return setError('Passwords do not match.')
     setBusy(true)
     try {
       if (isSignUp) {
@@ -48,6 +54,7 @@ export function SignInPage() {
         if (!created) {
           setMode('signIn')
           setPassword('')
+          setConfirmPassword('')
           setNotice('Check your email to confirm, then sign in.')
           setBusy(false)
           return
@@ -123,6 +130,29 @@ export function SignInPage() {
                   </button>
                 </div>
               </div>
+              {isSignUp && (
+                <div className="grid gap-2">
+                  <Label htmlFor="confirmPassword">Confirm password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(e) => { setConfirmPassword(e.target.value); setError('') }}
+                      className="pr-9"
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    >
+                      {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
               {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={busy}>
