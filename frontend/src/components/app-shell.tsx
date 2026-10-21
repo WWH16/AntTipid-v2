@@ -39,7 +39,7 @@ export function AppShell() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" className="h-auto py-1" render={<NavLink to="/" />}>
-                <LogoWithTagline tone="dark" height={44} />
+                <LogoWithTagline tone="dark" height={44} small />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
