@@ -36,8 +36,12 @@ export function SignInPage() {
   const isSignUp = mode === 'signUp'
   const isMatched = isSignUp && confirmPassword.length > 0 && password === confirmPassword
 
-  // Live email check: only debounces when the address format is complete (e.g. user@gmail.com)
+  // Live email check: only runs on sign-up to avoid account enumeration on sign-in
   useEffect(() => {
+    if (!isSignUp) {
+      setEmailStatus(null)
+      return
+    }
     const clean = email.trim().toLowerCase()
     if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(clean)) {
       setEmailStatus(null)
@@ -52,7 +56,7 @@ export function SignInPage() {
       }
     }, 500)
     return () => clearTimeout(timer)
-  }, [email])
+  }, [email, isSignUp])
 
   // Debounced password mismatch warning
   useEffect(() => {
@@ -78,20 +82,12 @@ export function SignInPage() {
     setEmailStatus(null)
   }
 
-  const emailError = emailStatus?.checked
-    ? isSignUp && emailStatus.exists
-      ? 'Account already exists with this email. Sign in instead.'
-      : !isSignUp && !emailStatus.exists
-      ? 'No account found with this email.'
-      : undefined
+  const emailError = isSignUp && emailStatus?.checked && emailStatus.exists
+    ? 'Account already exists with this email. Sign in instead.'
     : undefined
 
-  const emailSuccess = emailStatus?.checked
-    ? isSignUp && !emailStatus.exists
-      ? 'Email available'
-      : !isSignUp && emailStatus.exists
-      ? 'Account found'
-      : undefined
+  const emailSuccess = isSignUp && emailStatus?.checked && !emailStatus.exists
+    ? 'Email available'
     : undefined
 
   async function submit(e: React.FormEvent) {
