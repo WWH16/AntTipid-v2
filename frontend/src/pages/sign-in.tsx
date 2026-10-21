@@ -4,7 +4,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, Loader2, Mail } from 'lucide-react'
 import { useApp } from '@/app-state'
 import { api } from '@/api/endpoints'
-import { Logo } from '@/components/logo'
+import { LogoWithTagline } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormField } from '@/components/ui/form-field'
@@ -183,7 +183,7 @@ export function SignInPage() {
     return (
       <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
         <div className="flex w-full max-w-sm flex-col gap-6">
-          <div className="self-center"><Logo className="h-14" /></div>
+          <div className="self-center"><LogoWithTagline /></div>
           <Card className="text-center">
             <CardHeader className="flex flex-col items-center gap-2 pb-2">
               <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -236,7 +236,7 @@ export function SignInPage() {
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
-        <div className="self-center"><Logo className="h-14" /></div>
+        <div className="self-center"><LogoWithTagline /></div>
         <Card>
           <CardHeader>
             <CardTitle role="heading" aria-level={1}>{title}</CardTitle>
