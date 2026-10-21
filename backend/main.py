@@ -1,15 +1,14 @@
 """AntTipid API: receipt scanning plus the user's wallets, categories, transactions, budgets and reports.
 
-Data lives in Supabase Postgres (db.py), receipt photos in Supabase Storage (storage.py), and every route except
-scanning needs a Supabase access token (auth.py). Route groups are in ledger.py and reports.py.
+Data lives in Supabase Postgres (db.py), receipt photos in Supabase Storage (storage.py), and every route needs a
+Supabase access token (auth.py). Route groups are in ledger.py and reports.py.
 """
 
 import logging
-import time
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, FastAPI, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, FastAPI, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,7 +24,7 @@ from psycopg import errors  # noqa: E402
 import ledger  # noqa: E402
 import reports  # noqa: E402
 from auth import AuthUser, User  # noqa: E402
-from db import connect, user_tx  # noqa: E402
+from db import user_tx  # noqa: E402
 from receipts import NotAReceipt, ReceiptScan, ScanFailed, scan_receipt  # noqa: E402  (needs the env loaded)
 
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
@@ -39,41 +38,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 api = APIRouter(prefix="/api")
-
-# Rate limit email check to prevent automated enumeration (10 requests per minute per IP)
-_check_email_ips: dict[str, list[float]] = {}
-
-
-def _is_rate_limited(ip: str) -> bool:
-    now = time.monotonic()
-    times = [t for t in _check_email_ips.get(ip, []) if now - t < 60]
-    if len(times) >= 10:
-        return True
-    times.append(now)
-    _check_email_ips[ip] = times
-    # Keep eviction: X-Forwarded-For is client-set, so the dict would otherwise grow without bound.
-    if len(_check_email_ips) > 1000:
-        expired = [k for k, v in _check_email_ips.items() if not v or now - v[-1] >= 60]
-        for k in expired:
-            _check_email_ips.pop(k, None)
-    return False
-
-
-@api.get("/auth/check-email")
-def check_email(request: Request, email: str = Query(..., max_length=255)):
-    """Check if an email already exists in auth.users for live sign-up validation."""
-    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (
-        request.client.host if request.client else "127.0.0.1"
-    )
-    if _is_rate_limited(ip):
-        raise HTTPException(status_code=429, detail="Too many attempts. Please try again in a minute.")
-    clean = email.strip().lower()
-    with connect() as conn:
-        r = conn.execute(
-            "select exists(select 1 from auth.users where lower(email) = %s) as exists", (clean,)
-        ).fetchone()
-        return {"exists": bool(r["exists"] if r else False)}
-
 
 def _user_categories(user: AuthUser) -> dict[str, str]:
     """The caller's expense categories (id -> name) for the category suggestion."""

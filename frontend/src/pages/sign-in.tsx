@@ -43,7 +43,6 @@ export function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [emailExists, setEmailExists] = useState<boolean | null>(null)
   const [error, setError] = useState(linkError ? 'That email link is invalid or has expired. Request a new one.' : '')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
@@ -69,34 +68,12 @@ export function SignInPage() {
     return () => data.subscription.unsubscribe()
   }, [])
 
-  // Live email check: only runs on sign-up, with active flag to ignore out-of-order network responses
-  useEffect(() => {
-    setEmailExists(null)
-    const clean = email.trim().toLowerCase()
-    if (!isSignUp || !/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(clean)) return
-    let active = true
-    const timer = setTimeout(async () => {
-      try {
-        const res = await api.auth.checkEmail(clean)
-        if (active) setEmailExists(res.exists)
-      } catch {
-        // The check is a hint only; sign-up itself still reports a taken email.
-      }
-    }, 500)
-    return () => {
-      active = false
-      clearTimeout(timer)
-    }
-  }, [email, isSignUp])
-
   // After the hooks: a recovery link signs the user in, and the reset form must stay up until the new password is saved.
   if (user && !isReset) return <Navigate to="/" replace />
 
   // Only flag a mismatch once the confirmation stops being a prefix of the password, so typing it isn't nagged.
   const mismatch = needsNewPassword && !!confirmPassword && !password.startsWith(confirmPassword)
   const isMatched = needsNewPassword && !!confirmPassword && password === confirmPassword
-  const emailError = isSignUp && emailExists ? 'Account already exists with this email.' : undefined
-  const emailSuccess = isSignUp && emailExists === false ? 'Email available' : undefined
 
   function switchMode(next: AuthMode) {
     setMode(next)
@@ -141,7 +118,6 @@ export function SignInPage() {
 
     if (!isReset && !/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address, like you@example.com.')
     if (isForgot) return sendEmail('reset')
-    if (emailError) return setError(emailError)
     if (!password) return setError(isReset ? 'Enter your new password.' : 'Enter your password.')
     if (needsNewPassword) {
       const failed = PASSWORD_RULES.find((r) => !r.test(password))
@@ -263,8 +239,6 @@ export function SignInPage() {
                   autoComplete="email"
                   value={email}
                   onChange={(v) => { setEmail(v); setError(''); setNotice('') }}
-                  errorMessage={emailError}
-                  successMessage={emailSuccess}
                   enterKeyHint={isForgot ? 'go' : 'next'}
                 />
               )}

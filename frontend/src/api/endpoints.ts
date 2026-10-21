@@ -23,9 +23,10 @@ export const api = {
         email, password, options: { data: { name }, emailRedirectTo: `${location.origin}/sign-in` },
       })
       if (error) throw new Error(authMessage(error))
+      // A taken email (with confirmation on) comes back as a fake user with no identities, and no email is sent.
+      if (data.user?.identities?.length === 0) throw new Error('There is already an account with this email. Sign in instead.')
       return data.session && data.user ? toUser(data.user) : null
     },
-    checkEmail: (email: string) => http<{ exists: boolean }>('/auth/check-email', { query: { email } }),
     resetPassword: async (email: string): Promise<void> => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${location.origin}/sign-in?mode=reset`,
