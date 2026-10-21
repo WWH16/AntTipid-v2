@@ -36,7 +36,7 @@ export function SignInPage() {
   const isSignUp = mode === 'signUp'
   const isMatched = isSignUp && confirmPassword.length > 0 && password === confirmPassword
 
-  // Live email check: only runs on sign-up to avoid account enumeration on sign-in
+  // Live email check: only runs on sign-up, with active flag to ignore out-of-order network responses
   useEffect(() => {
     if (!isSignUp) {
       setEmailStatus(null)
@@ -47,15 +47,19 @@ export function SignInPage() {
       setEmailStatus(null)
       return
     }
+    let active = true
     const timer = setTimeout(async () => {
       try {
         const res = await api.auth.checkEmail(clean)
-        setEmailStatus({ checked: true, exists: res.exists })
+        if (active) setEmailStatus({ checked: true, exists: res.exists })
       } catch {
-        setEmailStatus(null)
+        if (active) setEmailStatus(null)
       }
     }, 500)
-    return () => clearTimeout(timer)
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
   }, [email, isSignUp])
 
   // Debounced password mismatch warning
@@ -89,6 +93,16 @@ export function SignInPage() {
   const emailSuccess = isSignUp && emailStatus?.checked && !emailStatus.exists
     ? 'Email available'
     : undefined
+
+  function handleFormKeyDown(e: React.KeyboardEvent<HTMLFormElement>) {
+    if (e.key !== 'Enter' || e.shiftKey) return
+    const inputs = Array.from(e.currentTarget.querySelectorAll<HTMLInputElement>('input:not([type=hidden])'))
+    const i = inputs.indexOf(e.target as HTMLInputElement)
+    if (i >= 0 && i < inputs.length - 1) {
+      e.preventDefault()
+      inputs[i + 1].focus()
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -140,7 +154,7 @@ export function SignInPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={submit} noValidate className="grid gap-6">
+            <form onSubmit={submit} onKeyDown={handleFormKeyDown} noValidate className="grid gap-6">
               {isSignUp && (
                 <FormField
                   id="name"
@@ -149,6 +163,7 @@ export function SignInPage() {
                   autoComplete="name"
                   value={name}
                   onChange={(v) => { setName(v); setError('') }}
+                  enterKeyHint="next"
                 />
               )}
               <FormField
@@ -163,6 +178,7 @@ export function SignInPage() {
                 errorMessage={emailError}
                 isValid={Boolean(emailSuccess)}
                 successMessage={emailSuccess}
+                enterKeyHint="next"
               />
               <FormField
                 key={mode}
@@ -173,6 +189,7 @@ export function SignInPage() {
                 value={password}
                 onChange={(v) => { setPassword(v); setError('') }}
                 toggleVisibility
+                enterKeyHint={isSignUp ? 'next' : 'go'}
               >
                 {isSignUp && (
                   <ul className="grid grid-cols-2 gap-1.5 pt-1 text-xs" aria-label="Password requirements">
@@ -207,6 +224,7 @@ export function SignInPage() {
                   errorMessage={mismatch ? 'Passwords do not match' : undefined}
                   isValid={isMatched}
                   successMessage={isMatched ? 'Passwords match' : undefined}
+                  enterKeyHint="go"
                 />
               )}
               {notice && <p role="status" className="text-sm text-primary">{notice}</p>}

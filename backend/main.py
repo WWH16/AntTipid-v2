@@ -5,6 +5,7 @@ scanning needs a Supabase access token (auth.py). Route groups are in ledger.py 
 """
 
 import logging
+import time
 from pathlib import Path
 from typing import Annotated
 
@@ -40,10 +41,34 @@ app.add_middleware(
 )
 api = APIRouter(prefix="/api")
 
+# Rate limit email check to prevent automated enumeration (10 requests per minute per IP)
+_RATE_LIMIT_WINDOW = 60.0
+_RATE_LIMIT_MAX = 10
+_check_email_ips: dict[str, list[float]] = {}
+
+
+def _is_rate_limited(ip: str) -> bool:
+    now = time.monotonic()
+    times = [t for t in _check_email_ips.get(ip, []) if now - t < _RATE_LIMIT_WINDOW]
+    if len(times) >= _RATE_LIMIT_MAX:
+        return True
+    times.append(now)
+    _check_email_ips[ip] = times
+    if len(_check_email_ips) > 1000:
+        expired = [k for k, v in _check_email_ips.items() if not v or now - v[-1] >= _RATE_LIMIT_WINDOW]
+        for k in expired:
+            _check_email_ips.pop(k, None)
+    return False
+
 
 @api.get("/auth/check-email")
-def check_email(email: str = Query(..., max_length=255)):
-    """Check if an email already exists in auth.users, for live frontend validation."""
+def check_email(request: Request, email: str = Query(..., max_length=255)):
+    """Check if an email already exists in auth.users for live sign-up validation."""
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (
+        request.client.host if request.client else "127.0.0.1"
+    )
+    if _is_rate_limited(ip):
+        raise HTTPException(status_code=429, detail="Too many attempts. Please try again in a minute.")
     clean = email.strip().lower()
     with connect() as conn:
         r = conn.execute(
