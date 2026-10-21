@@ -1,5 +1,5 @@
 // shadcn login-01 block: centred card with the form, switching between sign-in and sign-up.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { Check, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useApp } from '@/app-state'
@@ -28,6 +28,7 @@ export function SignInPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [mismatch, setMismatch] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
@@ -35,6 +36,20 @@ export function SignInPage() {
   if (user) return <Navigate to="/" replace />
 
   const isSignUp = mode === 'signUp'
+  const isMatched = isSignUp && confirmPassword.length > 0 && password === confirmPassword
+
+  useEffect(() => {
+    if (!isSignUp || !confirmPassword) {
+      setMismatch(false)
+      return
+    }
+    if (password === confirmPassword) {
+      setMismatch(false)
+      return
+    }
+    const timer = setTimeout(() => setMismatch(true), 400)
+    return () => clearTimeout(timer)
+  }, [isSignUp, password, confirmPassword])
 
   function switchMode(next: 'signIn' | 'signUp') {
     setMode(next)
@@ -44,6 +59,7 @@ export function SignInPage() {
     setConfirmPassword('')
     setShowPassword(false)
     setShowConfirmPassword(false)
+    setMismatch(false)
   }
 
   async function submit(e: React.FormEvent) {
@@ -170,7 +186,12 @@ export function SignInPage() {
                       autoComplete="new-password"
                       value={confirmPassword}
                       onChange={(e) => { setConfirmPassword(e.target.value); setError('') }}
-                      className="pr-9"
+                      className={cn(
+                        'pr-9',
+                        mismatch && 'border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20',
+                        isMatched && 'border-primary/60 focus-visible:border-primary focus-visible:ring-primary/20'
+                      )}
+                      aria-invalid={mismatch}
                     />
                     <button
                       type="button"
@@ -181,6 +202,17 @@ export function SignInPage() {
                       {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </button>
                   </div>
+                  {mismatch && (
+                    <p role="alert" className="text-xs text-destructive">
+                      Passwords do not match
+                    </p>
+                  )}
+                  {isMatched && (
+                    <p role="status" className="flex items-center gap-1 text-xs text-primary">
+                      <Check className="size-3.5" />
+                      <span>Passwords match</span>
+                    </p>
+                  )}
                 </div>
               )}
               {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
