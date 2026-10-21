@@ -106,6 +106,8 @@ export const mock = {
   signIn: (email: string, _password?: string) => delay<User>({ name: 'Andrea Santos', email }),
   signUp: (name: string, email: string, _password: string) => delay<User | null>({ name, email }),
   updateUser: (name: string, email = 'andrea@example.com') => delay<User>({ name, email }),
+  resetPassword: (_email: string) => delay(null),
+  updatePassword: (_password: string) => delay<User>({ name: 'Andrea Santos', email: 'andrea@example.com' }),
   signOut: () => delay(null),
 
   listWallets: () => delay<Wallet[]>(wallets.map((w) => ({ ...w, balance: balanceOf(w.id) }))),

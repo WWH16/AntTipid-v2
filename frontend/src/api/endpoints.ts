@@ -33,6 +33,21 @@ export const api = {
       async (_email: string) => ({ exists: false }),
       (email: string) => http<{ exists: boolean }>('/auth/check-email', { query: { email } })
     ),
+    resetPassword: pick(mock.resetPassword, async (email: string): Promise<void> => {
+      const { error } = await supabase!.auth.resetPasswordForEmail(email, {
+        redirectTo: `${location.origin}/sign-in?mode=reset`,
+      })
+      if (error) throw new Error(authMessage(error))
+    }),
+    resendSignUp: pick(mock.resetPassword, async (email: string): Promise<void> => {
+      const { error } = await supabase!.auth.resend({ type: 'signup', email })
+      if (error) throw new Error(authMessage(error))
+    }),
+    updatePassword: pick(mock.updatePassword, async (password: string): Promise<User> => {
+      const { data, error } = await supabase!.auth.updateUser({ password })
+      if (error || !data.user) throw new Error(error ? authMessage(error) : "Couldn't update your password.")
+      return toUser(data.user)
+    }),
     updateUser: pick(mock.updateUser, async (name: string, _email?: string): Promise<User> => {
       const { data, error } = await supabase!.auth.updateUser({ data: { name } })
       if (error || !data.user) throw new Error(error ? authMessage(error) : "Couldn't update your profile.")

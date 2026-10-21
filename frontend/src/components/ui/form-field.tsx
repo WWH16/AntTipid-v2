@@ -11,11 +11,9 @@ export interface FormFieldProps extends Omit<React.ComponentProps<typeof Input>,
   onChange: (value: string) => void
   errorMessage?: string | null
   successMessage?: string | null
-  isValid?: boolean
-  hasError?: boolean
   toggleVisibility?: boolean
-  inputClassName?: string
   children?: ReactNode
+  labelRight?: ReactNode
 }
 
 export function FormField({
@@ -26,23 +24,23 @@ export function FormField({
   onChange,
   errorMessage,
   successMessage,
-  isValid,
-  hasError,
   toggleVisibility,
   className,
-  inputClassName,
   children,
+  labelRight,
   ...inputProps
 }: FormFieldProps) {
   const [showPassword, setShowPassword] = useState(false)
-  const isPassword = type === 'password'
-  const inputType = isPassword && toggleVisibility ? (showPassword ? 'text' : 'password') : type
-  const isInvalid = Boolean(hasError || errorMessage)
-  const isSuccess = Boolean(!isInvalid && (isValid || successMessage))
+  const inputType = toggleVisibility && showPassword ? 'text' : type
+  const isInvalid = Boolean(errorMessage)
+  const isSuccess = !isInvalid && Boolean(successMessage)
 
   return (
     <div className={cn('grid gap-2', className)}>
-      <Label htmlFor={id}>{label}</Label>
+      <div className="flex items-center justify-between">
+        <Label htmlFor={id}>{label}</Label>
+        {labelRight}
+      </div>
       <div className="relative">
         <Input
           id={id}
@@ -53,8 +51,7 @@ export function FormField({
           className={cn(
             toggleVisibility && 'pr-9',
             isInvalid && 'border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20',
-            isSuccess && 'border-primary/60 focus-visible:border-primary focus-visible:ring-primary/20',
-            inputClassName
+            isSuccess && 'border-primary/60 focus-visible:border-primary focus-visible:ring-primary/20'
           )}
           {...inputProps}
         />
@@ -74,7 +71,7 @@ export function FormField({
           {errorMessage}
         </p>
       )}
-      {!isInvalid && successMessage && (
+      {isSuccess && (
         <p role="status" className="flex items-center gap-1 text-xs text-primary">
           <Check className="size-3.5" />
           <span>{successMessage}</span>
