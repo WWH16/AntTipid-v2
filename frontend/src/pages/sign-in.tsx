@@ -1,6 +1,6 @@
 // shadcn login-01 block: centred card with the form, switching between sign-in, sign-up, forgot password, reset, and email confirmation.
 import { useEffect, useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, Loader2, Mail } from 'lucide-react'
 import { useApp } from '@/app-state'
 import { api } from '@/api/endpoints'
@@ -216,6 +216,7 @@ export function SignInPage() {
               </Button>
             </CardContent>
           </Card>
+          <Link to="/privacy" className="self-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Privacy policy</Link>
         </div>
       </div>
     )
@@ -345,6 +346,7 @@ export function SignInPage() {
             </form>
           </CardContent>
         </Card>
+        <Link to="/privacy" className="self-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Privacy policy</Link>
       </div>
     </div>
   )

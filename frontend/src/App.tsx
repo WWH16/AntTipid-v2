@@ -10,6 +10,7 @@ const ActivityPage = lazy(() => import('@/pages/activity').then((m) => ({ defaul
 const BudgetsPage = lazy(() => import('@/pages/budgets').then((m) => ({ default: m.BudgetsPage })))
 const ReportsPage = lazy(() => import('@/pages/reports').then((m) => ({ default: m.ReportsPage })))
 const SettingsPage = lazy(() => import('@/pages/settings').then((m) => ({ default: m.SettingsPage })))
+const PrivacyPage = lazy(() => import('@/pages/privacy').then((m) => ({ default: m.PrivacyPage })))
 const SignInPage = lazy(() => import('@/pages/sign-in').then((m) => ({ default: m.SignInPage })))
 
 const page = (el: ReactNode) => <Suspense fallback={<LoadingPage />}>{el}</Suspense>
@@ -23,6 +24,7 @@ function RequireUser({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <Routes>
+      <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />
       <Route path="/sign-in" element={<Suspense fallback={<LoadingAuth />}><SignInPage /></Suspense>} />
       <Route element={<RequireUser><AppShell /></RequireUser>}>
         <Route index element={page(<HomePage />)} />

@@ -138,6 +138,8 @@ export function LoadingAuth() {
             <Skeleton className="mx-auto my-1 h-3 w-52" />
           </CardContent>
         </Card>
+        {/* The "Privacy policy" link: one 16px line of text-xs. */}
+        <Skeleton className="my-1 h-2 w-20 self-center" />
       </div>
     </div>
   )
