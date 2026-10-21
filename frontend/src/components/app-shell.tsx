@@ -38,8 +38,8 @@ export function AppShell() {
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" className="h-auto py-2" render={<NavLink to="/" />}>
-                <LogoWithTagline tone="dark" align="start" className="h-10" />
+              <SidebarMenuButton size="lg" className="h-auto py-1" render={<NavLink to="/" />}>
+                <LogoWithTagline tone="dark" height={44} />
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
