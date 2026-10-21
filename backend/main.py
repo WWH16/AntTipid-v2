@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Annotated
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -25,7 +25,7 @@ from psycopg import errors  # noqa: E402
 import ledger  # noqa: E402
 import reports  # noqa: E402
 from auth import AuthUser, optional_user  # noqa: E402
-from db import user_tx  # noqa: E402
+from db import connect, user_tx  # noqa: E402
 from receipts import CATEGORIES, NotAReceipt, ReceiptScan, ScanFailed, scan_receipt  # noqa: E402  (needs the env loaded)
 
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
@@ -39,6 +39,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 api = APIRouter(prefix="/api")
+
+
+@api.get("/auth/check-email")
+def check_email(email: str = Query(..., max_length=255)):
+    """Check if an email already exists in auth.users, for live frontend validation."""
+    clean = email.strip().lower()
+    with connect() as conn:
+        r = conn.execute(
+            "select exists(select 1 from auth.users where lower(email) = %s) as exists", (clean,)
+        ).fetchone()
+        return {"exists": bool(r["exists"] if r else False)}
 
 
 def _user_categories(user: AuthUser | None) -> dict[str, str]:

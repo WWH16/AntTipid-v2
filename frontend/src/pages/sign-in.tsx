@@ -26,6 +26,7 @@ export function SignInPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [mismatch, setMismatch] = useState(false)
+  const [emailStatus, setEmailStatus] = useState<{ checked: boolean; exists: boolean } | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
@@ -35,6 +36,25 @@ export function SignInPage() {
   const isSignUp = mode === 'signUp'
   const isMatched = isSignUp && confirmPassword.length > 0 && password === confirmPassword
 
+  // Live email check: only debounces when the address format is complete (e.g. user@gmail.com)
+  useEffect(() => {
+    const clean = email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/.test(clean)) {
+      setEmailStatus(null)
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.auth.checkEmail(clean)
+        setEmailStatus({ checked: true, exists: res.exists })
+      } catch {
+        setEmailStatus(null)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [email])
+
+  // Debounced password mismatch warning
   useEffect(() => {
     if (!isSignUp || !confirmPassword) {
       setMismatch(false)
@@ -55,13 +75,31 @@ export function SignInPage() {
     setPassword('')
     setConfirmPassword('')
     setMismatch(false)
+    setEmailStatus(null)
   }
+
+  const emailError = emailStatus?.checked
+    ? isSignUp && emailStatus.exists
+      ? 'Account already exists with this email. Sign in instead.'
+      : !isSignUp && !emailStatus.exists
+      ? 'No account found with this email.'
+      : undefined
+    : undefined
+
+  const emailSuccess = emailStatus?.checked
+    ? isSignUp && !emailStatus.exists
+      ? 'Email available'
+      : !isSignUp && emailStatus.exists
+      ? 'Account found'
+      : undefined
+    : undefined
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setNotice('')
     if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address, like you@example.com.')
+    if (emailError) return setError(emailError)
     if (!password) return setError('Enter your password.')
     if (isSignUp) {
       const failed = PASSWORD_RULES.find((r) => !r.test(password))
@@ -125,6 +163,10 @@ export function SignInPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(v) => { setEmail(v); setError(''); setNotice('') }}
+                hasError={Boolean(emailError)}
+                errorMessage={emailError}
+                isValid={Boolean(emailSuccess)}
+                successMessage={emailSuccess}
               />
               <FormField
                 key={mode}

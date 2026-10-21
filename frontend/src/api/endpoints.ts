@@ -29,6 +29,10 @@ export const api = {
       if (error) throw new Error(authMessage(error))
       return data.session && data.user ? toUser(data.user) : null
     }),
+    checkEmail: pick(
+      async (_email: string) => ({ exists: false }),
+      (email: string) => http<{ exists: boolean }>('/auth/check-email', { query: { email } })
+    ),
     updateUser: pick(mock.updateUser, async (name: string, _email?: string): Promise<User> => {
       const { data, error } = await supabase!.auth.updateUser({ data: { name } })
       if (error || !data.user) throw new Error(error ? authMessage(error) : "Couldn't update your profile.")
