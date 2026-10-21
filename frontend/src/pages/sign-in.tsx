@@ -83,7 +83,7 @@ export function SignInPage() {
   }
 
   const emailError = isSignUp && emailStatus?.checked && emailStatus.exists
-    ? 'Account already exists with this email. Sign in instead.'
+    ? 'Account already exists with this email.'
     : undefined
 
   const emailSuccess = isSignUp && emailStatus?.checked && !emailStatus.exists
