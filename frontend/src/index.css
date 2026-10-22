@@ -87,13 +87,14 @@
     --sidebar-border: #2A4D12;
     --sidebar-ring: #9FE870;
 
-    /* Buttons: a pressable surface, Cloudflare-style. At rest a lit top edge only;
-       pressed, the face sinks into an inset shadow. Solid = filled buttons, raised = light ones. */
+    /* Buttons: a pressable surface, Cloudflare-style. Filled buttons get a lit top edge;
+       pressed, the face sinks into an inset shadow. Solid = filled buttons, raised = light ones.
+       Light buttons get no white edge: it showed as a white rim once hover darkened their fill. */
     --btn-solid: inset 0 1px 0 rgb(255 255 255 / .18), inset 0 0 0 1px rgb(0 0 0 / .12), 0 1px 2px rgb(22 51 0 / .2);
     --btn-solid-press: inset 0 2px 4px rgb(0 0 0 / .35), inset 0 0 0 1px rgb(0 0 0 / .16);
-    --btn-raised: inset 0 1px 0 rgb(255 255 255 / .8), 0 1px 2px rgb(22 51 0 / .08);
+    --btn-raised: 0 1px 2px rgb(22 51 0 / .08);
     --btn-raised-press: inset 0 2px 3px rgb(22 51 0 / .16);
-    --btn-danger: inset 0 1px 0 rgb(255 255 255 / .5);
+    --btn-danger: 0 0 #0000;
     --btn-danger-press: inset 0 2px 3px rgb(196 43 49 / .22);
 }
 
