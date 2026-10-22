@@ -1,54 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <title>AntTipid — Adaptive Duotone Outline Favicon</title>
-  <style>
-    :root {
-      --stroke: #163300;
-      --fill: #FFFFFF;
-      --accent: #9FE870;
-      --pupil: #163300;
-      --glint: #FFFFFF;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --stroke: #9FE870;
-        --fill: #163300;
-        --accent: #9FE870;
-        --pupil: #163300;
-        --glint: #FFFFFF;
-      }
-    }
-  </style>
-
-  <g stroke-linecap="round" stroke-linejoin="round">
-    <!-- Antennae -->
-    <path d="M 110 92 C 100 48 78 26 36 16" fill="none" stroke="var(--stroke, #163300)" stroke-width="16" />
-    <circle cx="34" cy="14" r="13" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="5" />
-
-    <path d="M 146 92 C 156 48 178 26 220 16" fill="none" stroke="var(--stroke, #163300)" stroke-width="16" />
-    <circle cx="222" cy="14" r="13" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="5" />
-
-    <!-- Head Shield Contour with dynamic fill -->
-    <path d="M 128 84
-             C 184 84 204 124 194 168
-             C 184 210 140 238 128 246
-             C 116 238 72 210 62 168
-             C 52 124 72 84 128 84 Z" 
-          fill="var(--fill, #FFFFFF)" stroke="var(--stroke, #163300)" stroke-width="16" />
-
-    <!-- Forehead Diamond -->
-    <polygon points="128,104 142,122 128,140 114,122" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="4" />
-
-    <!-- Almond Eyes -->
-    <ellipse cx="100" cy="148" rx="16" ry="24" transform="rotate(-14 100 148)" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="5" />
-    <circle cx="103" cy="146" r="6" fill="var(--pupil, #163300)" />
-    <circle cx="106" cy="143" r="2.5" fill="var(--glint, #FFFFFF)" />
-
-    <ellipse cx="156" cy="148" rx="16" ry="24" transform="rotate(14 156 148)" fill="var(--accent, #9FE870)" stroke="var(--stroke, #163300)" stroke-width="5" />
-    <circle cx="153" cy="146" r="6" fill="var(--pupil, #163300)" />
-    <circle cx="150" cy="143" r="2.5" fill="var(--glint, #FFFFFF)" />
-
-    <!-- Mandibles -->
-    <path d="M 112 216 L 100 238" fill="none" stroke="var(--stroke, #163300)" stroke-width="9" />
-    <path d="M 144 216 L 156 238" fill="none" stroke="var(--stroke, #163300)" stroke-width="9" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img">
+  <title>AntTipid icon</title>
+  <rect width="256" height="256" rx="48" fill="#163300"/>
+  <g transform="translate(10.239999999999995 10.239999999999995) scale(0.92)">
+  <path fill="#F0F3EE" d="M36 140A34 34 0 1 1 104 140A34 34 0 1 1 36 140Z"/>
+  <path fill="#F0F3EE" d="M98 151L128 151A11 11 0 0 0 128 129L98 129A11 11 0 0 0 98 151Z"/>
+  <path fill="#F0F3EE" d="M70.29 108.51L54.29 70.51A9 9 0 0 0 37.71 77.49L53.71 115.49A9 9 0 0 0 70.29 108.51Z"/>
+  <path fill="#9FE870" d="M107.6 136A62.4 62.4 0 1 1 232.4 136A62.4 62.4 0 1 1 107.6 136Z"/>
+  <path fill="#163300" fill-rule="evenodd" d="M92 136A78 78 0 1 1 248 136A78 78 0 1 1 92 136ZM107.6 136A62.4 62.4 0 1 0 232.4 136A62.4 62.4 0 1 0 107.6 136Z"/>
+  <path fill="#163300" d="M146.6 97H158.3V175H146.6ZM146.6 97H171.56A26.52 26.52 0 0 1 171.56 150.04H146.6V138.34H171.56A14.82 14.82 0 0 0 171.56 108.7H146.6ZM134.12 114.94H207.44V120.79H134.12ZM134.12 126.64H207.44V132.49H134.12Z"/>
   </g>
 </svg>

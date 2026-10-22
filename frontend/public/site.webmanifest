@@ -3,7 +3,7 @@
   "short_name": "AntTipid",
   "icons": [
     {
-      "src": "/brand/shield-outline.svg",
+      "src": "/brand/app-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     },

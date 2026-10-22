@@ -17,7 +17,7 @@ const BADGE = {
 export function BudgetBadge({ state, solid }: { state: BudgetState; solid?: boolean }) {
   return (
     <Badge variant={solid ? 'secondary' : BADGE[state].variant} className="inline-flex items-center gap-1">
-      {state === 'ok' && <BrandMark mark="carrier" className="size-3.5 shrink-0" />}
+      {state === 'ok' && <BrandMark mark="coin" className="size-4 shrink-0" />}
       {BADGE[state].label}
     </Badge>
   )

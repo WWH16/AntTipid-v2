@@ -1,12 +1,10 @@
 import type { ComponentProps, ImgHTMLAttributes } from 'react'
 
-/** The kept brand marks, served from public/brand (copied from design/logo). */
+/** Peso Belly marks, served from public/brand (built from design/logo/kit). */
 const MARKS = {
-  shield: '/brand/shield.svg', // solid master crest
-  outline: '/brand/shield-outline.svg', // electric duotone outline
-  ledge: '/brand/shield-ledge.svg', // peeks over a card edge
-  tile: '/brand/shield-tile.svg', // app tile, empty states
-  carrier: '/brand/carrier-peso.svg', // on-track budgets
+  ant: '/brand/symbol-color.svg', // honeypot ant, cropped so its feet stand on an edge
+  coin: '/brand/symbol-small-color.svg', // small-size cut, on-track budgets
+  tile: '/brand/app-icon.svg', // app tile, empty states
 } as const
 
 /** Decorative by default (alt=""); pass alt when the mark carries meaning. */

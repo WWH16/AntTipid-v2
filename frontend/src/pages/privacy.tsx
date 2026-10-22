@@ -36,7 +36,7 @@ export function PrivacyPage() {
   }, [])
   return (
     <main className="mx-auto grid w-full max-w-2xl gap-8 px-4 py-8 sm:gap-10 sm:px-6 sm:py-10 md:py-16">
-      <Link to="/sign-in" aria-label="AntTipid sign in" className="w-fit"><LogoWithTagline height={44} small /></Link>
+      <Link to="/sign-in" aria-label="AntTipid sign in" className="w-fit"><LogoWithTagline height={37} small /></Link>
 
       <header className="grid gap-2">
         <h1 className="text-2xl leading-tight font-semibold tracking-tight sm:text-3xl md:text-4xl">Privacy policy</h1>

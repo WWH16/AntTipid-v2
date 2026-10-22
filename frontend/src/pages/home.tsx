@@ -107,9 +107,9 @@ export function HomePage() {
         </div>
 
         <div className="contents lg:grid lg:grid-cols-1 lg:content-start lg:gap-6">
-          {/* Ledge mascot keeps watch on budgets, perched on the card edge without adding height. */}
+          {/* The honeypot ant stands on the card edge, keeping watch on budgets without adding height. */}
           <div className="relative order-2 lg:order-none">
-          <BrandMark mark="ledge" className="pointer-events-none absolute right-6 bottom-full hidden w-12 translate-y-[12%] lg:block" />
+          <BrandMark mark="ant" className="pointer-events-none absolute right-6 bottom-full hidden w-16 lg:block" />
           <Card>
             <CardHeader>
               <CardTitle role="heading" aria-level={2}>Needs attention</CardTitle>

@@ -171,7 +171,7 @@ export function LandingPage() {
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
           <Link to="/" aria-label="AntTipid home" className="shrink-0 rounded-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
-            <img src="/brand/lockup-name.svg" alt="AntTipid" className="h-7 w-auto sm:h-9" />
+            <img src="/brand/logo-color.svg" alt="AntTipid" className="h-9 w-auto" />
           </Link>
           <nav aria-label="Page sections" className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
             {NAV.map((n) => <a key={n.href} href={n.href} className={linkClass}>{n.label}</a>)}
@@ -353,7 +353,7 @@ export function LandingPage() {
       <footer className="border-t">
         <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:grid-cols-[1fr_auto] md:items-end">
           <div className="grid gap-4">
-            <LogoWithTagline height={40} small />
+            <LogoWithTagline height={34} small />
             <p className="max-w-md">Your records are private to your account. AntTipid has no ads and doesn’t sell your data.</p>
           </div>
           <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
