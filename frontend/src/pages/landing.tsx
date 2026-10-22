@@ -178,7 +178,7 @@ export function LandingPage() {
           </nav>
           <div className="flex items-center gap-1 sm:gap-2">
             <Button variant="ghost" className="max-sm:px-2" nativeButton={false} render={<Link to="/sign-in" />}>Log in</Button>
-            <Button className="max-sm:px-3" nativeButton={false} render={<Link to={SIGN_UP} />}>Get started</Button>
+            <Button className="cta-win max-sm:px-3" nativeButton={false} render={<Link to={SIGN_UP} />}>Get started</Button>
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Jump to a section" className="md:hidden" />}>
                 <Menu />
@@ -206,7 +206,7 @@ export function LandingPage() {
               set a budget for each category, and see how much is left to spend this month.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" nativeButton={false} render={<Link to={SIGN_UP} />}>Create a free account</Button>
+              <Button size="lg" className="cta-win" nativeButton={false} render={<Link to={SIGN_UP} />}>Start keeping more of your money</Button>
               <Button size="lg" variant="outline" nativeButton={false} render={<a href="#how-it-works" />}>See how it works</Button>
             </div>
             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
@@ -339,9 +339,9 @@ export function LandingPage() {
               size="lg"
               nativeButton={false}
               render={<Link to={SIGN_UP} />}
-              className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
+              className="cta-win cta-win-dark"
             >
-              Create a free account
+              Start keeping more of your money
             </Button>
             <p className="text-sm text-primary-foreground/70">
               Already have one? <Link to="/sign-in" className="font-medium text-primary-foreground underline underline-offset-4">Log in</Link>

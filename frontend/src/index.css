@@ -164,6 +164,99 @@
   }
 }
 
+/* Main sign-up CTA: forest button lifted off the page (lime on dark surfaces, via .cta-win-dark).
+   On hover a single arc orbits the button on its own 2px ring, 3px clear of the edge, with a soft bloom.
+   ::before = the crisp ring, ::after = the bloom; both are masked off the button face so it stays clean. */
+@property --cta-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+@property --cta-a {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@keyframes cta-spin {
+  to { --cta-angle: 360deg; }
+}
+.cta-win {
+  --cta-face: var(--primary);
+  --cta-lit: rgb(255 255 255 / .18);
+  --cta-arc: 108 198 63;
+  --cta-head: 63 138 36;
+  /* No track: only a green arc with a deeper green head travels around (a white head vanishes on the cream page).
+     --cta-a fades it in on hover. */
+  --cta-ring: conic-gradient(from var(--cta-angle),
+    transparent 0 45%,
+    rgb(var(--cta-arc) / var(--cta-a)) 85%,
+    rgb(var(--cta-head) / var(--cta-a)) 97%,
+    transparent);
+  position: relative;
+  isolation: isolate;
+  background: var(--cta-face);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 var(--cta-lit), 0 1px 2px rgb(22 51 0 / .15), 0 4px 10px -4px rgb(22 51 0 / .25);
+  transform: translateY(-1px);
+  transition: --cta-a .3s ease-out, transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s cubic-bezier(.2, .8, .2, 1);
+  animation: cta-spin 3.5s linear infinite paused;
+}
+.cta-win::before,
+.cta-win::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+/* Ring: drawn in a 2px transparent border 3px out from the button, so a 3px gap shows between them.
+   Its mask keeps only the border band, not the gap. */
+.cta-win::before {
+  inset: -5px;
+  border: 2px solid transparent;
+  padding: 3px;
+  border-radius: calc(var(--radius) + 5px);
+  background: var(--cta-ring) border-box;
+  mask: linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0);
+}
+/* Bloom: the ring band blurred, with 15px of transparent border for the blur to spread into. */
+.cta-win::after {
+  inset: -20px;
+  z-index: -2;
+  border: 15px solid transparent;
+  padding: 5px;
+  border-radius: calc(var(--radius) + 20px);
+  background: var(--cta-ring) padding-box;
+  filter: blur(6px);
+  opacity: .5;
+  /* Keep everything outside the content box (sized to the button) and drop the inside. */
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+@media (hover: hover) {
+  .cta-win:hover {
+    --cta-a: 1;
+    transform: translateY(-2px);
+    box-shadow: inset 0 1px 0 var(--cta-lit), 0 1px 3px rgb(22 51 0 / .15), 0 8px 16px -6px rgb(22 51 0 / .3);
+    animation-play-state: running;
+  }
+}
+.cta-win-dark {
+  --cta-face: #9FE870;
+  --cta-lit: rgb(255 255 255 / .55);
+  /* On the dark green section: an all-white arc reads best next to the lime face. */
+  --cta-arc: 255 255 255;
+  --cta-head: 255 255 255;
+  color: #163300;
+}
+.cta-win:active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / .3), 0 1px 2px rgb(22 51 0 / .25);
+}
+.cta-win:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
+}
+
 /* Lists inside cards share the card's left edge. Rows keep their own padding for the tap/hover fill,
    so the group is pulled out by that padding and row text lines up with the card title above it. */
 [data-slot=card-content] [data-slot=item-group] {
