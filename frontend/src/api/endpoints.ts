@@ -10,7 +10,7 @@ import { download, http, json } from './client'
 const photoName = (photo: Blob, base: string) => `${base}.${photo.type === 'image/webp' ? 'webp' : 'jpg'}`
 
 export const api = {
-  // Sign-in is the one thing done with supabase-js directly; the session's token then goes to FastAPI on every call.
+  // Sign-in is the one thing done with Supabase directly (auth-js); the session's token then goes to FastAPI on every call.
   // captchaToken is a Cloudflare Turnstile token (components/turnstile.tsx), checked by Supabase when CAPTCHA is on.
   auth: {
     signIn: async (email: string, password: string, captchaToken?: string): Promise<User> => {

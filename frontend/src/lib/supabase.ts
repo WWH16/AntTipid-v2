@@ -1,6 +1,7 @@
-// Supabase Auth in the browser. This is the only thing the frontend uses supabase-js for: data goes through
-// the FastAPI backend, which checks the access token sent by api/client.ts.
-import { createClient, type AuthError, type User as SupabaseUser } from '@supabase/supabase-js'
+// Supabase Auth in the browser. Auth is the only Supabase service the frontend talks to (data goes through the
+// FastAPI backend, which checks the access token sent by api/client.ts), so it uses auth-js on its own instead of
+// supabase-js, which would also ship the database, realtime and storage clients to every page.
+import { AuthClient, type AuthError, type User as SupabaseUser } from '@supabase/auth-js'
 import type { User } from '@/types'
 
 const url = import.meta.env.VITE_SUPABASE_URL
@@ -9,10 +10,21 @@ if (!url || !key) {
   throw new Error('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env.local.')
 }
 
-/** Sessions persist in localStorage and refresh themselves. */
-export const supabase = createClient(url, key)
+/** Sessions persist in localStorage and refresh themselves. Same settings and storage key as supabase-js's
+ *  createClient, so sessions saved before the switch stay signed in. */
+export const supabase = {
+  auth: new AuthClient({
+    url: new URL('auth/v1', url.endsWith('/') ? url : `${url}/`).href,
+    headers: { Authorization: `Bearer ${key}`, apikey: key },
+    storageKey: `sb-${new URL(url).hostname.split('.')[0]}-auth-token`,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    flowType: 'implicit',
+  }),
+}
 
-/** True when supabase-js has a session saved under its default key (sb-<project-ref>-auth-token). Without one the visitor is signed out,
+/** True when a session is saved under supabase-js's default key (sb-<project-ref>-auth-token). Without one the visitor is signed out,
  *  so public pages can render before onAuthStateChange reports. Assumes signed in if storage can't be read. */
 export function hasSavedSession() {
   try {

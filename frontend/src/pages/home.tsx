@@ -1,5 +1,5 @@
 // Home answers one question first: how much can I still spend this month? Then what needs attention, then details.
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, PenLine, ScanLine, Settings } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
@@ -19,8 +19,6 @@ import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { currentMonth, longDate, money, shiftMonth, todayIso } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { BudgetForm } from '@/pages/budgets'
-import { WalletForm } from '@/pages/settings'
 import type { BudgetStatus, MonthSummary } from '@/types'
 
 export function HomePage() {
@@ -183,6 +181,10 @@ function SafeToSpend({ s }: { s?: MonthSummary }) {
 
 const SETUP_HIDDEN = 'anttipid-setup-hidden'
 
+// Only first-run setup opens these, so Home doesn't wait on the Budgets and Settings files to render.
+const BudgetForm = lazy(() => import('@/pages/budgets').then((m) => ({ default: m.BudgetForm })))
+const WalletForm = lazy(() => import('@/pages/settings').then((m) => ({ default: m.WalletForm })))
+
 /** First run: the three steps until Home can show what's left to spend each day. */
 function SetupSteps({ hasWallet, hasBudget, hasExpense, budgets, onHide }: {
   hasWallet: boolean; hasBudget: boolean; hasExpense: boolean; budgets: BudgetStatus[]; onHide: () => void
@@ -226,8 +228,10 @@ function SetupSteps({ hasWallet, hasBudget, hasExpense, budgets, onHide }: {
           ))}
         </ItemGroup>
       </CardContent>
-      {form === 'wallet' && <WalletForm onClose={() => setForm(null)} />}
-      {form === 'budget' && <BudgetForm editing={{ categoryId: null }} budgets={budgets} onClose={() => setForm(null)} />}
+      <Suspense fallback={null}>
+        {form === 'wallet' && <WalletForm onClose={() => setForm(null)} />}
+        {form === 'budget' && <BudgetForm editing={{ categoryId: null }} budgets={budgets} onClose={() => setForm(null)} />}
+      </Suspense>
     </Card>
   )
 }
