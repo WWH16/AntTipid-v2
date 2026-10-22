@@ -11,9 +11,10 @@ const photoName = (photo: Blob, base: string) => `${base}.${photo.type === 'imag
 
 export const api = {
   // Sign-in is the one thing done with supabase-js directly; the session's token then goes to FastAPI on every call.
+  // captchaToken is a Cloudflare Turnstile token (components/turnstile.tsx), checked by Supabase when CAPTCHA is on.
   auth: {
-    signIn: async (email: string, password: string): Promise<User> => {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    signIn: async (email: string, password: string, captchaToken?: string): Promise<User> => {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } })
       if (error) throw new Error(authMessage(error))
       return toUser(data.user)
     },
@@ -25,23 +26,23 @@ export const api = {
       if (error) throw new Error(authMessage(error))
     },
     /** null: the account exists but the email link must be opened before signing in. */
-    signUp: async (name: string, email: string, password: string): Promise<User | null> => {
+    signUp: async (name: string, email: string, password: string, captchaToken?: string): Promise<User | null> => {
       const { data, error } = await supabase.auth.signUp({
-        email, password, options: { data: { name }, emailRedirectTo: `${location.origin}/sign-in` },
+        email, password, options: { data: { name }, emailRedirectTo: `${location.origin}/sign-in`, captchaToken },
       })
       if (error) throw new Error(authMessage(error))
       // A taken email (with confirmation on) comes back as a fake user with no identities, and no email is sent.
       if (data.user?.identities?.length === 0) throw new Error('There is already an account with this email. Sign in instead.')
       return data.session && data.user ? toUser(data.user) : null
     },
-    resetPassword: async (email: string): Promise<void> => {
+    resetPassword: async (email: string, captchaToken?: string): Promise<void> => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${location.origin}/sign-in?mode=reset`,
+        redirectTo: `${location.origin}/sign-in?mode=reset`, captchaToken,
       })
       if (error) throw new Error(authMessage(error))
     },
-    resendSignUp: async (email: string): Promise<void> => {
-      const { error } = await supabase.auth.resend({ type: 'signup', email })
+    resendSignUp: async (email: string, captchaToken?: string): Promise<void> => {
+      const { error } = await supabase.auth.resend({ type: 'signup', email, options: { captchaToken } })
       if (error) throw new Error(authMessage(error))
     },
     updatePassword: async (password: string): Promise<User> => {

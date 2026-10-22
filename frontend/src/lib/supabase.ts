@@ -38,6 +38,8 @@ export function authMessage(e: AuthError): string {
     case 'email_exists': return 'There is already an account with this email. Sign in instead.'
     case 'over_email_send_rate_limit': return 'Please wait 60 seconds before requesting another email.'
     case 'over_request_rate_limit': return 'Too many tries. Wait a minute, then try again.'
+    // Missing, expired or already-used Turnstile token. The form gets a fresh one after every attempt.
+    case 'captcha_failed': return 'Couldn’t confirm you’re human. Try again.'
     case 'session_not_found':
     case 'session_expired': return 'Reset link expired or invalid. Request a new one.'
     default: return e.message

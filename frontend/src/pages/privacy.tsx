@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { LogoWithTagline } from '@/components/logo'
 
 const CONTACT = 'anttipid.support@gmail.com'
-const UPDATED = 'October 21, 2026'
+const UPDATED = 'October 22, 2026'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -70,6 +70,8 @@ export function PrivacyPage() {
         <Section title="Where it's stored">
           <p>
             Your account, records and receipt photos are stored with Supabase (database, file storage and sign-in). The app is hosted on Vercel.
+            The sign-in page uses Cloudflare Turnstile to check that a person, not a bot, is signing in. For that check, your browser sends Cloudflare some
+            details about itself and your device, which Cloudflare handles under its own privacy policy.
             Your session is kept in your browser's local storage so you stay signed in. Signing out clears it.
           </p>
         </Section>

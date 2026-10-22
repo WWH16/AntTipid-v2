@@ -18,7 +18,11 @@ supabase/   SQL migrations (tables, RLS policies, default category trigger, rece
    - In Google Cloud Console → APIs & Services → Credentials, create an OAuth client ID (Web application) with the authorized redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`.
    - In Supabase → Authentication → Sign In / Providers → Google, turn it on and paste the client ID and secret.
    - In Supabase → Authentication → URL Configuration → Redirect URLs, add `http://localhost:5173/sign-in` and your deployed `https://<your-domain>/sign-in`.
-4. Start both servers:
+4. Optional, for Cloudflare Turnstile on sign-in, sign-up and the password-reset and confirmation emails:
+   - In Cloudflare → Turnstile, add a widget (Managed) with the hostnames `localhost` and your deployed domain. Put its site key in `VITE_TURNSTILE_SITE_KEY` (`frontend/.env.local` and Vercel).
+   - Deploy the frontend first, then in Supabase → Authentication → Attack Protection, turn on CAPTCHA protection with Turnstile and paste the widget's secret key. Turned on first, every email sign-in fails until the deploy lands.
+   - CAPTCHA covers the whole Supabase project, so local email sign-in needs the real site key too. Cloudflare's test keys won't work.
+5. Start both servers:
 
 ```bash
 # Terminal 1: backend on :8000

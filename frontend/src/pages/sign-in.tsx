@@ -7,6 +7,7 @@ import { api } from '@/api/endpoints'
 import { GoogleIcon } from '@/components/brand-icons'
 import { LogoWithTagline } from '@/components/logo'
 import { LoadingAuth } from '@/components/states'
+import { TURNSTILE_SITE_KEY, Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormField } from '@/components/ui/form-field'
@@ -52,12 +53,19 @@ export function SignInPage() {
     : 'Sign-in didn’t finish. Try again.')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  // Turnstile token for the next auth call. Each token works once, so every call bumps captchaKey for a fresh widget.
+  const [captcha, setCaptcha] = useState('')
+  const [captchaKey, setCaptchaKey] = useState(0)
 
   const isSignUp = mode === 'signUp'
   const isForgot = mode === 'forgot'
   const isReset = mode === 'reset'
   const isSignIn = mode === 'signIn'
   const needsNewPassword = isSignUp || isReset
+  // Setting a new password from a reset link is already signed in, so it doesn't call a CAPTCHA-checked endpoint.
+  const needsCaptcha = !!TURNSTILE_SITE_KEY && !isReset
+  const waitingForCaptcha = needsCaptcha && !captcha
+  const freshCaptcha = () => setCaptchaKey((k) => k + 1)
 
   // Cooldown countdown for resending email
   useEffect(() => {
@@ -120,7 +128,7 @@ export function SignInPage() {
     setNotice('')
     setBusy(true)
     try {
-      await (type === 'reset' ? api.auth.resetPassword(email) : api.auth.resendSignUp(email))
+      await (type === 'reset' ? api.auth.resetPassword(email, captcha) : api.auth.resendSignUp(email, captcha))
       if (mode === 'emailSent') setNotice('A new link has been sent!')
       setSentEmailType(type)
       setCooldown(60)
@@ -129,6 +137,7 @@ export function SignInPage() {
       setError((err as Error).message)
     } finally {
       setBusy(false)
+      freshCaptcha()
     }
   }
 
@@ -155,7 +164,7 @@ export function SignInPage() {
       }
       if (isSignUp) {
         const displayName = name.trim() || email.split('@')[0]
-        const created = await api.auth.signUp(displayName, email, password)
+        const created = await api.auth.signUp(displayName, email, password, captcha)
         if (!created) {
           setSentEmailType('signUp')
           setCooldown(60)
@@ -165,12 +174,14 @@ export function SignInPage() {
         }
         signIn(created)
       } else {
-        signIn(await api.auth.signIn(email, password))
+        signIn(await api.auth.signIn(email, password, captcha))
       }
       navigate('/', { replace: true })
     } catch (err) {
       setError((err as Error).message)
       setBusy(false)
+    } finally {
+      if (!isReset) freshCaptcha()
     }
   }
 
@@ -199,15 +210,18 @@ export function SignInPage() {
               </p>
               {notice && <p role="status" className="text-xs text-primary">{notice}</p>}
               {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
-              <Button
-                variant="outline"
-                className="w-full"
-                disabled={busy || cooldown > 0}
-                onClick={() => sendEmail(sentEmailType)}
-              >
-                {busy && <Loader2 className="animate-spin" />}
-                {cooldown > 0 ? `Resend email (${cooldown}s)` : 'Resend email'}
-              </Button>
+              <div className="grid">
+                {needsCaptcha && <Turnstile key={captchaKey} onToken={setCaptcha} />}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  disabled={busy || cooldown > 0 || waitingForCaptcha}
+                  onClick={() => sendEmail(sentEmailType)}
+                >
+                  {busy && <Loader2 className="animate-spin" />}
+                  {cooldown > 0 ? `Resend email (${cooldown}s)` : 'Resend email'}
+                </Button>
+              </div>
               <Button
                 variant="ghost"
                 className="w-full text-sm"
@@ -335,9 +349,12 @@ export function SignInPage() {
               )}
               {notice && <p role="status" className="text-sm text-primary">{notice}</p>}
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={busy}>
-                {busy && <Loader2 className="animate-spin" />} {cta}
-              </Button>
+              <div className="grid">
+                {needsCaptcha && <Turnstile key={captchaKey} onToken={setCaptcha} />}
+                <Button type="submit" className="w-full" disabled={busy || waitingForCaptcha}>
+                  {busy && <Loader2 className="animate-spin" />} {cta}
+                </Button>
+              </div>
               <p className="text-center text-sm text-muted-foreground">
                 {prompt && `${prompt} `}
                 <button type="button" className="underline underline-offset-4 hover:text-foreground" onClick={() => switchMode(linkTarget)}>
