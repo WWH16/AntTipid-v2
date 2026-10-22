@@ -82,6 +82,7 @@ function RowMenu({ label, children }: { label: string; children: React.ReactNode
 
 function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
   const { wallets, loading } = useRefData()
+  const [deleting, setDeleting] = useState<Wallet | null>(null)
 
   // Reversible, so no confirm step: the toast offers Undo instead.
   async function setArchived(w: Wallet, value: boolean) {
@@ -115,11 +116,23 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
                 {w.archived
                   ? <DropdownMenuItem onClick={() => setArchived(w, false)}><ArchiveRestore /> Restore</DropdownMenuItem>
                   : <DropdownMenuItem onClick={() => setArchived(w, true)}><Archive /> Archive</DropdownMenuItem>}
+                <DropdownMenuItem variant="destructive" onClick={() => setDeleting(w)}><Trash2 /> Delete</DropdownMenuItem>
               </RowMenu>
             </WalletItem>
           ))}
         </ItemGroup>}
       </CardContent>
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => { if (!o) setDeleting(null) }}
+        title={`Delete ${deleting?.name ?? 'this wallet'}?`}
+        description="Only wallets with no transactions can be deleted. This can't be undone."
+        confirm="Delete wallet"
+        onConfirm={async () => {
+          await api.wallets.remove(deleting!.id)
+          done('Wallet deleted', { description: deleting!.name })
+        }}
+      />
     </Card>
   )
 }

@@ -61,6 +61,7 @@ export const api = {
     list: () => http<Wallet[]>('/wallets'),
     create: (w: Pick<Wallet, 'name' | 'type' | 'balance'>) => http<Wallet>('/wallets', json('POST', w)),
     update: (id: string, patch: Partial<Pick<Wallet, 'name' | 'type' | 'balance' | 'archived'>>) => http<Wallet>(`/wallets/${id}`, json('PATCH', patch)),
+    remove: (id: string) => http<null>(`/wallets/${id}`, { method: 'DELETE' }),
   },
   categories: {
     list: () => http<Category[]>('/categories'),

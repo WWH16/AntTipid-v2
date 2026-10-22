@@ -78,6 +78,15 @@ def update_wallet(wallet_id: UUID, body: WalletPatch, user: User):
         return _wallet(r)
 
 
+@router.delete("/wallets/{wallet_id}", status_code=204)
+def delete_wallet(wallet_id: UUID, user: User):
+    try:
+        with user_tx(user) as conn:
+            conn.execute("delete from wallets where id = %s and user_id = %s", (wallet_id, user.id))
+    except errors.ForeignKeyViolation:
+        raise HTTPException(409, "This wallet has transactions. Archive it instead to hide it and keep its history.")
+
+
 # ------------------------------------------------------------------------------------------- categories
 
 

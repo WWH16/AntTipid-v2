@@ -146,11 +146,14 @@ def test_routes_and_user_isolation():
             assert patched_cat["name"] == "Pets & vet" and patched_cat["icon"] == "health"
             assert client.delete(f"/api/categories/{pet_id}", headers=ha).status_code == 204
 
-            # 2. Wallets: create, list with computed balance, update
+            # 2. Wallets: create, list with computed balance, update, delete (unused only)
             w1 = client.post("/api/wallets", json={"name": "GCash", "type": "e_wallet", "balance": 1000}, headers=ha).json()
             w2 = client.post("/api/wallets", json={"name": "Cash", "type": "cash", "balance": 500}, headers=ha).json()
             assert w1["balance"] == 1000 and w2["balance"] == 500
             assert client.patch(f"/api/wallets/{w2['id']}", json={"name": "Pocket Cash"}, headers=ha).json()["name"] == "Pocket Cash"
+            spare = client.post("/api/wallets", json={"name": "Typo", "type": "bank", "balance": 0}, headers=ha).json()
+            assert client.delete(f"/api/wallets/{spare['id']}", headers=ha).status_code == 204
+            assert spare["id"] not in [w["id"] for w in client.get("/api/wallets", headers=ha).json()]
 
             # 3. Transactions: income, expense with receipt items, transfer, filters, CSV, receipt photo
             inc = client.post("/api/transactions", headers=ha, json={
@@ -184,6 +187,7 @@ def test_routes_and_user_isolation():
             found = client.get("/api/transactions", params={"month": "2026-10", "search": "chickenjoy"}, headers=ha).json()
             assert [t["id"] for t in found] == [exp["id"]]
             assert client.delete(f"/api/categories/{food_id}", headers=ha).status_code == 409
+            assert client.delete(f"/api/wallets/{w1['id']}", headers=ha).status_code == 409
 
             # CSV export
             csv_res = client.get("/api/transactions/export.csv", params={"month": "2026-10"}, headers=ha)
@@ -235,6 +239,8 @@ def test_routes_and_user_isolation():
             assert client.get("/api/budgets", params={"month": "2026-10"}, headers=hb).json() == []
             assert client.get(f"/api/transactions/{exp['id']}", headers=hb).status_code == 404
             assert client.patch(f"/api/wallets/{w1['id']}", json={"name": "Hacked"}, headers=hb).status_code == 404
+            assert client.delete(f"/api/wallets/{w2['id']}", headers=hb).status_code == 204
+            assert w2["id"] in [w["id"] for w in client.get("/api/wallets", headers=ha).json()]
             assert client.delete(f"/api/transactions/{exp['id']}", headers=hb).status_code == 204
             # User A's transaction is still there after User B's delete attempt
             assert client.get(f"/api/transactions/{exp['id']}", headers=ha).status_code == 200
