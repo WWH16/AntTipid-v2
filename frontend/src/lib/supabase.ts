@@ -12,6 +12,16 @@ if (!url || !key) {
 /** Sessions persist in localStorage and refresh themselves. */
 export const supabase = createClient(url, key)
 
+/** True when supabase-js has a session saved under its default key (sb-<project-ref>-auth-token). Without one the visitor is signed out,
+ *  so public pages can render before onAuthStateChange reports. Assumes signed in if storage can't be read. */
+export function hasSavedSession() {
+  try {
+    return Object.keys(localStorage).some((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
+  } catch {
+    return true
+  }
+}
+
 export const toUser = (u: SupabaseUser): User => ({
   name: (u.user_metadata?.name as string | undefined)?.trim() || (u.email ?? '').split('@')[0],
   email: u.email ?? '',

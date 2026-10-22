@@ -9,6 +9,15 @@ test('cleanMoneyInput strips commas, currency symbols, and extra decimal points'
   assert.equal(cleanMoneyInput('-8,420.25', false), '8420.25')
   assert.equal(cleanMoneyInput('-8,420.25', true), '-8420.25')
   assert.equal(cleanMoneyInput('  -  ', true), '-')
+  assert.equal(cleanMoneyInput('...5'), '.5')
+  assert.equal(cleanMoneyInput('5..'), '5.')
+  assert.equal(cleanMoneyInput(''), '')
+})
+
+test('cleanMoneyInput caps whole pesos at 10 digits and keeps the decimals', () => {
+  assert.equal(cleanMoneyInput('99999999999999'), '9999999999')
+  assert.equal(cleanMoneyInput('12,345,678,901.25'), '1234567890.25')
+  assert.equal(cleanMoneyInput('-12345678901', true), '-1234567890')
 })
 
 test('formatMoneyInput adds thousand commas while preserving in-progress decimals and negative signs', () => {

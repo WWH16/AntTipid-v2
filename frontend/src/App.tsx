@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useApp } from '@/app-state'
 import { AppShell } from '@/components/app-shell'
 import { LoadingAuth, LoadingPage } from '@/components/states'
+import { hasSavedSession } from '@/lib/supabase'
 
 // Each page is its own file, downloaded the first time it is opened.
 const HomePage = lazy(() => import('@/pages/home').then((m) => ({ default: m.HomePage })))
@@ -19,10 +20,12 @@ const page = (el: ReactNode) => <Suspense fallback={<LoadingPage />}>{el}</Suspe
 function RequireUser({ children }: { children: ReactNode }) {
   const { user, ready } = useApp()
   const { pathname } = useLocation()
-  if (!ready) return <LoadingPage />
-  if (user) return children
   // Signed-out visitors to / get the public page about the app; every other page asks them to sign in.
-  return pathname === '/' ? page(<LandingPage />) : <Navigate to="/sign-in" replace />
+  // With no saved session there's nothing to wait for, so / skips the app skeleton and shows the landing page at once.
+  const landing = <Suspense fallback={null}><LandingPage /></Suspense>
+  if (!ready) return pathname === '/' && !hasSavedSession() ? landing : <LoadingPage />
+  if (user) return children
+  return pathname === '/' ? landing : <Navigate to="/sign-in" replace />
 }
 
 export default function App() {

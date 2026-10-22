@@ -4,10 +4,11 @@ const pesoWhole = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 
 /** ₱1,234.50 — or ₱1,235 with whole: true for headline numbers. */
 export const money = (n: number, opts: { whole?: boolean } = {}) => (opts.whole ? pesoWhole : peso).format(n)
 
-/** Keeps digits, one decimal point, and a leading minus when allowNegative is set. */
+/** Keeps digits, one decimal point (later ones are dropped), a leading minus when allowNegative is set, and at most 10 whole-peso digits (₱9,999,999,999), so numbers stay exact. */
 export function cleanMoneyInput(v: string, allowNegative = false): string {
   const sign = allowNegative && v.trimStart().startsWith('-') ? '-' : ''
-  return sign + v.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1')
+  const [whole, ...decimals] = v.replace(/[^\d.]/g, '').split('.')
+  return sign + whole.slice(0, 10) + (decimals.length ? '.' + decimals.join('') : '')
 }
 
 /** Formats a numeric input string with thousand commas (e.g. "15000.5" -> "15,000.5") while typing. */

@@ -25,6 +25,7 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-destructive-on-primary: var(--destructive-on-primary);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);
@@ -66,6 +67,8 @@
     --accent: #E2F6D5;
     --accent-foreground: #163300;
     --destructive: #C42B31;
+    /* Over-budget on the dark green hero card: #C42B31 is ~2.5:1 there, this coral is ~6:1 (and #163300 on it, too). */
+    --destructive-on-primary: #FF8A80;
     --border: #D8E0D2;
     --input: #848F7D;
     --ring: #4F7A2E;

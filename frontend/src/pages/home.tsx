@@ -6,19 +6,17 @@ import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { BudgetItem } from '@/components/budget'
-import { budgetPercent, budgetState } from '@/lib/budget'
+import { budgetState } from '@/lib/budget'
 import { PageHeader } from '@/components/page-header'
-import { HeroCard } from '@/components/hero-card'
+import { SafeToSpendCard } from '@/components/safe-to-spend-card'
 import { BrandMark } from '@/components/brand-icons'
 import { BillsSlide, Carousel, SpendingSlide } from '@/components/home-carousel'
 import { EmptyState, ErrorState, LoadingHero, LoadingItems } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { WalletItem } from '@/components/wallet-item'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
-import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { currentMonth, longDate, money, todayIso } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { BudgetForm } from '@/pages/budgets'
@@ -182,51 +180,7 @@ function SafeToSpend({ s }: { s?: MonthSummary }) {
     )
   }
 
-  const left = s.budget - s.spent
-  const daysLeft = s.daysInMonth - s.dayOfMonth + 1 // today still counts
-  const perDay = Math.max(0, left) / daysLeft
-  const usedPct = budgetPercent({ spent: s.spent, limit: s.budget })
-  const timePct = Math.round((s.dayOfMonth / s.daysInMonth) * 100)
-  const gap = (s.budget * s.dayOfMonth) / s.daysInMonth - s.spent
-  const over = left < 0
-
-  return (
-    <HeroCard>
-        <CardHeader>
-        <CardDescription>{over ? 'Over your monthly budget by' : 'Left to spend this month'}</CardDescription>
-        <CardTitle className={over ? 'text-3xl font-semibold tabular-nums text-destructive' : 'text-3xl font-semibold tabular-nums'}>
-          {money(Math.abs(left), { whole: true })}
-        </CardTitle>
-        <CardAction>
-          <Badge variant="secondary">
-            {over ? 'Over budget' : gap >= 0 ? 'On track' : 'Spending fast'}
-          </Badge>
-        </CardAction>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <Progress value={usedPct}>
-          <ProgressLabel>Budget used</ProgressLabel>
-          <ProgressValue />
-        </Progress>
-        <Progress value={timePct}>
-          <ProgressLabel>Month gone</ProgressLabel>
-          <ProgressValue />
-        </Progress>
-      </CardContent>
-      <CardFooter className="flex-col items-start gap-1 text-sm">
-        <p className="font-medium">
-          {over
-            ? `You've spent ${money(s.spent, { whole: true })} of ${money(s.budget, { whole: true })}.`
-            : gap >= 0
-              ? `${money(gap, { whole: true })} below the on-budget pace. Up to ${money(perDay, { whole: true })} a day keeps you on budget.`
-              : `${money(-gap, { whole: true })} above the on-budget pace. Keep to ${money(perDay, { whole: true })} a day to finish on budget.`}
-        </p>
-        <p className="text-muted-foreground">
-          {money(s.spent, { whole: true })} spent of {money(s.budget, { whole: true })}, {daysLeft === 1 ? 'last day of the month' : `${daysLeft} days left`}
-        </p>
-      </CardFooter>
-    </HeroCard>
-  )
+  return <SafeToSpendCard s={s} />
 }
 
 const SETUP_HIDDEN = 'anttipid-setup-hidden'
