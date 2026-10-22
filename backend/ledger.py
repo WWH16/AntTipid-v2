@@ -2,6 +2,7 @@
 
 import csv
 import io
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
@@ -161,12 +162,16 @@ def _filters(
     wallet_id: Annotated[UUID | None, Query(alias="walletId")] = None,
     category_id: Annotated[UUID | None, Query(alias="categoryId")] = None,
     search: Annotated[str | None, Query(max_length=100)] = None,
+    since: date | None = None,
 ) -> tuple[str, dict]:
     """WHERE clause (without user scope) and its parameters for the list and the CSV export."""
     conds, params = [], {}
     if month:
         conds.append("t.date >= %(start)s and t.date < %(end)s")
         params["start"], params["end"] = month_range(month)
+    if since:
+        conds.append("t.date >= %(since)s")
+        params["since"] = since
     if kind:
         conds.append("t.kind = %(kind)s")
         params["kind"] = kind

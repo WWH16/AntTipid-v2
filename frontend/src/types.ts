@@ -45,6 +45,7 @@ export interface TransactionFilters {
   walletId?: string
   categoryId?: string
   search?: string
+  since?: string // YYYY-MM-DD, inclusive
 }
 
 export interface Budget {

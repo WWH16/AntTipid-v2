@@ -17,7 +17,7 @@ import { WalletItem } from '@/components/wallet-item'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
-import { currentMonth, longDate, money, todayIso } from '@/lib/format'
+import { currentMonth, longDate, money, shiftMonth, todayIso } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { BudgetForm } from '@/pages/budgets'
 import { WalletForm } from '@/pages/settings'
@@ -28,7 +28,9 @@ export function HomePage() {
   const { openAdd, user } = useApp()
   const summary = useQuery(`summary:${month}`, () => api.reports.summary(month))
   const budgets = useQuery(`budgets:${month}`, () => api.budgets.list(month))
-  const recent = useQuery('recent', () => api.transactions.list({}))
+  // Last month and this one: the carousel compares against last month, and the newest six fill Recent activity.
+  // ponytail: someone idle for two months sees an empty list and the setup's expense step again; add a limit query if that matters.
+  const recent = useQuery(`recent:${month}`, () => api.transactions.list({ since: `${shiftMonth(month, -1)}-01` }))
   const { wallets, category, loading: refLoading } = useRefData()
 
   const attention = (budgets.data ?? []).filter((b) => b.categoryId && budgetState(b) !== 'ok')

@@ -186,6 +186,10 @@ def test_routes_and_user_isolation():
             # Search finds receipt line items; category in use cannot be deleted (409)
             found = client.get("/api/transactions", params={"month": "2026-10", "search": "chickenjoy"}, headers=ha).json()
             assert [t["id"] for t in found] == [exp["id"]]
+            # since is inclusive: the 10-15 expense and 10-16 transfer, not the 10-01 income
+            since = client.get("/api/transactions", params={"since": "2026-10-15"}, headers=ha).json()
+            assert {t["id"] for t in since} == {exp["id"], xfr["id"]}
+            assert client.get("/api/transactions", params={"since": "not-a-date"}, headers=ha).status_code == 422
             assert client.delete(f"/api/categories/{food_id}", headers=ha).status_code == 409
             assert client.delete(f"/api/wallets/{w1['id']}", headers=ha).status_code == 409
 
@@ -272,7 +276,9 @@ def test_live_supabase_end_to_end():
 
     uid = str(uuid.uuid4())
     email = f"e2e-{uid[:8]}@example.com"
-    password = "TestPassword123!"
+    # Password sign-in needs a Turnstile token once CAPTCHA protection is on, but Auth exempts the
+    # refresh_token grant, so seed a session + refresh token and exchange it for a real access token.
+    refresh = uuid.uuid4().hex[:12]  # Auth only accepts 12-char legacy refresh tokens
     with connect() as conn:
         conn.execute(
             """
@@ -281,31 +287,31 @@ def test_live_supabase_end_to_end():
               raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
               confirmation_token, email_change, email_change_token_new, recovery_token
             ) values (
-              '00000000-0000-0000-0000-000000000000', %s, 'authenticated', 'authenticated', %s,
-              crypt(%s, gen_salt('bf')), now(),
+              '00000000-0000-0000-0000-000000000000', %s, 'authenticated', 'authenticated', %s, '', now(),
               '{"provider":"email","providers":["email"]}'::jsonb, '{"name":"Andrea E2E"}'::jsonb, now(), now(),
               '', '', '', ''
             )
             """,
-            (uid, email, password),
+            (uid, email),
         )
         conn.execute(
             """
-            insert into auth.identities (
-              id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
-            ) values (
-              gen_random_uuid(), %s, %s, jsonb_build_object('sub', %s::text, 'email', %s::text), 'email', now(), now(), now()
+            with s as (
+              insert into auth.sessions (id, user_id, created_at, updated_at, aal)
+              values (gen_random_uuid(), %(uid)s, now(), now(), 'aal1') returning id
             )
+            insert into auth.refresh_tokens (instance_id, token, user_id, revoked, session_id, created_at, updated_at)
+            select '00000000-0000-0000-0000-000000000000', %(refresh)s, %(uid)s, false, s.id, now(), now() from s
             """,
-            (uid, uid, uid, email),
+            {"uid": uid, "refresh": refresh},
         )
 
     try:
-        # 1. Sign in via real Supabase Auth and verify the returned JWT via JWKS
+        # 1. Get a token from real Supabase Auth and verify the returned JWT via JWKS
         res = httpx.post(
-            f"{url}/auth/v1/token?grant_type=password",
+            f"{url}/auth/v1/token?grant_type=refresh_token",
             headers={"apikey": anon},
-            json={"email": email, "password": password},
+            json={"refresh_token": refresh},
             timeout=15,
         )
         assert res.status_code == 200, res.text

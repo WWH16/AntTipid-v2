@@ -2,7 +2,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/endpoints'
-import { useQuery } from '@/api/use-query'
+import { setCacheUser, useQuery } from '@/api/use-query'
 import { currentMonth } from '@/lib/format'
 import { supabase, toUser } from '@/lib/supabase'
 import type { Transaction, TransactionKind, User } from '@/types'
@@ -35,6 +35,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // (INITIAL_SESSION), then on every sign-in, sign-out and token refresh.
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Before setUser, so the first render after sign-in already has this user's saved data, never another's.
+      setCacheUser(session?.user.id ?? null)
       setUser(session?.user ? toUser(session.user) : null)
       setReady(true)
     })
@@ -47,6 +49,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     // Updates state immediately, before onAuthStateChange catches up.
     signIn: setUser,
     signOut: () => {
+      setCacheUser(null)
       setUser(null)
       setAdd(null)
       setDetailId(null)

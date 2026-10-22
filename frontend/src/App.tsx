@@ -1,16 +1,24 @@
-import { lazy, Suspense, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useApp } from '@/app-state'
 import { AppShell } from '@/components/app-shell'
 import { LoadingAuth, LoadingPage } from '@/components/states'
 import { hasSavedSession } from '@/lib/supabase'
 
-// Each page is its own file, downloaded the first time it is opened.
-const HomePage = lazy(() => import('@/pages/home').then((m) => ({ default: m.HomePage })))
-const ActivityPage = lazy(() => import('@/pages/activity').then((m) => ({ default: m.ActivityPage })))
-const BudgetsPage = lazy(() => import('@/pages/budgets').then((m) => ({ default: m.BudgetsPage })))
-const ReportsPage = lazy(() => import('@/pages/reports').then((m) => ({ default: m.ReportsPage })))
-const SettingsPage = lazy(() => import('@/pages/settings').then((m) => ({ default: m.SettingsPage })))
+// Each page is its own file. The signed-in pages are fetched in the background once the app is up (see
+// RequireUser), so tapping a nav link renders at once instead of waiting for the file.
+const APP_PAGES = [
+  () => import('@/pages/home'),
+  () => import('@/pages/activity'),
+  () => import('@/pages/budgets'),
+  () => import('@/pages/reports'),
+  () => import('@/pages/settings'),
+] as const
+const HomePage = lazy(() => APP_PAGES[0]().then((m) => ({ default: m.HomePage })))
+const ActivityPage = lazy(() => APP_PAGES[1]().then((m) => ({ default: m.ActivityPage })))
+const BudgetsPage = lazy(() => APP_PAGES[2]().then((m) => ({ default: m.BudgetsPage })))
+const ReportsPage = lazy(() => APP_PAGES[3]().then((m) => ({ default: m.ReportsPage })))
+const SettingsPage = lazy(() => APP_PAGES[4]().then((m) => ({ default: m.SettingsPage })))
 const LandingPage = lazy(() => import('@/pages/landing').then((m) => ({ default: m.LandingPage })))
 const PrivacyPage = lazy(() => import('@/pages/privacy').then((m) => ({ default: m.PrivacyPage })))
 const SignInPage = lazy(() => import('@/pages/sign-in').then((m) => ({ default: m.SignInPage })))
@@ -20,6 +28,12 @@ const page = (el: ReactNode) => <Suspense fallback={<LoadingPage />}>{el}</Suspe
 function RequireUser({ children }: { children: ReactNode }) {
   const { user, ready } = useApp()
   const { pathname } = useLocation()
+  useEffect(() => {
+    if (!user) return
+    // After the first screen settles; Safari has no requestIdleCallback.
+    const id = setTimeout(() => APP_PAGES.forEach((load) => void load()), 1500)
+    return () => clearTimeout(id)
+  }, [user])
   // Signed-out visitors to / get the public page about the app; every other page asks them to sign in.
   // With no saved session there's nothing to wait for, so / skips the app skeleton and shows the landing page at once.
   const landing = <Suspense fallback={null}><LandingPage /></Suspense>
