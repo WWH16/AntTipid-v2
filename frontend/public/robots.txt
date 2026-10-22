@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /activity
+Disallow: /budgets
+Disallow: /reports
+Disallow: /settings
+Disallow: /sign-in
+Sitemap: https://ant-tipid-v2-frontend.vercel.app/sitemap.xml
