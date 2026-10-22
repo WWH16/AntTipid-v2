@@ -1,7 +1,6 @@
 // Where the money went this month, and how the last six months compare. Every chart opens a detail panel.
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { ChartPie } from 'lucide-react'
-import { Area, Bar, BarChart, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
 import { useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -11,24 +10,13 @@ import { CategoryBreakdown, CategoryDetail, DayDetail, MonthDetail, type ReportD
 import { EmptyState, ErrorState, LoadingCard, LoadingItems } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { dateInMonth, money, monthLabel } from '@/lib/format'
-import { moneyTooltip, monthTotals } from '@/lib/report'
+import { monthTotals } from '@/lib/report'
 
-const trendConfig = {
-  income: { label: 'Income', color: 'var(--chart-1)' },
-  spent: { label: 'Spending', color: 'var(--chart-2)' },
-} satisfies ChartConfig
-
-const paceConfig = {
-  spent: { label: 'Spent so far', color: 'var(--chart-2)' },
-  pace: { label: 'On-budget pace', color: 'var(--muted-foreground)' },
-} satisfies ChartConfig
-
-// Recharts passes the hovered x value as activeLabel on chart clicks.
-type ChartClick = { activeLabel?: string | number } | null
+const PaceChart = lazy(() => import('@/components/report-charts').then((m) => ({ default: m.PaceChart })))
+const TrendChart = lazy(() => import('@/components/report-charts').then((m) => ({ default: m.TrendChart })))
 
 /** Totals, the month chart, then breakdown and trend side by side, like the loaded report. */
 function LoadingReport() {
@@ -115,25 +103,9 @@ export function ReportsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={paceConfig} className="aspect-auto h-56 w-full cursor-pointer sm:h-64">
-                <ComposedChart
-                  accessibilityLayer
-                  data={pace}
-                  margin={{ left: 4, right: 8 }}
-                  onClick={(s: ChartClick) => {
-                    const day = Number(s?.activeLabel)
-                    if (day && data.daily.some((d) => d.day === day)) setDetail({ type: 'day', day })
-                  }}
-                >
-                  <CartesianGrid vertical={false} />
-                  <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} interval="preserveStartEnd" minTickGap={16} />
-                  <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={(v: number) => `₱${(v / 1000).toFixed(v % 1000 ? 1 : 0)}k`} />
-                  <ChartTooltip content={<ChartTooltipContent labelFormatter={(d) => `Day ${d}`} formatter={moneyTooltip(paceConfig)} />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Area dataKey="spent" type="monotone" stroke="var(--color-spent)" strokeWidth={2} fill="var(--color-spent)" fillOpacity={0.15} connectNulls={false} />
-                  {summary?.budget ? <Line dataKey="pace" type="linear" stroke="var(--color-pace)" strokeWidth={2} strokeDasharray="4 4" dot={false} activeDot={false} /> : null}
-                </ComposedChart>
-              </ChartContainer>
+              <Suspense fallback={<Skeleton className="h-56 w-full sm:h-64" />}>
+                <PaceChart data={pace} onDay={(day) => { if (day && data.daily.some((d) => d.day === day)) setDetail({ type: 'day', day }) }} />
+              </Suspense>
             </CardContent>
           </Card>
           )}
@@ -180,20 +152,9 @@ export function ReportsPage() {
                     </TableBody>
                   </Table>
                 ) : (
-                  <ChartContainer config={trendConfig} className="aspect-auto h-64 w-full cursor-pointer">
-                    <BarChart
-                      accessibilityLayer
-                      data={data.trend}
-                      onClick={(s: ChartClick) => { if (s?.activeLabel) setDetail({ type: 'month', month: String(s.activeLabel) }) }}
-                    >
-                      <CartesianGrid vertical={false} />
-                      <XAxis dataKey="month" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(m) => monthLabel(m, 'short')} />
-                      <ChartTooltip content={<ChartTooltipContent labelFormatter={(m) => monthLabel(String(m))} formatter={moneyTooltip(trendConfig)} />} />
-                      <ChartLegend content={<ChartLegendContent />} />
-                      <Bar dataKey="income" fill="var(--color-income)" radius={4} />
-                      <Bar dataKey="spent" fill="var(--color-spent)" radius={4} />
-                    </BarChart>
-                  </ChartContainer>
+                  <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                    <TrendChart data={data.trend} onMonth={(m) => setDetail({ type: 'month', month: m })} />
+                  </Suspense>
                 )}
               </CardContent>
             </Card>

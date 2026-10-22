@@ -1,5 +1,5 @@
 // Drill-down panels for the Reports charts: one day, one category, one month.
-import { Bar, BarChart, CartesianGrid, Cell, XAxis } from 'recharts'
+import { lazy, Suspense } from 'react'
 import { useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -10,13 +10,12 @@ import { ResponsivePanel } from '@/components/responsive-panel'
 import { LoadingItems } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { Button } from '@/components/ui/button'
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { Item, ItemContent, ItemGroup } from '@/components/ui/item'
 import { Progress, ProgressLabel } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { dayIso, dayLabel, money, monthLabel, shiftMonth } from '@/lib/format'
 import { sumOf } from '@/lib/transactions'
-import { moneyTooltip, monthTotals } from '@/lib/report'
+import { monthTotals } from '@/lib/report'
 import type { MonthlyReport } from '@/types'
 
 export type ReportDetail =
@@ -78,7 +77,7 @@ export function DayDetail({ month, day, onClose }: { month: string; day: number;
   )
 }
 
-const historyConfig = { spent: { label: 'Spent', color: 'var(--chart-2)' } } satisfies ChartConfig
+const HistoryChart = lazy(() => import('@/components/report-charts').then((m) => ({ default: m.HistoryChart })))
 
 /** One category: its total, budget, last six months, and this month's transactions. */
 export function CategoryDetail({ month, categoryId, onClose }: { month: string; categoryId: string; onClose: () => void }) {
@@ -126,16 +125,9 @@ export function CategoryDetail({ month, categoryId, onClose }: { month: string; 
 
           <div className="grid gap-2">
             <h3 className="text-sm font-medium">Last 6 months</h3>
-            <ChartContainer config={historyConfig} className="aspect-auto h-40 w-full">
-              <BarChart accessibilityLayer data={history}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(m) => monthLabel(m, 'short')} />
-                <ChartTooltip content={<ChartTooltipContent labelFormatter={(m) => monthLabel(String(m))} formatter={moneyTooltip(historyConfig)} />} />
-                <Bar dataKey="spent" radius={4}>
-                  {history.map((h) => <Cell key={h.month} fill="var(--color-spent)" fillOpacity={h.month === month ? 1 : 0.4} />)}
-                </Bar>
-              </BarChart>
-            </ChartContainer>
+            <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+              <HistoryChart data={history} month={month} />
+            </Suspense>
           </div>
 
           <div className="grid gap-2">
