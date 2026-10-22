@@ -17,8 +17,23 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 const Mail = () => <a href={`mailto:${CONTACT}`} className="font-medium text-foreground underline underline-offset-4">{CONTACT}</a>
 
+const PAGE_URL = 'https://ant-tipid-v2-frontend.vercel.app/privacy'
+
 export function PrivacyPage() {
   useEffect(() => { document.title = 'Privacy policy | AntTipid' }, [])
+  // index.html says the canonical URL is /. Point it here while this page is open so search engines index /privacy on its own,
+  // and put / back on the way out.
+  useEffect(() => {
+    const canonical = document.querySelector('link[rel=canonical]')
+    const ogUrl = document.querySelector('meta[property="og:url"]')
+    const home = canonical?.getAttribute('href') ?? ''
+    canonical?.setAttribute('href', PAGE_URL)
+    ogUrl?.setAttribute('content', PAGE_URL)
+    return () => {
+      canonical?.setAttribute('href', home)
+      ogUrl?.setAttribute('content', home)
+    }
+  }, [])
   return (
     <main className="mx-auto grid w-full max-w-2xl gap-10 px-6 py-10 md:py-16">
       <Link to="/sign-in" aria-label="AntTipid sign in" className="w-fit"><LogoWithTagline height={44} small /></Link>
