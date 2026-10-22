@@ -11,9 +11,9 @@ const subscribe = (l: () => void) => (listeners.add(l), () => listeners.delete(l
 /** Last loaded data per key, and the request for the current version (shared by every caller of that key). */
 const cache = new Map<string, { version: number; request?: Promise<unknown>; data?: unknown }>()
 
-// Saved across visits: lists and totals only. Not search results (one entry per keystroke) and not single
-// transactions (their receipt link is a short-lived signed URL).
-const SAVED = /^(wallets|categories|recent:|summary:|budgets:|report:)/
+// Saved across visits: lists and totals only, including a month's unfiltered Activity list. Not search or filter
+// results (one entry per keystroke) and not single transactions (their receipt link is a short-lived signed URL).
+const SAVED = /^(wallets|categories|recent:|summary:|budgets:|report:|tx:\{"month":"[^"]+"\}$)/
 const STORE = 'anttipid-cache-v1:'
 let storeKey: string | null = null
 

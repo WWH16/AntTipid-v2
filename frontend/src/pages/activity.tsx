@@ -1,5 +1,5 @@
 // Every transaction for a month, newest first, grouped by day. Filters sit above the list.
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Download, ReceiptText, Search, SearchX, SlidersHorizontal, X } from 'lucide-react'
 import { useApp, useMonth, useRefData } from '@/app-state'
@@ -47,7 +47,13 @@ export function ActivityPage() {
     categoryId: categoryId === 'all' ? undefined : categoryId,
     search: debouncedSearch.trim() || undefined,
   }
-  const { data, error, loading } = useQuery(`tx:${JSON.stringify(filters)}`, () => api.transactions.list(filters))
+  const { data: loaded, error, loading } = useQuery(`tx:${JSON.stringify(filters)}`, () => api.transactions.list(filters))
+  // While a new search or filter loads, keep this month's last list on screen (dimmed) instead of flashing the skeleton.
+  // A new month still shows the skeleton, so last month's rows never sit under this month's name.
+  const [last, setLast] = useState<{ month: string; data: Transaction[] }>()
+  if (loaded && loaded !== last?.data) setLast({ month, data: loaded })
+  const data = loaded ?? (last?.month === month ? last.data : undefined)
+  const stale = data !== loaded
   const filtered = kind !== 'all' || walletId !== 'all' || categoryId !== 'all' || !!search
   const clear = () => { setKind('all'); setWalletId('all'); setCategoryId('all'); setSearch(''); setDebouncedSearch('') }
 
@@ -124,27 +130,33 @@ export function ActivityPage() {
           ? <EmptyState framed icon={SearchX} title="No matches" body={`Nothing in ${monthLabel(month)} matches these filters.`} action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
           : <EmptyState framed icon={ReceiptText} title={`Nothing recorded in ${monthLabel(month)}`} body="Transactions you add for this month are listed here." action={<Button onClick={() => openAdd({ date: dateInMonth(month) })}>Add transaction</Button>} />
       ) : (
-        <Card>
-          <CardContent className="grid gap-2 md:gap-4">
-            {groupByDay(data).map(([day, items], i) => {
-              const spent = sumOf(items, 'expense')
-              return (
-                <section key={day} className="grid gap-1">
-                  {i > 0 && <Separator className="mb-2 md:mb-3" />}
-                  <div className="flex items-baseline justify-between gap-4 text-sm">
-                    <h2 className="font-medium">{dayLabel(day)}</h2>
-                    {spent > 0 && <span className="text-muted-foreground tabular-nums">{money(spent)} spent</span>}
-                  </div>
-                  <ItemGroup>{items.map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
-                </section>
-              )
-            })}
-          </CardContent>
+        <Card aria-busy={stale} className={cn('transition-opacity', stale && 'opacity-60')}>
+          <DayList list={data} />
         </Card>
       )}
     </>
   )
 }
+
+const DayList = memo(function DayList({ list }: { list: Transaction[] }) {
+  return (
+    <CardContent className="grid gap-2 md:gap-4">
+      {[...Map.groupBy(list, (t) => t.date)].map(([day, items], i) => {
+        const spent = sumOf(items, 'expense')
+        return (
+          <section key={day} className="grid gap-1">
+            {i > 0 && <Separator className="mb-2 md:mb-3" />}
+            <div className="flex items-baseline justify-between gap-4 text-sm">
+              <h2 className="font-medium">{dayLabel(day)}</h2>
+              {spent > 0 && <span className="text-muted-foreground tabular-nums">{money(spent)} spent</span>}
+            </div>
+            <ItemGroup>{items.map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
+          </section>
+        )
+      })}
+    </CardContent>
+  )
+})
 
 /** Two day groups, like the loaded list. */
 function LoadingDays() {
@@ -164,12 +176,6 @@ function LoadingDays() {
       </CardContent>
     </Card>
   )
-}
-
-function groupByDay(list: Transaction[]) {
-  const groups = new Map<string, Transaction[]>()
-  for (const t of list) groups.set(t.date, [...(groups.get(t.date) ?? []), t])
-  return [...groups]
 }
 
 function exportCsv(filters: TransactionFilters) {
