@@ -102,6 +102,8 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    /* Thin bars on the page and every scrolling panel; scrollbar-width doesn't inherit, so it's set on each element. */
+    scrollbar-width: thin;
     }
   body {
     @apply bg-background text-foreground;
