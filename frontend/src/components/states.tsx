@@ -1,21 +1,19 @@
 import type { ReactNode } from 'react'
-import { CircleAlert } from 'lucide-react'
+import { CircleAlert, type LucideIcon } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BrandMark } from '@/components/brand-icons'
 import { HeroCard } from '@/components/hero-card'
 import { LogoWithTagline } from '@/components/logo'
 import { cn } from '@/lib/utils'
 
-export function EmptyState({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
+/** Framed (dashed border) only when it stands alone on a page; inside a card, the card is the frame. */
+export function EmptyState({ icon: Icon, title, body, action, framed }: { icon: LucideIcon; title: string; body: string; action?: ReactNode; framed?: boolean }) {
   return (
-    <Empty className="border border-dashed p-6">
+    <Empty className={framed ? 'border p-6' : 'p-0 py-4'}>
       <EmptyHeader>
-        <div className="mx-auto mb-3 flex size-14 items-center justify-center rounded-2xl bg-muted/60 p-1">
-          <BrandMark mark="tile" className="size-full" />
-        </div>
+        <EmptyMedia variant="icon"><Icon /></EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>
         <EmptyDescription>{body}</EmptyDescription>
       </EmptyHeader>

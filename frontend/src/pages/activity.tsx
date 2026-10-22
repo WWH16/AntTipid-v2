@@ -1,7 +1,7 @@
 // Every transaction for a month, newest first, grouped by day. Filters sit above the list.
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Download, Search, SlidersHorizontal, X } from 'lucide-react'
+import { Download, ReceiptText, Search, SearchX, SlidersHorizontal, X } from 'lucide-react'
 import { useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { dayLabel, money, monthLabel } from '@/lib/format'
+import { dateInMonth, dayLabel, money, monthLabel } from '@/lib/format'
 import { sumOf } from '@/lib/transactions'
 import { cn } from '@/lib/utils'
 import type { Transaction, TransactionFilters, TransactionKind } from '@/types'
@@ -121,8 +121,8 @@ export function ActivityPage() {
 
       {error ? <ErrorState error={error} /> : loading && !data ? <LoadingDays /> : !data?.length ? (
         filtered
-          ? <EmptyState title="No matches" body={`Nothing in ${monthLabel(month)} matches these filters.`} action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
-          : <EmptyState title={`Nothing recorded in ${monthLabel(month)}`} body="Transactions you add for this month are listed here." action={<Button onClick={() => openAdd()}>Add transaction</Button>} />
+          ? <EmptyState framed icon={SearchX} title="No matches" body={`Nothing in ${monthLabel(month)} matches these filters.`} action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
+          : <EmptyState framed icon={ReceiptText} title={`Nothing recorded in ${monthLabel(month)}`} body="Transactions you add for this month are listed here." action={<Button onClick={() => openAdd({ date: dateInMonth(month) })}>Add transaction</Button>} />
       ) : (
         <Card>
           <CardContent className="grid gap-2 md:gap-4">

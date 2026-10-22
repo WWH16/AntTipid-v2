@@ -42,6 +42,9 @@ export const shiftMonth = (month: string, by: number) => {
 
 /** Day `day` of `month` (YYYY-MM) as YYYY-MM-DD. */
 export const dayIso = (month: string, day: number) => `${month}-${String(day).padStart(2, '0')}`
+/** A date inside the month a screen shows: today in this month, else the month's last day. */
+export const dateInMonth = (month: string) =>
+  todayIso().startsWith(month) ? todayIso() : dayIso(month, new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate())
 
 /** "Today", "Yesterday", or "Mon, 13 Oct". */
 export function dayLabel(iso: string) {

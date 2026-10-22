@@ -1,7 +1,8 @@
 // Where the money went this month, and how the last six months compare. Every chart opens a detail panel.
 import { useState } from 'react'
+import { ChartPie } from 'lucide-react'
 import { Area, Bar, BarChart, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts'
-import { useMonth, useRefData } from '@/app-state'
+import { useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { MonthSwitcher } from '@/components/month-switcher'
@@ -13,7 +14,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { money, monthLabel } from '@/lib/format'
+import { dateInMonth, money, monthLabel } from '@/lib/format'
 import { moneyTooltip, monthTotals } from '@/lib/report'
 
 const trendConfig = {
@@ -54,6 +55,7 @@ function LoadingReport() {
 
 export function ReportsPage() {
   const [month, setMonth] = useMonth()
+  const { openAdd } = useApp()
   const { data, error, loading } = useQuery(`report:${month}`, () => api.reports.monthly(month))
   const { data: summary } = useQuery(`summary:${month}`, () => api.reports.summary(month))
   const [asTable, setAsTable] = useState(false)
@@ -146,7 +148,7 @@ export function ReportsPage() {
                 {data.byCategory.length ? (
                   <CategoryBreakdown items={data.byCategory} onSelect={(categoryId) => setDetail({ type: 'category', categoryId })} />
                 ) : (
-                  <EmptyState title={`No spending in ${monthLabel(month)}`} body="Expenses you add for this month are broken down here by category." />
+                  <EmptyState icon={ChartPie} title={`No spending in ${monthLabel(month)}`} body="Expenses you add for this month are broken down here by category." action={<Button variant="outline" onClick={() => openAdd({ kind: 'expense', date: dateInMonth(month) })}>Add expense</Button>} />
                 )}
               </CardContent>
             </Card>

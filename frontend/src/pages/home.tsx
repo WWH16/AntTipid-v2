@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/page-header'
 import { SafeToSpendCard } from '@/components/safe-to-spend-card'
 import { BrandMark } from '@/components/brand-icons'
 import { BillsSlide, Carousel, SpendingSlide } from '@/components/home-carousel'
-import { EmptyState, ErrorState, LoadingHero, LoadingItems } from '@/components/states'
+import { ErrorState, LoadingHero, LoadingItems } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { WalletItem } from '@/components/wallet-item'
 import { Button } from '@/components/ui/button'
@@ -100,7 +100,7 @@ export function HomePage() {
               {recent.loading ? <LoadingItems rows={5} /> : recent.data?.length ? (
                 <ItemGroup>{recent.data.slice(0, 6).map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
               ) : (
-                <EmptyState title="Nothing recorded yet" body="Add your first expense or income and it shows up here." action={<Button onClick={() => openAdd()}>Add transaction</Button>} />
+                <p className="text-sm text-muted-foreground">Nothing recorded yet. Your expenses and income show up here.</p>
               )}
             </CardContent>
           </Card>
@@ -148,11 +148,7 @@ export function HomePage() {
                   {activeWallets.map((w) => <WalletItem key={w.id} w={w} />)}
                 </ItemGroup>
               ) : (
-                <EmptyState
-                  title="No wallets yet"
-                  body="Add the cash, e-wallets and bank accounts you pay from. Every transaction needs one."
-                  action={<Button nativeButton={false} render={<Link to="/settings" />}>Add a wallet</Button>}
-                />
+                <p className="text-sm text-muted-foreground">No wallets yet. Add the cash, e-wallets and bank accounts you pay from.</p>
               )}
             </CardContent>
           </Card>

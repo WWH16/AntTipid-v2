@@ -7,7 +7,7 @@ import { currentMonth } from '@/lib/format'
 import { supabase, toUser } from '@/lib/supabase'
 import type { Transaction, TransactionKind, User } from '@/types'
 
-type AddRequest = { kind?: TransactionKind; scan?: boolean; edit?: Transaction }
+type AddRequest = { kind?: TransactionKind; scan?: boolean; edit?: Transaction; date?: string }
 
 interface AppState {
   user: User | null

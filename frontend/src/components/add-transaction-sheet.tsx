@@ -3,6 +3,7 @@
 // Wallet defaults to the last one used and the date to today.
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Check, Loader2, ScanLine, Upload } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { BusyButton } from '@/components/busy-button'
@@ -35,7 +36,7 @@ export function AddTransactionSheet() {
 
 function AddFlow() {
   const { add, closeAdd, openDetail } = useApp()
-  const { wallets, categories, category } = useRefData()
+  const { wallets, categories, category, loading } = useRefData()
   const editing = add?.edit
   const activeWallets = wallets.filter((w) => !w.archived)
 
@@ -45,7 +46,7 @@ function AddFlow() {
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? '')
   const [pickedWallet, setWalletId] = useState(editing?.walletId ?? readLastWallet())
   const [toWalletId, setToWalletId] = useState(editing?.toWalletId ?? '')
-  const [date, setDate] = useState(editing?.date ?? todayIso())
+  const [date, setDate] = useState(editing?.date ?? add?.date ?? todayIso())
   const [title, setTitle] = useState(editing?.title ?? '')
   const [note, setNote] = useState(editing?.note ?? '')
   const [receipt, setReceipt] = useState<ReceiptScan | null>(null)
@@ -100,6 +101,17 @@ function AddFlow() {
     const suggestedWallet = suggestWalletId(r, wallets)
     if (suggestedWallet) setWalletId(suggestedWallet)
     setMode('form')
+  }
+
+  if (!editing && !loading && !activeWallets.length) {
+    return (
+      <ResponsivePanel onClose={closeAdd} title="Add a wallet first" description="Every transaction is paid from or into a wallet.">
+        <div className="grid gap-4 pb-4">
+          <p className="text-sm text-muted-foreground">Add the cash, GCash or bank account you pay from, then record what you spend.</p>
+          <Button nativeButton={false} render={<Link to="/settings" />} onClick={closeAdd}>Add a wallet</Button>
+        </div>
+      </ResponsivePanel>
+    )
   }
 
   if (mode === 'scan') return <ScanStep onClose={closeAdd} onBack={() => setMode('form')} onDone={applyReceipt} />

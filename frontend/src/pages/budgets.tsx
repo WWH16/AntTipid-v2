@@ -1,6 +1,6 @@
 // Monthly spending limits. The whole-month budget leads; category budgets follow, worst first.
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Tags, Target } from 'lucide-react'
 import { useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -45,10 +45,10 @@ export function BudgetsPage() {
     <>
       <PageHeader
         page="Budgets"
-        headline={!data ? 'Budgets' : !data.length ? 'No budgets yet' : needing.length ? `${needing.length} ${needing.length === 1 ? 'budget needs' : 'budgets need'} a look` : 'Every budget is on track'}
+        headline={!data?.length ? 'Budgets' : needing.length ? `${needing.length} ${needing.length === 1 ? 'budget needs' : 'budgets need'} a look` : 'Every budget is on track'}
         description={needing.length
           ? `${new Intl.ListFormat('en').format(needing)} ${needing.length === 1 ? 'is' : 'are'} near or over the limit in ${monthLabel(month)}.`
-          : data?.length ? `Nothing near its limit in ${monthLabel(month)}.` : 'Set a limit for the month or for one category.'}
+          : data?.length ? `Nothing near its limit in ${monthLabel(month)}.` : undefined}
         action={<Button onClick={() => setEditing({})}><Plus /> New budget</Button>}
       />
       <MonthSwitcher month={month} onChange={setMonth} />
@@ -76,7 +76,7 @@ export function BudgetsPage() {
               </CardFooter>
             </HeroCard>
           ) : (
-            <EmptyState title="No monthly budget" body="One limit for all your spending. Home uses it to show what's safe to spend." action={<Button onClick={() => setEditing({ categoryId: null })}>Set monthly budget</Button>} />
+            <EmptyState framed icon={Target} title="No monthly budget" body="One limit for all your spending. Home uses it to show what's safe to spend." action={<Button onClick={() => setEditing({ categoryId: null })}>Set monthly budget</Button>} />
           )}
 
           <Card>
@@ -89,8 +89,8 @@ export function BudgetsPage() {
                 <ItemGroup>
                   {byCategory.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} onSelect={() => setEditing({ budget: b })} />)}
                 </ItemGroup>
-              ) : (
-                <EmptyState title="No category budgets" body="Limit what goes to food, transport or anything else." action={<Button variant="outline" onClick={() => setEditing({})}>Add a category budget</Button>} />
+              ) : !unbudgeted.length && (
+                <EmptyState icon={Tags} title="No spending categories" body="Add one in Settings, then give it a limit here." />
               )}
               {unbudgeted.length > 0 && (
                 <div className="grid gap-2">
