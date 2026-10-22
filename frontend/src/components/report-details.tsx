@@ -83,7 +83,9 @@ const HistoryChart = lazy(() => import('@/components/report-charts').then((m) =>
 export function CategoryDetail({ month, categoryId, onClose }: { month: string; categoryId: string; onClose: () => void }) {
   const { category } = useRefData()
   const cat = category(categoryId)
-  const { data: all } = useQuery(`cat-tx:${categoryId}`, () => api.transactions.list({ categoryId }))
+  // Only the six months the chart shows, not the category's whole history.
+  const since = `${shiftMonth(month, -5)}-01`
+  const { data: all } = useQuery(`cat-tx:${categoryId}:${since}`, () => api.transactions.list({ categoryId, since }))
   const { data: budgets } = useQuery(`budgets:${month}`, () => api.budgets.list(month))
   const { data: report } = useQuery(`report:${month}`, () => api.reports.monthly(month))
 

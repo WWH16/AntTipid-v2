@@ -1,5 +1,5 @@
 // Where the money went this month, and how the last six months compare. Every chart opens a detail panel.
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { ChartPie } from 'lucide-react'
 import { useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
@@ -55,9 +55,10 @@ export function ReportsPage() {
   const spentTotal = data?.byCategory.reduce((s, c) => s + c.total, 0) ?? 0
 
   // Running total per day against a straight line from 0 to the monthly budget.
-  let running = 0
-  const pace = summary && data
-    ? Array.from({ length: summary.daysInMonth }, (_, i) => {
+  const pace = useMemo(() => {
+    if (!summary || !data) return []
+    let running = 0
+    return Array.from({ length: summary.daysInMonth }, (_, i) => {
       const day = i + 1
       const spentToday = data.daily.find((d) => d.day === day)
       if (spentToday) running += spentToday.spent
@@ -67,7 +68,9 @@ export function ReportsPage() {
         pace: summary.budget ? Math.round((summary.budget * day) / summary.daysInMonth) : undefined,
       }
     })
-    : []
+  }, [summary, data])
+  const openDay = useCallback((day: number) => { if (data?.daily.some((d) => d.day === day)) setDetail({ type: 'day', day }) }, [data])
+  const openMonth = useCallback((m: string) => setDetail({ type: 'month', month: m }), [])
 
   return (
     <>
@@ -104,7 +107,7 @@ export function ReportsPage() {
             </CardHeader>
             <CardContent>
               <Suspense fallback={<Skeleton className="h-56 w-full sm:h-64" />}>
-                <PaceChart data={pace} onDay={(day) => { if (day && data.daily.some((d) => d.day === day)) setDetail({ type: 'day', day }) }} />
+                <PaceChart data={pace} onDay={openDay} />
               </Suspense>
             </CardContent>
           </Card>
@@ -153,7 +156,7 @@ export function ReportsPage() {
                   </Table>
                 ) : (
                   <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-                    <TrendChart data={data.trend} onMonth={(m) => setDetail({ type: 'month', month: m })} />
+                    <TrendChart data={data.trend} onMonth={openMonth} />
                   </Suspense>
                 )}
               </CardContent>

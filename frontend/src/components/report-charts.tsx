@@ -1,5 +1,6 @@
 // The Reports charts, in their own file because recharts is most of the Reports download. Reports and its
 // detail panels load this lazily, so the rest of the page (and the background page prefetch) doesn't wait on it.
+import { memo } from 'react'
 import { Area, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { money, monthLabel } from '@/lib/format'
@@ -30,8 +31,9 @@ function moneyTooltip(config: ChartConfig) {
 // Recharts passes the hovered x value as activeLabel on chart clicks.
 type ChartClick = { activeLabel?: string | number } | null
 
+// memo: a panel opening re-renders Reports; charts redraw only when data or handler changes.
 /** Running total per day against the on-budget pace line. onDay gets the tapped day. */
-export function PaceChart({ data, onDay }: { data: { day: number; spent?: number; pace?: number }[]; onDay: (day: number) => void }) {
+export const PaceChart = memo(function PaceChart({ data, onDay }: { data: { day: number; spent?: number; pace?: number }[]; onDay: (day: number) => void }) {
   const hasBudget = data.some((d) => d.pace !== undefined)
   return (
     <ChartContainer config={paceConfig} className="aspect-auto h-56 w-full cursor-pointer sm:h-64">
@@ -46,10 +48,10 @@ export function PaceChart({ data, onDay }: { data: { day: number; spent?: number
       </ComposedChart>
     </ChartContainer>
   )
-}
+})
 
 /** Income and spending bars per month. onMonth gets the tapped month. */
-export function TrendChart({ data, onMonth }: { data: MonthlyReport['trend']; onMonth: (month: string) => void }) {
+export const TrendChart = memo(function TrendChart({ data, onMonth }: { data: MonthlyReport['trend']; onMonth: (month: string) => void }) {
   return (
     <ChartContainer config={trendConfig} className="aspect-auto h-64 w-full cursor-pointer">
       <BarChart accessibilityLayer data={data} onClick={(s: ChartClick) => { if (s?.activeLabel) onMonth(String(s.activeLabel)) }}>
@@ -62,7 +64,7 @@ export function TrendChart({ data, onMonth }: { data: MonthlyReport['trend']; on
       </BarChart>
     </ChartContainer>
   )
-}
+})
 
 /** One category's spending per month, with the selected month drawn solid. */
 export function HistoryChart({ data, month }: { data: { month: string; spent: number }[]; month: string }) {
