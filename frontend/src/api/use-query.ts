@@ -60,8 +60,18 @@ export function invalidate() {
   listeners.forEach((l) => l())
 }
 
+/** Show a change in a loaded list at once instead of after the reload. The reload still replaces it. */
+export function setCached<T>(key: string, update: (data: T) => T) {
+  const entry = cache.get(key)
+  if (entry?.data === undefined) return
+  entry.data = update(entry.data as T)
+  listeners.forEach((l) => l())
+}
+
 export function useQuery<T>(key: string, load: () => Promise<T>) {
   const v = useSyncExternalStore(subscribe, () => version)
+  // Last loaded data for this key, plus any setCached change made since (re-renders on those without reloading).
+  const cached = useSyncExternalStore(subscribe, () => cache.get(key)?.data) as T | undefined
   const [state, setState] = useState<{ data?: T; error?: Error; key?: string }>({})
   useEffect(() => {
     let live = true
@@ -72,7 +82,6 @@ export function useQuery<T>(key: string, load: () => Promise<T>) {
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, v])
-  if (state.key === key) return { data: state.data, error: state.error, loading: false }
-  const cached = cache.get(key)?.data as T | undefined
+  if (state.key === key) return { data: cached ?? state.data, error: state.error, loading: false }
   return { data: cached, error: undefined, loading: cached === undefined }
 }

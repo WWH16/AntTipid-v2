@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DetailList } from '@/components/detail-list'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
+import { setCached } from '@/api/use-query'
 import { CategoryMedia } from '@/components/category-icon'
 import { CATEGORY_ICONS } from '@/lib/category-icons'
 import { PageHeader } from '@/components/page-header'
@@ -36,6 +37,12 @@ type Dlg =
   | { type: 'category'; category?: Category; kind: CategoryKind }
   | { type: 'account' }
   | null
+
+// Put a saved wallet or category in its list at once, so rows change without waiting for the reload after every save.
+const upsert = <T extends { id: string }>(key: 'wallets' | 'categories', item: T) =>
+  setCached<T[]>(key, (list) => (list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item]))
+const drop = (key: 'wallets' | 'categories', id: string) =>
+  setCached<{ id: string }[]>(key, (list) => list.filter((x) => x.id !== id))
 
 export function SettingsPage() {
   const [params, setParams] = useSearchParams()
@@ -84,8 +91,9 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
   const { wallets, loading } = useRefData()
   const [deleting, setDeleting] = useState<Wallet | null>(null)
 
-  // Reversible, so no confirm step: the toast offers Undo instead.
+  // Reversible, so no confirm step: the toast offers Undo instead. The row changes at once and goes back if the save fails.
   async function setArchived(w: Wallet, value: boolean) {
+    upsert('wallets', { ...w, archived: value })
     try {
       await api.wallets.update(w.id, { archived: value })
       done(value ? 'Wallet archived' : 'Wallet restored', {
@@ -94,6 +102,7 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
         duration: 8000, // long enough to notice and reach the Undo button
       })
     } catch (e) {
+      upsert('wallets', { ...w, archived: !value })
       toast.error((e as Error).message)
     }
   }
@@ -130,6 +139,7 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
         confirm="Delete wallet"
         onConfirm={async () => {
           await api.wallets.remove(deleting!.id)
+          drop('wallets', deleting!.id)
           done('Wallet deleted', { description: deleting!.name })
         }}
       />
@@ -180,6 +190,7 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
         confirm="Delete category"
         onConfirm={async () => {
           await api.categories.remove(deleting!.id)
+          drop('categories', deleting!.id)
           done('Category deleted', { description: deleting!.name })
         }}
       />
@@ -250,15 +261,13 @@ export function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () =
   const save = () => run(async () => {
     const trimmed = name.trim()
     const shownBalance = balanceBlank ? (wallet?.balance ?? 0) : balanceNum
-    if (wallet) {
-      await api.wallets.update(wallet.id, {
+    upsert('wallets', wallet
+      ? await api.wallets.update(wallet.id, {
         name: trimmed,
         type: type as WalletType,
         ...(!balanceBlank && balanceNum !== wallet.balance ? { balance: balanceNum } : {}),
       })
-    } else {
-      await api.wallets.create({ name: trimmed, type: type as WalletType, balance: shownBalance })
-    }
+      : await api.wallets.create({ name: trimmed, type: type as WalletType, balance: shownBalance }))
     onClose()
     done(wallet ? 'Changes saved' : 'Wallet added', { description: `${trimmed} · ${money(shownBalance)}` })
   })
@@ -298,8 +307,9 @@ function CategoryForm({ category, kind, onClose }: { category?: Category; kind: 
 
   const save = () => run(async () => {
     const trimmed = name.trim()
-    if (category) await api.categories.update(category.id, { name: trimmed, icon })
-    else await api.categories.create({ name: trimmed, kind, icon })
+    upsert('categories', category
+      ? await api.categories.update(category.id, { name: trimmed, icon })
+      : await api.categories.create({ name: trimmed, kind, icon }))
     onClose()
     done(category ? 'Changes saved' : 'Category added', { description: trimmed })
   })
