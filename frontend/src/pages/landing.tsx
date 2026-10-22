@@ -158,8 +158,8 @@ function PreviewPanel({ title, body, children }: { title: string; body: string; 
 function SectionHeading({ id, title, body }: { id: string; title: string; body?: string }) {
   return (
     <div className="grid max-w-2xl gap-3">
-      <h2 id={id} className="text-3xl leading-tight font-semibold tracking-tight text-balance md:text-4xl">{title}</h2>
-      {body && <p className="text-lg leading-relaxed text-muted-foreground">{body}</p>}
+      <h2 id={id} className="text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">{title}</h2>
+      {body && <p className="leading-relaxed sm:text-lg text-muted-foreground">{body}</p>}
     </div>
   )
 }
@@ -169,16 +169,16 @@ export function LandingPage() {
   return (
     <div className="min-h-svh overflow-x-clip">
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
           <Link to="/" aria-label="AntTipid home" className="shrink-0 rounded-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
-            <img src="/brand/lockup-name.svg" alt="AntTipid" className="h-8 w-auto sm:h-9" />
+            <img src="/brand/lockup-name.svg" alt="AntTipid" className="h-7 w-auto sm:h-9" />
           </Link>
           <nav aria-label="Page sections" className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
             {NAV.map((n) => <a key={n.href} href={n.href} className={linkClass}>{n.label}</a>)}
           </nav>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <Button variant="ghost" nativeButton={false} render={<Link to="/sign-in" />}>Log in</Button>
-            <Button nativeButton={false} render={<Link to={SIGN_UP} />}>Get started</Button>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Button variant="ghost" className="max-sm:px-2" nativeButton={false} render={<Link to="/sign-in" />}>Log in</Button>
+            <Button className="max-sm:px-3" nativeButton={false} render={<Link to={SIGN_UP} />}>Get started</Button>
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Jump to a section" className="md:hidden" />}>
                 <Menu />
@@ -195,12 +195,12 @@ export function LandingPage() {
 
       <main className="[&_section]:scroll-mt-16">
         {/* Hero */}
-        <section className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 pt-12 pb-20 sm:px-6 md:pt-20 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
-          <div className="grid gap-6">
-            <h1 className="text-[2.75rem] leading-[1] font-bold tracking-[-0.045em] text-balance sm:text-6xl lg:text-7xl">
+        <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-8 pb-14 sm:gap-12 sm:px-6 sm:pt-12 sm:pb-20 md:pt-20 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
+          <div className="grid gap-5 sm:gap-6">
+            <h1 className="text-[2.25rem] leading-[1.05] font-bold tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl">
               Know where every peso goes.
             </h1>
-            <p className="max-w-[34rem] text-lg leading-relaxed text-muted-foreground">
+            <p className="max-w-[34rem] leading-relaxed sm:text-lg text-muted-foreground">
               <em className="font-medium text-foreground not-italic">Tipid</em> means spending carefully so your money lasts until the
               next sahod. AntTipid is a free tracker that helps: log what you spend and earn across cash, GCash, Maya and your bank,
               set a budget for each category, and see how much is left to spend this month.
@@ -220,13 +220,13 @@ export function LandingPage() {
 
         {/* Features */}
         <section id="features" aria-labelledby="features-title" className="border-y bg-card">
-          <div className="mx-auto grid w-full max-w-6xl gap-12 px-4 py-20 sm:px-6">
+          <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
             <SectionHeading
               id="features-title"
               title="Everything you need to stay on budget"
               body="Built around one question: how much can I still spend this month?"
             />
-            <ul className="grid gap-x-12 gap-y-10 sm:grid-cols-2">
+            <ul className="grid gap-x-12 gap-y-7 sm:grid-cols-2 sm:gap-y-10">
               {FEATURES.map(({ icon: Icon, title, body }) => (
                 <li key={title} className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
                   <span className="row-span-2 flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
@@ -241,13 +241,13 @@ export function LandingPage() {
         </section>
 
         {/* How it works */}
-        <section id="how-it-works" aria-labelledby="how-title" className="mx-auto grid w-full max-w-6xl gap-12 px-4 py-20 sm:px-6">
+        <section id="how-it-works" aria-labelledby="how-title" className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
           <SectionHeading id="how-title" title="Set up in a few minutes" />
-          <ol className="grid gap-8 md:grid-cols-3">
+          <ol className="grid gap-7 md:grid-cols-3 md:gap-8">
             {STEPS.map((s, i) => (
               <li key={s.title} className="grid content-start gap-3">
                 <span className="flex size-10 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground tabular-nums" aria-hidden>{i + 1}</span>
-                <h3 className="text-lg font-semibold">{s.title}</h3>
+                <h3 className="font-semibold sm:text-lg">{s.title}</h3>
                 <p className="leading-relaxed text-muted-foreground">{s.body}</p>
               </li>
             ))}
@@ -256,12 +256,12 @@ export function LandingPage() {
 
         {/* Preview */}
         <section id="preview" aria-labelledby="preview-title" className="bg-primary text-primary-foreground">
-          <div className="mx-auto grid w-full max-w-6xl gap-12 px-4 py-20 sm:px-6">
+          <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
             <div className="grid max-w-2xl gap-3">
-              <h2 id="preview-title" className="text-3xl leading-tight font-semibold tracking-tight text-balance md:text-4xl">A look inside the app</h2>
-              <p className="text-lg leading-relaxed text-primary-foreground/70">Sample numbers on the real screens.</p>
+              <h2 id="preview-title" className="text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">A look inside the app</h2>
+              <p className="leading-relaxed sm:text-lg text-primary-foreground/70">Sample numbers on the real screens.</p>
             </div>
-            <div className="grid gap-10 md:grid-cols-3 md:gap-6">
+            <div className="grid gap-8 md:grid-cols-3 md:gap-6">
               <PreviewPanel title="Budgets" body="Over and near-limit budgets come first, so you know where to slow down.">
                 <Card size="sm">
                   <CardContent>
@@ -313,7 +313,7 @@ export function LandingPage() {
         </section>
 
         {/* FAQ */}
-        <section id="faq" aria-labelledby="faq-title" className="mx-auto grid w-full max-w-3xl gap-10 px-4 py-20 sm:px-6">
+        <section id="faq" aria-labelledby="faq-title" className="mx-auto grid w-full max-w-3xl gap-8 px-4 py-14 sm:gap-10 sm:px-6 sm:py-20">
           <SectionHeading id="faq-title" title="Questions, answered" />
           <div className="grid gap-3">
             {FAQ.map(({ q, a }) => (
@@ -329,9 +329,9 @@ export function LandingPage() {
         </section>
 
         {/* Final CTA */}
-        <section aria-labelledby="cta-title" className="mx-auto w-full max-w-6xl px-4 pb-20 sm:px-6">
-          <div className="grid justify-items-center gap-6 rounded-3xl bg-primary px-6 py-14 text-center text-primary-foreground md:py-20">
-            <h2 id="cta-title" className="max-w-xl text-3xl leading-tight font-semibold tracking-tight text-balance md:text-4xl">
+        <section aria-labelledby="cta-title" className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6 sm:pb-20">
+          <div className="grid justify-items-center gap-5 rounded-3xl bg-primary px-5 py-10 text-center text-primary-foreground sm:gap-6 sm:px-6 sm:py-14 md:py-20">
+            <h2 id="cta-title" className="max-w-xl text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">
               Make every sahod last the whole month.
             </h2>
             <p className="max-w-md text-primary-foreground/70">Free, private to your account, and it never asks for your bank login. Set up on your phone in a few minutes.</p>

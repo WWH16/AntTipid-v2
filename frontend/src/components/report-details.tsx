@@ -46,7 +46,7 @@ export function CategoryBreakdown({ items, onSelect }: { items: MonthlyReport['b
           <Item
             key={categoryId}
             size="xs"
-            className={onSelect ? '-mx-2 px-2 text-left hover:bg-muted' : '-mx-2 px-2'}
+            className={onSelect ? '-mx-3 text-left hover:bg-muted' : '-mx-3'}
             render={onSelect ? <button type="button" onClick={() => onSelect(categoryId)} aria-label={`${cat?.name ?? 'Other'}: ${money(amount, { whole: true })}. Show details`} /> : undefined}
           >
             <ItemContent>{bar}</ItemContent>

@@ -86,6 +86,15 @@
     --sidebar-accent-foreground: #9FE870;
     --sidebar-border: #2A4D12;
     --sidebar-ring: #9FE870;
+
+    /* Buttons: a pressable surface, Cloudflare-style. At rest a lit top edge only;
+       pressed, the face sinks into an inset shadow. Solid = filled buttons, raised = light ones. */
+    --btn-solid: inset 0 1px 0 rgb(255 255 255 / .18), inset 0 0 0 1px rgb(0 0 0 / .12), 0 1px 2px rgb(22 51 0 / .2);
+    --btn-solid-press: inset 0 2px 4px rgb(0 0 0 / .35), inset 0 0 0 1px rgb(0 0 0 / .16);
+    --btn-raised: inset 0 1px 0 rgb(255 255 255 / .8), 0 1px 2px rgb(22 51 0 / .08);
+    --btn-raised-press: inset 0 2px 3px rgb(22 51 0 / .16);
+    --btn-danger: inset 0 1px 0 rgb(255 255 255 / .5);
+    --btn-danger-press: inset 0 2px 3px rgb(196 43 49 / .22);
 }
 
 @layer base {
@@ -155,17 +164,14 @@
   }
 }
 
-/* Outline buttons sit on the card colour with a soft lift, so they read as pressable rather than flat.
-   (bg-background is the outline variant's own class; ghost and solid buttons are untouched.) */
-[data-slot=button].bg-background {
-  background-color: var(--card);
-  box-shadow: 0 1px 2px rgb(22 51 0 / 0.08), 0 1px 1px rgb(22 51 0 / 0.04);
+/* Lists inside cards share the card's left edge. Rows keep their own padding for the tap/hover fill,
+   so the group is pulled out by that padding and row text lines up with the card title above it. */
+[data-slot=card-content] [data-slot=item-group] {
+  width: auto;
+  margin-inline: -0.75rem;
 }
-[data-slot=button].bg-background:hover {
-  background-color: var(--muted);
-}
-[data-slot=button].bg-background:active {
-  box-shadow: none;
+[data-slot=card-content] [data-slot=item][data-size=xs] {
+  padding-inline: 0.75rem;
 }
 
 /* Default-size controls and tab strips share one 36px height so filter rows and forms line up.

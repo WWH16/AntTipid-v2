@@ -71,7 +71,7 @@ export function AppShell() {
       </Sidebar>
 
       <SidebarInset>
-        <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:p-6">
+        <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:gap-6 md:p-6">
           <Outlet />
         </main>
       </SidebarInset>

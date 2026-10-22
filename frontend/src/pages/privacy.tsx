@@ -9,7 +9,7 @@ const UPDATED = 'October 22, 2026'
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="grid gap-3">
-      <h2 className="text-lg leading-snug font-semibold tracking-tight">{title}</h2>
+      <h2 className="text-base leading-snug sm:text-lg font-semibold tracking-tight">{title}</h2>
       {children}
     </section>
   )
@@ -35,15 +35,15 @@ export function PrivacyPage() {
     }
   }, [])
   return (
-    <main className="mx-auto grid w-full max-w-2xl gap-10 px-6 py-10 md:py-16">
+    <main className="mx-auto grid w-full max-w-2xl gap-8 px-4 py-8 sm:gap-10 sm:px-6 sm:py-10 md:py-16">
       <Link to="/sign-in" aria-label="AntTipid sign in" className="w-fit"><LogoWithTagline height={44} small /></Link>
 
       <header className="grid gap-2">
-        <h1 className="text-3xl leading-tight font-semibold tracking-tight md:text-4xl">Privacy policy</h1>
+        <h1 className="text-2xl leading-tight font-semibold tracking-tight sm:text-3xl md:text-4xl">Privacy policy</h1>
         <p className="text-sm text-muted-foreground">Last updated {UPDATED}</p>
       </header>
 
-      <div className="grid gap-8 text-[0.95rem] leading-relaxed text-muted-foreground [&_li]:ml-5 [&_li]:list-disc [&_ul]:grid [&_ul]:gap-1.5">
+      <div className="grid gap-7 text-[0.95rem] sm:gap-8 leading-relaxed text-muted-foreground [&_li]:ml-5 [&_li]:list-disc [&_ul]:grid [&_ul]:gap-1.5">
         <p className="text-foreground">
           AntTipid is a personal expense and budget tracker. This page explains what it keeps about you, why, and how to have it deleted.
         </p>

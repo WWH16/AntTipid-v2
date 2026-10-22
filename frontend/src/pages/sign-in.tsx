@@ -188,15 +188,15 @@ export function SignInPage() {
   // Dedicated "Check your email" screen
   if (mode === 'emailSent') {
     return (
-      <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+      <div className="flex min-h-svh w-full items-start justify-center px-4 pt-10 pb-8 sm:items-center sm:p-6 md:p-10">
         <div className="flex w-full max-w-sm flex-col gap-6">
-          <div className="self-center"><LogoWithTagline /></div>
-          <Card className="text-center">
+          <div className="self-start sm:self-center"><LogoWithTagline /></div>
+          <Card className="text-center max-sm:gap-5 max-sm:bg-transparent max-sm:py-0 max-sm:ring-0 max-sm:*:px-0">
             <CardHeader className="flex flex-col items-center gap-2 pb-2">
               <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Mail className="size-6" />
               </div>
-              <CardTitle role="heading" aria-level={1}>Check your email</CardTitle>
+              <CardTitle role="heading" aria-level={1} className="text-xl font-semibold">Check your email</CardTitle>
               <CardDescription className="text-balance">
                 {sentEmailType === 'reset'
                   ? 'We sent a password reset link to '
@@ -245,15 +245,15 @@ export function SignInPage() {
     : ['', 'Back to sign in', 'signIn']
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
+    <div className="flex min-h-svh w-full items-start justify-center px-4 pt-10 pb-8 sm:items-center sm:p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
-        <div className="self-center"><LogoWithTagline /></div>
-        <Card>
+        <div className="self-start sm:self-center"><LogoWithTagline /></div>
+        <Card className="max-sm:gap-5 max-sm:bg-transparent max-sm:py-0 max-sm:ring-0 max-sm:*:px-0">
           <CardHeader>
-            <CardTitle role="heading" aria-level={1}>{title}</CardTitle>
+            <CardTitle role="heading" aria-level={1} className="text-xl font-semibold">{title}</CardTitle>
             <CardDescription>{description}</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6">
+          <CardContent className="grid gap-5 sm:gap-6">
             {(isSignIn || isSignUp) && (
               <>
                 <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={continueWithGoogle}>
@@ -264,7 +264,7 @@ export function SignInPage() {
                 </div>
               </>
             )}
-            <form onSubmit={submit} onKeyDown={handleFormKeyDown} noValidate className="grid gap-6">
+            <form onSubmit={submit} onKeyDown={handleFormKeyDown} noValidate className="grid gap-5 sm:gap-6">
               {isSignUp && (
                 <FormField
                   id="name"

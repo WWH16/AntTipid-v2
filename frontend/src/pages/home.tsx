@@ -60,7 +60,7 @@ export function HomePage() {
       />
 
       {/* minmax(0, …) tracks: the carousel scrolls inside its column instead of widening the page. */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 gap-5 md:gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="contents lg:grid lg:grid-cols-1 lg:content-start lg:gap-6">
           {showSetup && (
             <SetupSteps

@@ -50,12 +50,12 @@ export function ResponsivePanel({ onClose, title, description, footer, children 
     return (
       <Drawer open onOpenChange={onOpenChange}>
         <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>{title}</DrawerTitle>
+          <DrawerHeader className="group-data-[swipe-axis=y]/drawer-popup:text-left">
+            <DrawerTitle className="text-lg font-semibold">{title}</DrawerTitle>
             <DrawerDescription>{description}</DrawerDescription>
           </DrawerHeader>
           <div className="flex-1 overflow-y-auto p-4">{children}</div>
-          {footer && <DrawerFooter className="pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</DrawerFooter>}
+          {footer && <DrawerFooter className="border-t pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</DrawerFooter>}
         </DrawerContent>
       </Drawer>
     )

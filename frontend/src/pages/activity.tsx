@@ -131,7 +131,7 @@ export function ActivityPage() {
               return (
                 <section key={day} className="grid gap-1">
                   {i > 0 && <Separator className="mb-2 md:mb-3" />}
-                  <div className="flex items-baseline justify-between gap-4 px-3 text-sm">
+                  <div className="flex items-baseline justify-between gap-4 text-sm">
                     <h2 className="font-medium">{dayLabel(day)}</h2>
                     {spent > 0 && <span className="text-muted-foreground tabular-nums">{money(spent)} spent</span>}
                   </div>
@@ -154,7 +154,7 @@ function LoadingDays() {
         {[3, 2].map((rows, i) => (
           <div key={rows} className="grid gap-1">
             {i > 0 && <Separator className="mb-2 md:mb-3" />}
-            <div className="flex justify-between gap-4 px-3">
+            <div className="flex justify-between gap-4">
               <Skeleton className="h-4 w-28" />
               <Skeleton className="h-4 w-20" />
             </div>

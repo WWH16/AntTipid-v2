@@ -44,7 +44,7 @@ function LoadingReport() {
         ))}
       </div>
       <LoadingCard><Skeleton className="h-56 w-full sm:h-64" /></LoadingCard>
-      <div className="grid items-start gap-6 lg:grid-cols-2">
+      <div className="grid items-start gap-5 md:gap-6 lg:grid-cols-2">
         <LoadingCard><LoadingItems rows={4} amount={false} progress /></LoadingCard>
         <LoadingCard><Skeleton className="h-64 w-full" /></LoadingCard>
       </div>
@@ -136,7 +136,7 @@ export function ReportsPage() {
           </Card>
           )}
 
-          <div className="grid items-start gap-6 lg:grid-cols-2">
+          <div className="grid items-start gap-5 md:gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle role="heading" aria-level={2}>Where your money went</CardTitle>

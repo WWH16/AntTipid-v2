@@ -123,7 +123,7 @@ export function TransactionItem({ t }: { t: Transaction }) {
       >
         <CategoryMedia category={category(t.categoryId)} kind={t.kind} />
         <ItemContent className="min-w-0">
-          <ItemTitle className="truncate">{t.title}</ItemTitle>
+          <ItemTitle className="block truncate">{t.title}</ItemTitle>
           <ItemDescription>{description}</ItemDescription>
         </ItemContent>
         <ItemActions><SignedAmount t={t} /></ItemActions>

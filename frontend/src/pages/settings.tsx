@@ -129,7 +129,7 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
   const [deleting, setDeleting] = useState<Category | null>(null)
 
   return (
-    <div className="grid max-w-4xl items-start gap-6 md:grid-cols-2">
+    <div className="grid max-w-4xl items-start gap-5 md:grid-cols-2 md:gap-6">
       {(['expense', 'income'] as const).map((kind) => (
         <Card key={kind}>
           <CardHeader>

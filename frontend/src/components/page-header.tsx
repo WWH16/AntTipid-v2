@@ -19,7 +19,7 @@ export function PageHeader({ page, headline, description, action }: {
         <SidebarTrigger className="mt-1 hidden md:inline-flex" />
         <Separator orientation="vertical" className="mt-2 hidden h-6 md:block" />
         <div className="min-w-0">
-          <h1 className="text-2xl leading-tight font-semibold tracking-tight text-balance tabular-nums md:text-3xl">
+          <h1 className="text-xl leading-tight font-semibold tracking-tight text-balance tabular-nums sm:text-2xl md:text-3xl">
             <span className="sr-only">{page}: </span>{headline}
           </h1>
           {description && <p className="mt-1 text-sm text-muted-foreground md:text-base">{description}</p>}
