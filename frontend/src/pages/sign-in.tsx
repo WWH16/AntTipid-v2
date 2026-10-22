@@ -39,7 +39,8 @@ export function SignInPage() {
   const linkError = new URLSearchParams(location.hash.slice(1)).get('error_description')
   const [mode, setMode] = useState<AuthMode>(() =>
     linkError ? (isResetLink ? 'forgot' : 'signIn')
-      : isResetLink || location.hash.includes('type=recovery') ? 'reset' : 'signIn')
+      : isResetLink || location.hash.includes('type=recovery') ? 'reset'
+      : searchParams.get('mode') === 'signup' ? 'signUp' : 'signIn')
   const [sentEmailType, setSentEmailType] = useState<'reset' | 'signUp'>('reset')
   const [cooldown, setCooldown] = useState(0)
   const [name, setName] = useState('')

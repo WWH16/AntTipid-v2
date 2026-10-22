@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useApp } from '@/app-state'
 import { AppShell } from '@/components/app-shell'
 import { LoadingAuth, LoadingPage } from '@/components/states'
@@ -10,6 +10,7 @@ const ActivityPage = lazy(() => import('@/pages/activity').then((m) => ({ defaul
 const BudgetsPage = lazy(() => import('@/pages/budgets').then((m) => ({ default: m.BudgetsPage })))
 const ReportsPage = lazy(() => import('@/pages/reports').then((m) => ({ default: m.ReportsPage })))
 const SettingsPage = lazy(() => import('@/pages/settings').then((m) => ({ default: m.SettingsPage })))
+const LandingPage = lazy(() => import('@/pages/landing').then((m) => ({ default: m.LandingPage })))
 const PrivacyPage = lazy(() => import('@/pages/privacy').then((m) => ({ default: m.PrivacyPage })))
 const SignInPage = lazy(() => import('@/pages/sign-in').then((m) => ({ default: m.SignInPage })))
 
@@ -17,8 +18,11 @@ const page = (el: ReactNode) => <Suspense fallback={<LoadingPage />}>{el}</Suspe
 
 function RequireUser({ children }: { children: ReactNode }) {
   const { user, ready } = useApp()
+  const { pathname } = useLocation()
   if (!ready) return <LoadingPage />
-  return user ? children : <Navigate to="/sign-in" replace />
+  if (user) return children
+  // Signed-out visitors to / get the public page about the app; every other page asks them to sign in.
+  return pathname === '/' ? page(<LandingPage />) : <Navigate to="/sign-in" replace />
 }
 
 export default function App() {
