@@ -284,15 +284,13 @@ export function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () =
           <Label htmlFor="wallet-name">Name</Label>
           <Input id="wallet-name" autoFocus placeholder="e.g. GCash, BPI Savings" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="wallet-type">Type</Label>
-            <SimpleSelect id="wallet-type" value={type} onChange={setType} options={WALLET_TYPES} />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="wallet-balance">Current balance</Label>
-            <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} />
-          </div>
+        <div className="grid gap-2">
+          <Label htmlFor="wallet-type">Type</Label>
+          <SimpleSelect id="wallet-type" value={type} onChange={setType} options={WALLET_TYPES} />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="wallet-balance">Current balance</Label>
+          <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} />
         </div>
       </form>
     </ResponsivePanel>
