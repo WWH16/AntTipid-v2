@@ -233,6 +233,8 @@ function mayStartSwipe(target: Element, x: number) {
 /** Rows with their own swipe (touch-action: pan-y) and anything that scrolls sideways keep the gesture.
  *  Reads styles and layout, so it only runs once a touch has turned out to be a sideways flick. */
 function ownsSwipe(target: Element) {
+  // Charts: dragging across one reads its tooltip day by day, so a quick drag there isn't a page turn.
+  if (target.closest('.recharts-wrapper')) return true
   for (let el: Element | null = target; el && el.id !== 'main'; el = el.parentElement) {
     const style = getComputedStyle(el)
     if (style.touchAction.includes('pan-y') && !style.touchAction.includes('pan-x')) return true

@@ -21,6 +21,7 @@
     --color-chart-3: var(--chart-3);
     --color-chart-2: var(--chart-2);
     --color-chart-1: var(--chart-1);
+    --color-chart-1-text: var(--chart-1-text);
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
@@ -73,6 +74,8 @@
     --input: #848F7D;
     --ring: #4F7A2E;
     --chart-1: #3F8A24;
+    /* Income figures as text: chart-1 is 4.3:1 on white, this is 5.7:1 (4.8:1 on muted). Bars keep chart-1, whose lightness sets them apart from chart-2. */
+    --chart-1-text: #33741D;
     --chart-2: #5468B0;
     --chart-3: #9FE870;
     --chart-4: #2A4D12;

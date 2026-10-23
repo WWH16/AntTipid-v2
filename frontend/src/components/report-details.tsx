@@ -25,6 +25,17 @@ export type ReportDetail =
   | { type: 'month'; month: string }
   | null
 
+/** A month total in a three-column row. On phones each column is ~70px, so six figures and up go compact (₱123.5K). */
+export function TotalAmount({ value }: { value: number }) {
+  if (value < 1e5) return money(value, { whole: true })
+  return (
+    <>
+      <span className="sm:hidden">{money(value, { compact: true })}</span>
+      <span className="hidden sm:inline">{money(value, { whole: true })}</span>
+    </>
+  )
+}
+
 /** Spending per category as bars. Rows are buttons when onSelect is given. */
 export function CategoryBreakdown({ items, onSelect }: { items: MonthlyReport['byCategory']; onSelect?: (categoryId: string) => void }) {
   const { category } = useRefData()
@@ -178,7 +189,7 @@ export function MonthDetail({ month, onClose, onOpen }: { month: string; onClose
             {monthTotals(totals.income, totals.spent).map(([label, value, tone]) => (
               <div key={label}>
                 <dt className="text-muted-foreground">{label}</dt>
-                <dd className={`text-base font-semibold tabular-nums ${tone}`}>{money(value, { whole: true })}</dd>
+                <dd className={`text-base font-semibold tabular-nums ${tone}`}><TotalAmount value={value} /></dd>
               </div>
             ))}
           </dl>
