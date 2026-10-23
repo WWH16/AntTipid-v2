@@ -198,7 +198,7 @@ export function LandingPage() {
         <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-8 pb-14 sm:gap-12 sm:px-6 sm:pt-12 sm:pb-20 md:pt-20 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
           <div className="grid gap-5 sm:gap-6">
             <h1 className="text-[2.25rem] leading-[1.05] font-bold tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl">
-              Know where every peso goes.
+              <span className="sr-only">AntTipid: </span>Know where every peso goes.
             </h1>
             <p className="max-w-[34rem] leading-relaxed sm:text-lg text-muted-foreground">
               <em className="font-medium text-foreground not-italic">Tipid</em> means spending carefully so your money lasts until the
@@ -209,6 +209,9 @@ export function LandingPage() {
               <Button size="lg" className="cta-win" nativeButton={false} render={<Link to={SIGN_UP} />}>Start keeping more of your money</Button>
               <Button size="lg" variant="outline" nativeButton={false} render={<a href="#how-it-works" />}>See how it works</Button>
             </div>
+            <p className="-mt-1 text-sm text-muted-foreground sm:-mt-2">
+              Already have an account? <Link to="/sign-in" className="font-medium text-foreground underline underline-offset-4">Log in</Link>
+            </p>
             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
               {['Free, no ads', 'Never asks for your bank or GCash login', 'Works on your phone'].map((t) => (
                 <li key={t} className="flex items-center gap-1.5"><Check className="size-4 text-chart-1" aria-hidden />{t}</li>
@@ -360,7 +363,7 @@ export function LandingPage() {
             <a href="#features" className={linkClass}>Features</a>
             <a href="#faq" className={linkClass}>FAQ</a>
             <Link to="/privacy" className={linkClass}>Privacy policy</Link>
-            <a href={`mailto:${CONTACT}`} className={linkClass}>Contact</a>
+            <a href={`mailto:${CONTACT}`} className={linkClass}>{CONTACT}</a>
           </nav>
         </div>
       </footer>
