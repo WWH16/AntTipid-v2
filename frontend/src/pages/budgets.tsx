@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Plus, Tags, Target } from 'lucide-react'
 import { useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
-import { useQuery } from '@/api/use-query'
+import { setCached, useQuery } from '@/api/use-query'
 import { BudgetBadge, BudgetItem } from '@/components/budget'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -116,6 +116,7 @@ export function BudgetsPage() {
 
 export function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable<Editing>; onClose: () => void; budgets: BudgetStatus[] }) {
   const { categories, category } = useRefData()
+  const [month] = useMonth()
   const b = editing.budget
   const [target, setTarget] = useState(b ? (b.categoryId ?? 'all') : editing.categoryId === null ? 'all' : (editing.categoryId ?? ''))
   const [limit, setLimit] = useState(b ? String(b.limit) : '')
@@ -134,12 +135,15 @@ export function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable
 
   const save = () => run(async () => {
     await api.budgets.save({ id: b?.id, categoryId: target === 'all' ? null : target, limit: Number(limit), warnAt: Number(warnAt) })
+    // Change this month's list at once instead of after the reload. A new budget waits: its spending comes from the server.
+    if (b) setCached<BudgetStatus[]>(`budgets:${month}`, (list) => list.map((x) => (x.id === b.id ? { ...x, limit: Number(limit), warnAt: Number(warnAt) } : x)))
     onClose()
     done(b ? 'Changes saved' : 'Budget added', { description: `${name}: ${money(Number(limit), { whole: true })} a month` })
   })
 
   const remove = async () => {
     await api.budgets.remove(b!.id)
+    setCached<BudgetStatus[]>(`budgets:${month}`, (list) => list.filter((x) => x.id !== b!.id))
     onClose()
     done('Budget removed', { description: name })
   }
