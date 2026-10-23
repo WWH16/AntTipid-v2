@@ -10,6 +10,7 @@ import { LoadingAuth } from '@/components/states'
 import { TURNSTILE_SITE_KEY, Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ConsentNote } from '@/components/legal-page'
 import { FormField } from '@/components/ui/form-field'
 import { Separator } from '@/components/ui/separator'
 import { supabase } from '@/lib/supabase'
@@ -190,7 +191,7 @@ export function SignInPage() {
     return (
       <div className="flex min-h-svh w-full items-start justify-center px-4 pt-10 pb-8 sm:items-center sm:p-6 md:p-10">
         <div className="flex w-full max-w-sm flex-col gap-6">
-          <div className="self-start sm:self-center"><LogoWithTagline /></div>
+          <Link to="/" aria-label="AntTipid home" className="self-start rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:self-center"><LogoWithTagline /></Link>
           <Card className="text-center max-sm:gap-5 max-sm:bg-transparent max-sm:py-0 max-sm:ring-0 max-sm:*:px-0">
             <CardHeader className="flex flex-col items-center gap-2 pb-2">
               <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -231,7 +232,7 @@ export function SignInPage() {
               </Button>
             </CardContent>
           </Card>
-          <Link to="/privacy" className="self-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Privacy policy</Link>
+          <nav aria-label="Legal" className="flex justify-center gap-4 text-xs text-muted-foreground"><Link to="/terms" className="underline-offset-4 hover:text-foreground hover:underline">Terms</Link><Link to="/privacy" className="underline-offset-4 hover:text-foreground hover:underline">Privacy policy</Link></nav>
         </div>
       </div>
     )
@@ -247,7 +248,7 @@ export function SignInPage() {
   return (
     <div className="flex min-h-svh w-full items-start justify-center px-4 pt-10 pb-8 sm:items-center sm:p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
-        <div className="self-start sm:self-center"><LogoWithTagline /></div>
+        <Link to="/" aria-label="AntTipid home" className="self-start rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:self-center"><LogoWithTagline /></Link>
         <Card className="max-sm:gap-5 max-sm:bg-transparent max-sm:py-0 max-sm:ring-0 max-sm:*:px-0">
           <CardHeader>
             <CardTitle role="heading" aria-level={1} className="text-xl font-semibold">{title}</CardTitle>
@@ -364,7 +365,7 @@ export function SignInPage() {
             </form>
           </CardContent>
         </Card>
-        <Link to="/privacy" className="self-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">Privacy policy</Link>
+        <ConsentNote />
       </div>
     </div>
   )

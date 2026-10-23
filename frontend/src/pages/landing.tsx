@@ -362,6 +362,7 @@ export function LandingPage() {
           <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
             <a href="#features" className={linkClass}>Features</a>
             <a href="#faq" className={linkClass}>FAQ</a>
+            <Link to="/terms" className={linkClass}>Terms</Link>
             <Link to="/privacy" className={linkClass}>Privacy policy</Link>
             <a href={`mailto:${CONTACT}`} className={linkClass}>{CONTACT}</a>
           </nav>

@@ -21,6 +21,7 @@ const ReportsPage = lazy(() => APP_PAGES[3]().then((m) => ({ default: m.ReportsP
 const SettingsPage = lazy(() => APP_PAGES[4]().then((m) => ({ default: m.SettingsPage })))
 const LandingPage = lazy(() => import('@/pages/landing').then((m) => ({ default: m.LandingPage })))
 const PrivacyPage = lazy(() => import('@/pages/privacy').then((m) => ({ default: m.PrivacyPage })))
+const TermsPage = lazy(() => import('@/pages/terms').then((m) => ({ default: m.TermsPage })))
 const SignInPage = lazy(() => import('@/pages/sign-in').then((m) => ({ default: m.SignInPage })))
 
 const page = (el: ReactNode) => <Suspense fallback={<LoadingPage />}>{el}</Suspense>
@@ -46,6 +47,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />
+      <Route path="/terms" element={<Suspense fallback={null}><TermsPage /></Suspense>} />
       <Route path="/sign-in" element={<Suspense fallback={<LoadingAuth />}><SignInPage /></Suspense>} />
       <Route element={<RequireUser><AppShell /></RequireUser>}>
         <Route index element={page(<HomePage />)} />
