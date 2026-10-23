@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img">
   <title>AntTipid icon</title>
-  <rect width="256" height="256" rx="56" fill="#163300"/>
+  <rect width="256" height="256" fill="#163300"/>
   <g transform="translate(17.92 17.92) scale(0.86)">
   <path fill="#F0F3EE" d="M24 128A22 22 0 1 1 68 128A22 22 0 1 1 24 128Z"/>
   <path fill="#F0F3EE" d="M67 136A30 18 0 1 1 127 136A30 18 0 1 1 67 136Z"/>

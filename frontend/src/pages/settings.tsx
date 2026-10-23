@@ -205,7 +205,7 @@ function AccountTab({ onEdit }: { onEdit: () => void }) {
       <CardHeader>
         <CardTitle role="heading" aria-level={2}>Account</CardTitle>
         <CardDescription>Your account details</CardDescription>
-        <CardAction><BrandMark mark="tile" className="size-12" /></CardAction>
+        <CardAction><BrandMark mark="tile" className="size-12 rounded-[22%]" /></CardAction>
       </CardHeader>
       <CardContent>
         <DetailList rows={[['Name', user?.name], ['Email', user?.email], ['Currency', 'Philippine peso (₱)']]} />
