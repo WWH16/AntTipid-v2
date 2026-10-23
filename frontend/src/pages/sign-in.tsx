@@ -270,7 +270,7 @@ export function SignInPage() {
                 <FormField
                   id="name"
                   label="Name"
-                  placeholder="Andrea Santos"
+                  placeholder="Juan Dela Cruz"
                   autoComplete="name"
                   value={name}
                   onChange={(v) => { setName(v); setError('') }}

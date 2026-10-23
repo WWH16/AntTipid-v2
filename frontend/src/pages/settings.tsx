@@ -319,7 +319,7 @@ function AccountForm({ onClose }: { onClose: () => void }) {
       <form id="account-form" onSubmit={(e) => { e.preventDefault(); if (name.trim()) save() }} className="grid gap-4 pb-4">
         <div className="grid gap-2">
           <Label htmlFor="account-name">Name</Label>
-          <Input id="account-name" autoFocus placeholder="Andrea Santos" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input id="account-name" autoFocus placeholder="Juan Dela Cruz" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
       </form>
     </ResponsivePanel>
