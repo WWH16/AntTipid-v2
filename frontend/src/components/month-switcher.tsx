@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { Popover } from '@base-ui/react/popover'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { api } from '@/api/endpoints'
@@ -15,11 +15,11 @@ const ARROW = `${HIT} size-8! min-h-0! min-w-0! rounded-full`
 
 /**
  * Month picker that stays pinned to the top while the page scrolls, so the month being viewed
- * (and anything passed as children, like totals) is always in sight. Arrows, a sideways swipe on the page
+ * is always in sight. Arrows, a sideways swipe on the page
  * or ← → step one month; the month name opens a grid to jump straight to any month.
  * Months run from the first one with a transaction up to the current month.
  */
-export function MonthSwitcher({ month, onChange, children }: { month: string; onChange: (m: string) => void; children?: ReactNode }) {
+export function MonthSwitcher({ month, onChange }: { month: string; onChange: (m: string) => void }) {
   const now = currentMonth()
   const { data: history } = useQuery('months', api.reports.months)
   // Until the history loads, don't hold anyone back; with no transactions yet, there's only this month.
@@ -72,7 +72,6 @@ export function MonthSwitcher({ month, onChange, children }: { month: string; on
           </Button>
         )}
       </div>
-      {children}
     </div>
   )
 }

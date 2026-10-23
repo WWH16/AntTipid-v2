@@ -17,7 +17,6 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { ItemGroup } from '@/components/ui/item'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useIsMobile } from '@/hooks/use-mobile'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { dateInMonth, dayLabel, money, monthLabel } from '@/lib/format'
 import { sumOf } from '@/lib/transactions'
@@ -41,7 +40,6 @@ export function ActivityPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [moreFilters, setMoreFilters] = useState(false)
-  const isMobile = useIsMobile()
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search), 250)
@@ -78,22 +76,27 @@ export function ActivityPage() {
         page="Activity"
         // The month is in the switcher right below, so the headline doesn't repeat it.
         headline={!data ? 'Activity' : `${data.length} ${filtered ? (data.length === 1 ? 'match' : 'matches') : (data.length === 1 ? 'transaction' : 'transactions')}`}
-        description={isMobile ? 'Tap a row for details, or swipe it left to edit or delete.' : 'Select a row to see its details.'}
+        // Totals sit under the headline, not in the sticky bar: on phones they'd wrap to a second pinned row.
+        description={
+          <span className="flex flex-wrap gap-x-4 tabular-nums">
+            <span>Spent <span className="font-semibold text-foreground">{money(sumOf(data, 'expense'))}</span></span>
+            <span>Earned <span className="font-semibold text-foreground">{money(sumOf(data, 'income'))}</span></span>
+          </span>
+        }
         action={
-          <Button variant="outline" onClick={() => exportCsv(filters)} disabled={!data?.length}>
+          <Button onClick={() => exportCsv(filters)} disabled={!data?.length}>
             <Download /> <span className="sr-only sm:not-sr-only">Export CSV</span>
           </Button>
         }
       />
 
-      <MonthSwitcher month={month} onChange={setMonth}>
-        <p className="flex gap-4 text-sm text-muted-foreground tabular-nums">
-          <span>Spent <span className="font-semibold text-foreground">{money(sumOf(data, 'expense'))}</span></span>
-          <span>Earned <span className="font-semibold text-foreground">{money(sumOf(data, 'income'))}</span></span>
-        </p>
-      </MonthSwitcher>
+      <MonthSwitcher month={month} onChange={setMonth} />
 
-      <div className="grid gap-4">
+      {/* Wide screens: list on the left at a readable width, filters in a column on the right that stays in view.
+          Narrower: filters stacked above the list. */}
+      <div className="grid gap-5 md:gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+
+      <div className="grid gap-4 lg:sticky lg:top-20 lg:order-2">
 
         <div className="flex gap-2">
           <InputGroup>
@@ -123,23 +126,24 @@ export function ActivityPage() {
           </Button>
         </div>
 
-        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center lg:flex-col lg:items-stretch">
           <Tabs value={kind} onValueChange={(v) => setKind(v as typeof kind)}>
-            <TabsList className="w-full md:w-auto">
+            <TabsList className="w-full md:w-auto lg:w-full">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="expense">Expenses</TabsTrigger>
               <TabsTrigger value="income">Income</TabsTrigger>
               <TabsTrigger value="transfer">Transfers</TabsTrigger>
             </TabsList>
           </Tabs>
-          <div id="more-filters" className={cn('flex-1 grid-cols-2 gap-2 md:grid md:max-w-md', moreFilters ? 'grid' : 'hidden')}>
+          <div id="more-filters" className={cn('flex-1 grid-cols-2 gap-2 md:grid md:max-w-md lg:max-w-none lg:grid-cols-1', moreFilters ? 'grid' : 'hidden')}>
             <SimpleSelect aria-label="Wallet" value={walletId} onChange={setWalletId} options={[{ value: 'all', label: 'All wallets' }, ...wallets.map((w) => ({ value: w.id, label: w.name }))]} />
             <SimpleSelect aria-label="Category" value={categoryId} onChange={setCategoryId} options={[{ value: 'all', label: 'All categories' }, ...categories.map((c) => ({ value: c.id, label: c.name }))]} />
           </div>
-          {filtered && <Button variant="ghost" onClick={clear} className="self-start md:self-auto"><X /> Clear filters</Button>}
+          {filtered && <Button variant="ghost" onClick={clear} className="self-start md:self-auto lg:self-start"><X /> Clear filters</Button>}
         </div>
       </div>
 
+      <div className="min-w-0 lg:order-1">
       {error ? <ErrorState error={error} /> : loading && !data ? <LoadingDays /> : !data?.length ? (
         filtered
           ? <EmptyState framed icon={SearchX} title="No matches" body={`Nothing in ${monthLabel(month)} matches these filters.`} action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
@@ -149,6 +153,8 @@ export function ActivityPage() {
           <DayList list={data} />
         </Card>
       )}
+      </div>
+      </div>
     </>
   )
 }
