@@ -120,6 +120,11 @@
   background-image: linear-gradient(to bottom, rgb(255 255 255 / .1), transparent 45%), var(--canvas-dark);
   background-blend-mode: normal, soft-light;
 }
+/* Texture without the top light, for surfaces where the wash reads as an uneven tone (sidebar, hero cards). */
+@utility canvas-dark-flat {
+  background-image: var(--canvas-dark);
+  background-blend-mode: soft-light;
+}
 
 @layer base {
   * {
@@ -137,10 +142,8 @@
     background-repeat: no-repeat, repeat;
     background-size: 100% 36rem, auto;
   }
-  /* Texture only: on a full-height column the top light of canvas-dark reads as a lighter upper half. */
   [data-slot=sidebar-inner] {
-    background-image: var(--canvas-dark);
-    background-blend-mode: soft-light;
+    @apply canvas-dark-flat;
   }
   html {
     @apply font-sans;
