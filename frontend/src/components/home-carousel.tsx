@@ -1,15 +1,15 @@
 // The swipeable hero on Home. Each slide answers a question the rest of Home doesn't.
 import { useRef, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useRefData } from '@/app-state'
 import { HeroCard } from '@/components/hero-card'
-import { Badge } from '@/components/ui/badge'
 import { CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadingHero } from '@/components/states'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { currentMonth, isoDate, money, monthLabel, shiftMonth } from '@/lib/format'
+import { currentMonth, isoDate, money, monthLabel } from '@/lib/format'
 import { sumOf } from '@/lib/transactions'
 import { cn } from '@/lib/utils'
-import type { MonthSummary, Transaction } from '@/types'
+import type { Transaction } from '@/types'
 
 const GAP = 12
 
@@ -156,60 +156,50 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
   )
 }
 
-const BILL_ICONS = ['bills', 'phone']
-
-/**
- * Bills paid last month that haven't shown up yet this month, expected on the same day of the month.
- * ponytail: matches by exact title; switch to the recurring-bill model once it exists.
- */
-export function BillsSlide({ transactions, summary }: { transactions?: Transaction[]; summary?: MonthSummary }) {
+/** This month's top spending categories, biggest first, each with its share of everything spent. Links to Reports. */
+export function CategoriesSlide({ transactions }: { transactions?: Transaction[] }) {
   const { category } = useRefData()
-  const [today] = useState(() => new Date())
-  if (!transactions || !summary) return <LoadingHero />
-  const thisMonth = currentMonth()
-  const lastMonth = shiftMonth(thisMonth, -1)
-  const isBill = (t: Transaction) => t.kind === 'expense' && BILL_ICONS.includes(category(t.categoryId)?.icon ?? '')
-  const paidThisMonth = new Set(transactions.filter((t) => isBill(t) && t.date.startsWith(thisMonth)).map((t) => t.title))
-  const upcoming = transactions
-    .filter((t) => isBill(t) && t.date.startsWith(lastMonth) && !paidThisMonth.has(t.title))
-    .map((t) => ({ title: t.title, amount: t.amount, day: Math.min(Number(t.date.slice(8)), summary.daysInMonth) }))
-    .filter((b, i, all) => all.findIndex((x) => x.title === b.title) === i)
-    .sort((a, b) => a.day - b.day)
-  const total = upcoming.reduce((s, b) => s + b.amount, 0)
-  const monthName = monthLabel(thisMonth, 'short')
-  const leftAfter = summary.budget ? summary.budget - summary.spent - total : null
+  if (!transactions) return <LoadingHero />
+  const month = currentMonth()
+  const expenses = transactions.filter((t) => t.kind === 'expense' && t.date.startsWith(month))
+  const total = sumOf(expenses, 'expense')
+  const top = [...Map.groupBy(expenses, (t) => t.categoryId ?? '')]
+    .map(([id, list]) => ({ id, spent: sumOf(list, 'expense') }))
+    .sort((a, b) => b.spent - a.spent)
 
   return (
     <HeroCard>
       <CardHeader>
-        <CardDescription>Bills still coming this month</CardDescription>
-        <CardTitle className="text-3xl font-semibold tabular-nums">{upcoming.length ? money(total, { whole: true }) : 'All paid'}</CardTitle>
-        {upcoming.length > 0 && <CardAction><Badge variant="secondary">{upcoming.length} {upcoming.length === 1 ? 'bill' : 'bills'}</Badge></CardAction>}
+        <CardDescription>Where it went this month</CardDescription>
+        <CardTitle className="text-3xl font-semibold tabular-nums">{money(total, { whole: true })}</CardTitle>
       </CardHeader>
       <CardContent>
-        {upcoming.length ? (
-          <ul className="divide-y divide-primary-foreground/15 text-sm">
-            {upcoming.slice(0, 3).map((b) => (
-              <li key={b.title} className="flex items-center justify-between gap-3 py-2">
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{b.title}</span>
-                  <span className="text-muted-foreground">Around {monthName} {b.day}{b.day < today.getDate() ? ', overdue' : ''}</span>
-                </span>
-                <span className="font-medium tabular-nums">{money(b.amount, { whole: true })}</span>
-              </li>
-            ))}
+        {top.length ? (
+          <ul className="grid gap-3 text-sm">
+            {top.slice(0, 3).map((c) => {
+              const share = Math.round((c.spent / total) * 100)
+              return (
+                <li key={c.id} className="grid gap-1.5">
+                  <span className="flex justify-between gap-3">
+                    <span className="truncate font-medium">{category(c.id)?.name ?? 'Other'}</span>
+                    <span className="tabular-nums">{money(c.spent, { whole: true })} ({share}%)</span>
+                  </span>
+                  <span aria-hidden className="h-1.5 rounded-full bg-primary-foreground/15">
+                    <span className="block h-full rounded-full bg-sidebar-primary" style={{ width: `${share}%` }} />
+                  </span>
+                </li>
+              )
+            })}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">Every bill you paid last month is already paid this month.</p>
+          <p className="text-sm text-muted-foreground">Nothing spent yet this month.</p>
         )}
       </CardContent>
-      {leftAfter !== null && upcoming.length > 0 && (
-        <CardFooter className="text-sm">
-          <p className="font-medium tabular-nums">
-            {leftAfter >= 0 ? `${money(leftAfter, { whole: true })} left to spend once these are paid.` : `These put you ${money(-leftAfter, { whole: true })} over budget.`}
-          </p>
-        </CardFooter>
-      )}
+      <CardFooter className="text-sm">
+        <Link to="/reports" className="font-medium underline underline-offset-4">
+          {top.length > 3 ? `See all ${top.length} categories in Reports` : 'See the breakdown in Reports'}
+        </Link>
+      </CardFooter>
     </HeroCard>
   )
 }

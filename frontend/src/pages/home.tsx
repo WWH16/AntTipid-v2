@@ -10,7 +10,7 @@ import { budgetState } from '@/lib/budget'
 import { PageHeader } from '@/components/page-header'
 import { SafeToSpendCard } from '@/components/safe-to-spend-card'
 import { BrandMark } from '@/components/brand-icons'
-import { BillsSlide, Carousel, SpendingSlide } from '@/components/home-carousel'
+import { CategoriesSlide, Carousel, SpendingSlide } from '@/components/home-carousel'
 import { ErrorState, LoadingHero, LoadingItems } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { WalletItem } from '@/components/wallet-item'
@@ -79,7 +79,7 @@ export function HomePage() {
               slides={[
                 ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} /> }]),
                 { title: 'Spending', content: <SpendingSlide transactions={recent.data} /> },
-                { title: 'Bills coming up', content: <BillsSlide transactions={recent.data} summary={summary.data} /> },
+                { title: 'Where it went', content: <CategoriesSlide transactions={recent.data} /> },
               ]}
             />
             <div className="grid grid-cols-2 gap-2">
