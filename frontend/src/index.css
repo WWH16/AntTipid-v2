@@ -137,8 +137,10 @@
     background-repeat: no-repeat, repeat;
     background-size: 100% 36rem, auto;
   }
+  /* Texture only: on a full-height column the top light of canvas-dark reads as a lighter upper half. */
   [data-slot=sidebar-inner] {
-    @apply canvas-dark;
+    background-image: var(--canvas-dark);
+    background-blend-mode: soft-light;
   }
   html {
     @apply font-sans;
