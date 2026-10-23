@@ -409,6 +409,11 @@ export function LandingPage() {
               {/* Pinned tour only: progress through the three screens (phones), and the phone they slide across. */}
               <div aria-hidden className="tour-progress hidden"><span /><span /><span /></div>
               <div aria-hidden className="tour-phone hidden">
+                {/* Side buttons, as on the hero's phone, just outside the bezel (--bz: 4px on phones, 7px from md). */}
+                <span className="absolute top-[17%] -left-[calc(var(--bz,4px)_+_3px)] h-7 w-[3px] rounded-l-sm bg-input" />
+                <span className="absolute top-[24%] -left-[calc(var(--bz,4px)_+_3px)] h-12 w-[3px] rounded-l-sm bg-input" />
+                <span className="absolute top-[33%] -left-[calc(var(--bz,4px)_+_3px)] h-12 w-[3px] rounded-l-sm bg-input" />
+                <span className="absolute top-[27%] -right-[calc(var(--bz,4px)_+_3px)] h-16 w-[3px] rounded-r-sm bg-input" />
                 <span className="text-xs font-semibold tabular-nums">9:41</span>
                 <span className="flex items-center gap-1 [&_svg]:size-3"><Signal /><Wifi /><BatteryFull /></span>
                 {/* The app's bottom bar on phones: four pages with Add raised in the middle. */}

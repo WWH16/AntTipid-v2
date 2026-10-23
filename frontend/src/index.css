@@ -414,8 +414,9 @@
         color: var(--foreground);
         /* Solid status bar, so a screen scrolled up runs under it rather than through the clock. */
         background: linear-gradient(var(--background) 2.6rem, transparent 2.6rem);
-        /* Thin bezel, as on a current phone, so the screen reads big rather than framed small. */
-        box-shadow: 0 0 0 4px #0b0f08, 0 0 0 5.5px var(--input), 0 40px 70px -28px rgb(0 0 0 / .7);
+        /* The hero phone's frame (black bezel, metal rim, soft green shadow), with a thinner 4px bezel on phones
+           so the screen reads big rather than framed small. */
+        box-shadow: 0 0 0 var(--bz, 4px) #000, 0 0 0 calc(var(--bz, 4px) + 1.5px) var(--input), 0 25px 50px -12px color-mix(in oklab, var(--primary) 25%, transparent);
         pointer-events: none;
       }
       .tour-phone::before {
@@ -427,7 +428,7 @@
         height: 1.55rem;
         translate: -50% 0;
         border-radius: 999px;
-        background: #0b0f08;
+        background: #000;
       }
       .tour-phone::after {
         content: "";
@@ -623,6 +624,8 @@
         .tour-grid > figure > .tour-screen {
           grid-area: 1 / 2 / 6 / 3;
           height: calc(100% - 20px);
+          margin-top: 10px;
+          --bz: 7px;
         }
         .tour-grid > figure > .tour-screen > div > div {
           zoom: .85;
