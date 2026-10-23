@@ -171,7 +171,7 @@ export function LandingPage() {
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
           <Link to="/" aria-label="AntTipid home" className="shrink-0 rounded-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
-            <img src="/brand/logo-color.svg" alt="AntTipid" className="h-9 w-auto" />
+            <LogoWithTagline height={28} small />
           </Link>
           <nav aria-label="Page sections" className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
             {NAV.map((n) => <a key={n.href} href={n.href} className={linkClass}>{n.label}</a>)}
