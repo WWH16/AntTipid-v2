@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useApp } from '@/app-state'
-import { AppShell } from '@/components/app-shell'
 import { LoadingAuth, LoadingPage } from '@/components/states'
 import { hasSavedSession } from '@/lib/supabase'
 
@@ -23,6 +22,14 @@ const LandingPage = lazy(() => import('@/pages/landing').then((m) => ({ default:
 const PrivacyPage = lazy(() => import('@/pages/privacy').then((m) => ({ default: m.PrivacyPage })))
 const TermsPage = lazy(() => import('@/pages/terms').then((m) => ({ default: m.TermsPage })))
 const SignInPage = lazy(() => import('@/pages/sign-in').then((m) => ({ default: m.SignInPage })))
+// The signed-in shell (sidebar, drawers, add-transaction sheet) stays out of the first download, so the landing page
+// paints sooner. A returning user's shell and Home start downloading right away instead of one after the other.
+const loadShell = () => import('@/components/app-shell')
+const AppShell = lazy(() => loadShell().then((m) => ({ default: m.AppShell })))
+if (hasSavedSession()) {
+  void loadShell()
+  void APP_PAGES[0]()
+}
 
 const page = (el: ReactNode) => <Suspense fallback={<LoadingPage />}>{el}</Suspense>
 
@@ -49,7 +56,7 @@ export default function App() {
       <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />
       <Route path="/terms" element={<Suspense fallback={null}><TermsPage /></Suspense>} />
       <Route path="/sign-in" element={<Suspense fallback={<LoadingAuth />}><SignInPage /></Suspense>} />
-      <Route element={<RequireUser><AppShell /></RequireUser>}>
+      <Route element={<RequireUser><Suspense fallback={<LoadingPage />}><AppShell /></Suspense></RequireUser>}>
         <Route index element={page(<HomePage />)} />
         <Route path="activity" element={page(<ActivityPage />)} />
         <Route path="budgets" element={page(<BudgetsPage />)} />
