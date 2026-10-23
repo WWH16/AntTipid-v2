@@ -13,7 +13,7 @@ import { SafeToSpendCard } from '@/components/safe-to-spend-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLinkItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
 import { Progress, ProgressLabel } from '@/components/ui/progress'
@@ -188,7 +188,8 @@ function TryIt() {
 function PreviewPanel({ title, body, headline, description, children }: { title: string; body: string; headline: string; description?: string; children: ReactNode }) {
   return (
     <figure className="mx-auto grid w-full max-w-sm content-start gap-4 lg:max-w-none">
-      <div aria-hidden className="tour-screen pointer-events-none overflow-hidden rounded-3xl bg-background p-4 text-foreground select-none">
+      {/* inert as well as aria-hidden: on narrow screens the receipt table scrolls sideways, and Chrome would make it a Tab stop. */}
+      <div aria-hidden inert className="tour-screen pointer-events-none overflow-hidden rounded-3xl bg-background p-4 text-foreground select-none">
         {/* Outer div: scrolls the screen in the tour when its content runs past the phone. Inner: the page. */}
         <div>
           <div className="grid content-start gap-3">
@@ -285,8 +286,11 @@ function SectionHeading({ id, title, body }: { id: string; title: string; body?:
 
 export function LandingPage() {
   useEffect(() => { document.title = 'AntTipid: expense and budget tracker' }, [])
+  // The section picked from the phone menu: when the menu closes, focus moves to that section's heading so Tab carries on from there.
+  const jumpTo = useRef<string | null>(null)
   return (
     <div className="min-h-svh overflow-x-clip">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:p-2">Skip to content</a>
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
           <Link to="/" aria-label="AntTipid home" className="shrink-0 rounded-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
@@ -296,23 +300,35 @@ export function LandingPage() {
             {NAV.map((n) => <a key={n.href} href={n.href} className={linkClass}>{n.label}</a>)}
           </nav>
           <div className="flex items-center gap-1 sm:gap-2">
-            <Button variant="ghost" className="max-sm:px-2" nativeButton={false} render={<Link to="/sign-in" />}>Log in</Button>
+            {/* Below sm, Log in moves into the menu so the bar fits a 320px screen. */}
+            <Button variant="ghost" className="max-sm:hidden" nativeButton={false} render={<Link to="/sign-in" />}>Log in</Button>
             <Button className="cta-win max-sm:px-3" nativeButton={false} render={<Link to={SIGN_UP} />}>Get started</Button>
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Jump to a section" className="md:hidden" />}>
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="Menu" className="md:hidden" />}>
                 <Menu />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuContent
+                align="end"
+                className="w-44"
+                finalFocus={() => {
+                  const h = jumpTo.current && document.querySelector<HTMLElement>(`${jumpTo.current} h2`)
+                  jumpTo.current = null
+                  if (h) h.tabIndex = -1
+                  return h || true
+                }}
+              >
                 {NAV.map((n) => (
-                  <DropdownMenuItem key={n.href} onClick={() => document.querySelector(n.href)?.scrollIntoView()}>{n.label}</DropdownMenuItem>
+                  <DropdownMenuLinkItem key={n.href} href={n.href} closeOnClick onClick={() => { jumpTo.current = n.href }}>{n.label}</DropdownMenuLinkItem>
                 ))}
+                <DropdownMenuSeparator className="sm:hidden" />
+                <DropdownMenuLinkItem closeOnClick className="sm:hidden" render={<Link to="/sign-in" />}>Log in</DropdownMenuLinkItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
       </header>
 
-      <main className="[&_section]:scroll-mt-16">
+      <main id="main" className="[&_h2]:outline-none [&_section]:scroll-mt-16">
         {/* Hero */}
         <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-8 pb-14 sm:gap-12 sm:px-6 sm:pt-12 sm:pb-20 md:pt-20 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
           <div className="grid gap-5 sm:gap-6">
@@ -523,7 +539,8 @@ export function LandingPage() {
 
         {/* Final CTA */}
         <section aria-labelledby="cta-title">
-          <div className="panel-open grid justify-items-center gap-5 bg-primary canvas-dark px-5 py-14 text-center text-primary-foreground sm:gap-6 sm:px-6 sm:py-20 md:py-28">
+          {/* px-8: while .panel-open clips the panel to a card 1rem in from each side, the text keeps 1rem of room inside it. */}
+          <div className="panel-open grid justify-items-center gap-5 bg-primary canvas-dark px-8 py-14 text-center text-primary-foreground sm:gap-6 sm:py-20 md:py-28">
             <h2 id="cta-title" className="max-w-xl text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">
               Make every sahod last the whole month.
             </h2>
