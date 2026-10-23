@@ -268,6 +268,11 @@ def _normalize(conn, user: AuthUser, t: TransactionIn) -> TransactionIn:
     return t
 
 
+def merge_patch(current: TransactionIn, body: TransactionPatch) -> TransactionIn:
+    """Apply the fields the client sent. getattr, not model_dump: dumping turns items into dicts."""
+    return current.model_copy(update={k: getattr(body, k) for k in body.model_fields_set})
+
+
 def _write_items(conn, user: AuthUser, txn_id, items) -> None:
     conn.execute("delete from receipt_items where transaction_id = %s and user_id = %s", (txn_id, user.id))
     if items:
@@ -310,7 +315,7 @@ def update_transaction(txn_id: UUID, body: TransactionPatch, user: User):
             kind=r["kind"], amount=float(r["amount"]), title=r["title"], date=r["date"], wallet_id=r["wallet_id"],
             to_wallet_id=r["to_wallet_id"], category_id=r["category_id"], note=r["note"], source=r["source"], items=r["items"],
         )
-        t = _normalize(conn, user, current.model_copy(update=body.model_dump(exclude_unset=True)))
+        t = _normalize(conn, user, merge_patch(current, body))
         conn.execute(
             f"update transactions set {', '.join(f'{c} = %({c})s' for c in TXN_COLUMNS)} where id = %(id)s and user_id = %(uid)s",
             {**{c: getattr(t, c) for c in TXN_COLUMNS}, "id": txn_id, "uid": user.id},

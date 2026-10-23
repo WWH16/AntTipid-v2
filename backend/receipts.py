@@ -154,6 +154,15 @@ def _num(value, default: float = 0.0) -> float:
         return default
 
 
+def _purchase_date(value) -> str:
+    """The printed date if it's a real, past day; else today. A misread like 2026-02-30 would block saving."""
+    try:
+        day = date.fromisoformat(value)
+    except (TypeError, ValueError):
+        return date.today().isoformat()
+    return min(day, date.today()).isoformat()
+
+
 def _category_id(raw: dict, categories: dict[str, str]) -> str | None:
     """The category the model picked, by name (case-insensitive); None if it isn't one of the user's."""
     name = raw.get("category")
@@ -167,16 +176,18 @@ def normalize_scan(raw: dict, categories: dict[str, str] = CATEGORIES) -> Receip
     if not total > 0:
         raise NotAReceipt("no total found")
     items = [
-        ReceiptItem(name=str(i.get("name") or "").strip(), qty=_num(i.get("qty"), 1) or 1, price=_num(i.get("price")))
+        # Capped to what a saved item allows (models.ReceiptItemIn), so a scanned item never blocks saving.
+        # Unit prices are kept to the centavo, as saved (numeric(14, 2)), so the subtotal doesn't shift on save.
+        ReceiptItem(name=str(i.get("name") or "").strip()[:200], qty=_num(i.get("qty"), 1) or 1, price=round(_num(i.get("price")), 2))
         for i in raw.get("items") or []
         if isinstance(i, dict)
     ]
-    items = [i for i in items if i.name and i.price > 0]
-    day = raw.get("date")
+    # Free lines carry no money; a negative quantity is a misread.
+    items = [i for i in items if i.name and i.price > 0 and i.qty > 0]
     label = raw.get("paymentLabel")
     return ReceiptScan(
         merchant=str(raw.get("merchant") or "").strip() or "Receipt",
-        date=day if isinstance(day, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", day) else date.today().isoformat(),
+        date=_purchase_date(raw.get("date")),
         total=total,
         items=items,
         suggested_category_id=_category_id(raw, categories),

@@ -76,6 +76,19 @@ def test_receipt_normalization():
     assert [(i.name, i.qty, i.price) for i in sloppy.items] == [("Rice", 2, 50)]
     assert (sloppy.suggested_category_id, sloppy.payment_method, sloppy.low_confidence) == (None, None, True)
 
+    # Misread dates (impossible or future) fall back to today; long item names are cut to what saving allows
+    for day in ("2026-02-30", "2999-01-01"):
+        assert normalize_scan({"total": 10, "date": day}).date == date.today().isoformat()
+    assert len(normalize_scan({"total": 10, "items": [{"name": "x" * 300, "price": 10}]}).items[0].name) == 200
+
+    # Unit prices keep 2 decimals, as saved; discount lines and misread negative quantities are dropped
+    rounded = normalize_scan({"total": 401.94, "items": [
+        {"name": "Butter Cream", "qty": 2, "price": 75.975}, {"name": "Chicken", "qty": 1, "price": 250},
+        {"name": "Senior discount", "qty": 1, "price": -50}, {"name": "Misread", "qty": -1, "price": 10},
+    ]})
+    assert [(i.name, i.price) for i in rounded.items] == [("Butter Cream", 75.97), ("Chicken", 250)]
+    assert rounded.low_confidence is False
+
     # Not a receipt
     for reply in ({"total": 0}, {}, {"total": "abc"}):
         try:
@@ -110,6 +123,21 @@ def test_wallet_patch_accepts_type_and_balance():
             "walletId": str(uuid.uuid4()), "categoryId": str(uuid.uuid4()),
             "items": [{"name": "Rice", "qty": 1e9, "price": 50}],
         })
+
+
+def test_transaction_patch_keeps_items_typed():
+    # Editing a receipt's items used to crash: model_dump turned them into dicts with no .name.
+    from ledger import merge_patch
+    from models import TransactionIn, TransactionPatch
+
+    current = TransactionIn.model_validate({
+        "kind": "expense", "amount": 100, "title": "Lunch", "date": "2026-10-20",
+        "walletId": str(uuid.uuid4()), "categoryId": str(uuid.uuid4()),
+        "items": [{"name": "Rice", "qty": 1, "price": 100}],
+    })
+    merged = merge_patch(current, TransactionPatch.model_validate({"items": [{"name": " Adobo ", "qty": 2, "price": 50}]}))
+    assert [(i.name, i.qty, i.price) for i in merged.items] == [("Adobo", 2, 50)]
+    assert (merged.title, merged.amount) == ("Lunch", 100)
 
 
 def test_routes_and_user_isolation():
