@@ -532,22 +532,18 @@
         animation-timeline: --tour;
         animation-range: contain var(--s) contain calc(var(--s) + 9%);
       }
-      .tour-grid > figure:nth-of-type(1) > .tour-screen {
-        --t0: 0; --t1: -100%; --t2: -100%;
-        --c0: inset(0 round 2.6rem); --c1: inset(0 0 0 100% round 2.6rem); --c2: inset(0 0 0 100% round 2.6rem);
+      /* The clip is the phone's rounded screen, held still while the screen moves under it (offset against the shift),
+         so only the phone's four corners are round. The screen itself is square, so the seam between two stays straight. */
+      .tour-grid > figure > .tour-screen {
+        border-radius: 0;
       }
-      .tour-grid > figure:nth-of-type(2) > .tour-screen {
-        --t0: 100%; --t1: 0; --t2: -100%;
-        --c0: inset(0 100% 0 0 round 2.6rem); --c1: inset(0 round 2.6rem); --c2: inset(0 0 0 100% round 2.6rem);
-      }
-      .tour-grid > figure:nth-of-type(3) > .tour-screen {
-        --t0: 100%; --t1: 100%; --t2: 0;
-        --c0: inset(0 100% 0 0 round 2.6rem); --c1: inset(0 100% 0 0 round 2.6rem); --c2: inset(0 round 2.6rem);
-      }
+      .tour-grid > figure:nth-of-type(1) > .tour-screen { --t0: 0%; --t1: -100%; --t2: -100%; }
+      .tour-grid > figure:nth-of-type(2) > .tour-screen { --t0: 100%; --t1: 0%; --t2: -100%; }
+      .tour-grid > figure:nth-of-type(3) > .tour-screen { --t0: 100%; --t1: 100%; --t2: 0%; }
       @keyframes screen-slide {
-        0%, 25% { transform: translateX(var(--t0)); clip-path: var(--c0); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
-        41.667%, 58.333% { transform: translateX(var(--t1)); clip-path: var(--c1); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
-        75%, 100% { transform: translateX(var(--t2)); clip-path: var(--c2); }
+        0%, 25% { transform: translateX(var(--t0)); clip-path: inset(0 var(--t0) 0 calc(-1 * var(--t0)) round 2.6rem); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+        41.667%, 58.333% { transform: translateX(var(--t1)); clip-path: inset(0 var(--t1) 0 calc(-1 * var(--t1)) round 2.6rem); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+        75%, 100% { transform: translateX(var(--t2)); clip-path: inset(0 var(--t2) 0 calc(-1 * var(--t2)) round 2.6rem); }
       }
 
       /* Each screen's moment, while it holds. --k staggers rows inside a card, and columns in the chart. */
