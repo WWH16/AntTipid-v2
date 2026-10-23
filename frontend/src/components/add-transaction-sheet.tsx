@@ -1,9 +1,8 @@
 // The one place money gets recorded. Three taps for the common case:
 //   1. Add   2. type the amount (focused on open)   3. pick a category   then Save expense.
 // Wallet defaults to the last one used and the date to today.
-import { useEffect, useRef, useState } from 'react'
+import { lazy, startTransition, Suspense, useEffect, useRef, useState } from 'react'
 import { Camera, Check, Loader2, ScanLine, Upload } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { BusyButton } from '@/components/busy-button'
@@ -25,6 +24,9 @@ import { money, todayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/transactions'
 import { cleanReceiptItems, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
+
+// Only a first-time user with no wallet sees this, so the add flow doesn't wait on the Settings file.
+const WalletForm = lazy(() => import('@/pages/settings').then((m) => ({ default: m.WalletForm })))
 
 const LAST_WALLET = 'anttipid-last-wallet'
 const readLastWallet = () => { try { return localStorage.getItem(LAST_WALLET) ?? '' } catch { return '' } }
@@ -52,6 +54,7 @@ function AddFlow() {
   const [receipt, setReceipt] = useState<ReceiptScan | null>(null)
   const [receiptPhoto, setReceiptPhoto] = useState<Blob | null>(null)
   const [items, setItems] = useState<DraftReceiptItem[]>(() => toDraftItems(editing?.items))
+  const [addingWallet, setAddingWallet] = useState(false)
   const [run, saving] = useAction()
 
   // Fall back to the first wallet when nothing was used before (or the remembered one is gone).
@@ -103,14 +106,20 @@ function AddFlow() {
     setMode('form')
   }
 
+  // The wallet form opens in place: once it's saved there is a wallet, so the transaction form takes over.
+  // The transition keeps this panel up while the form's file loads, so the two panels swap in one step.
   if (!editing && !loading && !activeWallets.length) {
     return (
-      <ResponsivePanel onClose={closeAdd} title="Add a wallet first" description="Every transaction is paid from or into a wallet.">
-        <div className="grid gap-4 pb-4">
-          <p className="text-sm text-muted-foreground">Add the cash, GCash or bank account you pay from, then record what you spend.</p>
-          <Button nativeButton={false} render={<Link to="/settings" />} onClick={closeAdd}>Add a wallet</Button>
-        </div>
-      </ResponsivePanel>
+      <Suspense fallback={null}>
+        {addingWallet ? <WalletForm onClose={() => setAddingWallet(false)} /> : (
+          <ResponsivePanel onClose={closeAdd} title="Add a wallet first" description="Every transaction is paid from or into a wallet.">
+            <div className="grid gap-4 pb-4">
+              <p className="text-sm text-muted-foreground">Add the cash, GCash or bank account you pay from, then record what you spend.</p>
+              <Button onClick={() => startTransition(() => setAddingWallet(true))}>Add a wallet</Button>
+            </div>
+          </ResponsivePanel>
+        )}
+      </Suspense>
     )
   }
 
