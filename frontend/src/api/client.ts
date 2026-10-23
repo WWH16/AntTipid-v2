@@ -28,7 +28,8 @@ async function request(path: string, init: RequestInit & { query?: Query } = {})
     // The session is gone on the server's side (expired, revoked): drop it here too, which shows the sign-in page.
     if (res.status === 401) void supabase.auth.signOut({ scope: 'local' })
     const body = await res.json().catch(() => null)
-    throw new Error(typeof body?.detail === 'string' ? body.detail : fieldError(body?.detail) ?? `Request failed (${res.status})`)
+    // status rides along so callers can tell a refusal (409) from a failure.
+    throw Object.assign(new Error(typeof body?.detail === 'string' ? body.detail : fieldError(body?.detail) ?? `Request failed (${res.status})`), { status: res.status })
   }
   return res
 }

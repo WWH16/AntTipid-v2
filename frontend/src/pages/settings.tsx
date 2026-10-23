@@ -1,36 +1,36 @@
-// Wallets, categories and account. The tab is kept in the URL (?tab=categories) so links land on the right one.
-import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Archive, ArchiveRestore, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+// Settings as a grouped list, the way phone apps lay it out. Phones: the list, and each row opens its own screen.
+// Tablet and up: the list on the left, the chosen section beside it. The section is kept in the URL (?tab=categories).
+import { useState, type ReactNode } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, Info, LogOut, MoreHorizontal, Pencil, Plus, ShieldCheck, Tags, Trash2, Wallet as WalletIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DetailList } from '@/components/detail-list'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
-import { setCached } from '@/api/use-query'
+import { dropCached, upsertCached } from '@/api/use-query'
 import { CategoryMedia } from '@/components/category-icon'
 import { CATEGORY_ICONS } from '@/lib/category-icons'
 import { PageHeader } from '@/components/page-header'
-import { MoneyInput } from '@/components/money-input'
 import { ResponsivePanel } from '@/components/responsive-panel'
-import { SimpleSelect } from '@/components/simple-select'
+import { UserAvatar } from '@/components/user-avatar'
+import { WalletForm } from '@/components/wallet-form'
 import { WalletItem } from '@/components/wallet-item'
 import { LoadingItems } from '@/components/states'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item'
+import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { BrandMark } from '@/components/brand-icons'
 import { useAction } from '@/hooks/use-action'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { done } from '@/lib/done'
-import { money } from '@/lib/format'
-import { WALLET_TYPES } from '@/lib/wallets'
-import type { Category, CategoryKind, Wallet, WalletType } from '@/types'
+import { cn } from '@/lib/utils'
+import type { Category, CategoryKind, Wallet } from '@/types'
+import { version } from '../../package.json'
 
 type Dlg =
   | { type: 'wallet'; wallet?: Wallet }
@@ -38,41 +38,119 @@ type Dlg =
   | { type: 'account' }
   | null
 
-// Put a saved wallet or category in its list at once, so rows change without waiting for the reload after every save.
-const upsert = <T extends { id: string }>(key: 'wallets' | 'categories', item: T) =>
-  setCached<T[]>(key, (list) => (list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item]))
-const drop = (key: 'wallets' | 'categories', id: string) =>
-  setCached<{ id: string }[]>(key, (list) => list.filter((x) => x.id !== id))
+const SECTIONS = ['wallets', 'categories', 'account'] as const
+type Section = (typeof SECTIONS)[number]
 
 export function SettingsPage() {
   const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') ?? 'wallets'
+  const picked = SECTIONS.find((s) => s === params.get('tab')) // undefined: phones show the list
+  const section: Section = picked ?? 'wallets' // tablet and up always show one section
+  const isMobile = useIsMobile()
+  const navigate = useNavigate()
   const [dlg, setDlg] = useState<Dlg>(null)
+  const { user, signOut } = useApp()
   const { wallets, categories, loading } = useRefData()
   const active = wallets.filter((w) => !w.archived).length
+  // Phones push each screen so Back returns to the list; side by side, switching sections replaces.
+  const link = (s: Section) => ({ to: { search: `?tab=${s}` }, replace: !isMobile })
+  // Back to the list: the history entry this screen pushed, or (opened from a link) the list in its place.
+  const back = () => ((history.state?.idx ?? 0) > 0 ? navigate(-1) : setParams({}, { replace: true }))
 
   return (
     <>
-      <PageHeader
-        page="Settings"
-        headline="How your money is organised"
-        description={loading ? 'Your wallets and categories' : `${active} ${active === 1 ? 'wallet' : 'wallets'} and ${categories.length} ${categories.length === 1 ? 'category' : 'categories'}`}
-      />
-      <Tabs value={tab} onValueChange={(v) => setParams({ tab: String(v) }, { replace: true })}>
-        <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="wallets">Wallets</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
-        </TabsList>
-        <TabsContent value="wallets"><WalletsTab onEdit={setDlg} /></TabsContent>
-        <TabsContent value="categories"><CategoriesTab onEdit={setDlg} /></TabsContent>
-        <TabsContent value="account"><AccountTab onEdit={() => setDlg({ type: 'account' })} /></TabsContent>
-      </Tabs>
+      <div className={cn(picked && 'max-md:hidden')}>
+        <PageHeader
+          page="Settings"
+          headline="Settings"
+          description={loading ? 'Your account, wallets and categories' : `${active} ${active === 1 ? 'wallet' : 'wallets'} and ${categories.length} ${categories.length === 1 ? 'category' : 'categories'}`}
+        />
+      </div>
+
+      {/* Two cards side by side: the list (kept in view while a long section scrolls) and the open section. Phones show one at a time. */}
+      <div className="grid max-w-5xl items-start gap-4 md:grid-cols-[16rem_minmax(0,1fr)] lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <nav aria-label="Settings" className={cn('md:sticky md:top-6', picked && 'max-md:hidden')}>
+          <Card className="gap-0 divide-y py-0">
+            <SettingsRow {...link('account')} current={section === 'account'} media={<UserAvatar name={user?.name} className="size-11 text-base" />} label={user?.name ?? 'Account'} description={user?.email} />
+
+            <RowGroup title="Money">
+              <SettingsRow {...link('wallets')} current={section === 'wallets'} media={<WalletIcon />} label="Wallets" value={loading ? undefined : String(active)} />
+              <SettingsRow {...link('categories')} current={section === 'categories'} media={<Tags />} label="Categories" value={loading ? undefined : String(categories.length)} />
+            </RowGroup>
+
+            <RowGroup title="About">
+              <SettingsRow to="/privacy" media={<ShieldCheck />} label="Privacy policy" />
+              <SettingsRow media={<Info />} label="Version" value={version} />
+            </RowGroup>
+
+            <Item render={<button type="button" onClick={signOut} />} className="rounded-none text-left text-destructive hover:bg-muted">
+              <ItemMedia variant="icon"><LogOut /></ItemMedia>
+              <ItemContent><ItemTitle>Sign out</ItemTitle></ItemContent>
+            </Item>
+          </Card>
+        </nav>
+
+        <div className={cn('grid min-w-0 gap-2', !picked && 'max-md:hidden')}>
+          <Button variant="ghost" className="-ml-2 justify-self-start md:hidden" onClick={back}><ChevronLeft /> Settings</Button>
+          <Card className="px-4 md:px-6 md:py-6">
+            {section === 'wallets' && <WalletsTab onEdit={setDlg} />}
+            {section === 'categories' && <CategoriesTab onEdit={setDlg} />}
+            {section === 'account' && <AccountTab onEdit={() => setDlg({ type: 'account' })} />}
+          </Card>
+        </div>
+      </div>
 
       {dlg?.type === 'wallet' && <WalletForm key={dlg.wallet?.id ?? 'new'} wallet={dlg.wallet} onClose={() => setDlg(null)} />}
       {dlg?.type === 'category' && <CategoryForm key={dlg.category?.id ?? 'new'} category={dlg.category} kind={dlg.kind} onClose={() => setDlg(null)} />}
       {dlg?.type === 'account' && <AccountForm onClose={() => setDlg(null)} />}
     </>
+  )
+}
+
+/** Title, one line of help and the section's main action, above its list. */
+function SectionHeader({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 pb-3">
+      <div className="min-w-0">
+        <h2 className="text-lg leading-tight font-semibold">{title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      {action}
+    </div>
+  )
+}
+
+function RowGroup({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="pt-2">
+      <h2 className="px-3 text-xs font-medium text-muted-foreground">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+/** One row: a link with a chevron when it has somewhere to go (`to`), otherwise a plain label and value. */
+function SettingsRow({ to, replace, current, media, label, description, value }: {
+  to?: string | { search: string }
+  replace?: boolean
+  current?: boolean
+  media: ReactNode
+  label: string
+  description?: string
+  value?: string
+}) {
+  return (
+    <Item
+      render={to ? <Link to={to} replace={replace} aria-current={current ? 'page' : undefined} /> : undefined}
+      className={cn('rounded-none', to && 'hover:bg-muted md:aria-[current=page]:bg-muted md:aria-[current=page]:font-medium')}
+    >
+      <ItemMedia variant="icon" className="text-muted-foreground">{media}</ItemMedia>
+      <ItemContent>
+        <ItemTitle>{label}</ItemTitle>
+        {description && <ItemDescription className="truncate">{description}</ItemDescription>}
+      </ItemContent>
+      {value && <span className="text-sm text-muted-foreground tabular-nums">{value}</span>}
+      {to && <ChevronRight className="size-4 text-muted-foreground" aria-hidden />}
+    </Item>
   )
 }
 
@@ -93,7 +171,7 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
 
   // Reversible, so no confirm step: the toast offers Undo instead. The row changes at once and goes back if the save fails.
   async function setArchived(w: Wallet, value: boolean) {
-    upsert('wallets', { ...w, archived: value })
+    upsertCached('wallets', { ...w, archived: value })
     try {
       await api.wallets.update(w.id, { archived: value })
       done(value ? 'Wallet archived' : 'Wallet restored', {
@@ -102,35 +180,33 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
         duration: 8000, // long enough to notice and reach the Undo button
       })
     } catch (e) {
-      upsert('wallets', { ...w, archived: !value })
+      upsertCached('wallets', { ...w, archived: !value })
       toast.error((e as Error).message)
     }
   }
 
   return (
-    <Card className="max-w-2xl">
-      <CardHeader>
-        <CardTitle role="heading" aria-level={2}>Wallets</CardTitle>
-        <CardDescription>Each transaction is paid from or paid into one of these.</CardDescription>
-        <CardAction>{/* Icon only on phones so the description keeps the width. */}<Button variant="outline" size="sm" aria-label="Add wallet" onClick={() => onEdit({ type: 'wallet' })}><Plus /><span className="hidden sm:inline">Add wallet</span></Button></CardAction>
-      </CardHeader>
-      <CardContent>
-        {loading ? <LoadingItems rows={3} /> : !wallets.length ? (
-          <p className="text-sm text-muted-foreground">No wallets yet. Add the cash, e-wallets and bank accounts you pay from.</p>
-        ) : <ItemGroup>
-          {wallets.map((w) => (
-            <WalletItem key={w.id} w={w}>
-              <RowMenu label={`Options for ${w.name}`}>
-                <DropdownMenuItem onClick={() => onEdit({ type: 'wallet', wallet: w })}><Pencil /> Edit</DropdownMenuItem>
-                {w.archived
-                  ? <DropdownMenuItem onClick={() => setArchived(w, false)}><ArchiveRestore /> Restore</DropdownMenuItem>
-                  : <DropdownMenuItem onClick={() => setArchived(w, true)}><Archive /> Archive</DropdownMenuItem>}
-                <DropdownMenuItem variant="destructive" onClick={() => setDeleting(w)}><Trash2 /> Delete</DropdownMenuItem>
-              </RowMenu>
-            </WalletItem>
-          ))}
-        </ItemGroup>}
-      </CardContent>
+    <section>
+      <SectionHeader
+        title="Wallets"
+        description="Each transaction is paid from or paid into one of these."
+        action={<Button variant="outline" size="sm" aria-label="Add wallet" onClick={() => onEdit({ type: 'wallet' })}><Plus /><span className="hidden sm:inline">Add wallet</span></Button>}
+      />
+      {loading ? <LoadingItems rows={3} /> : !wallets.length ? (
+        <p className="text-sm text-muted-foreground">No wallets yet. Add the cash, e-wallets and bank accounts you pay from.</p>
+      ) : <ItemGroup className="-mx-3">
+        {wallets.map((w) => (
+          <WalletItem key={w.id} w={w}>
+            <RowMenu label={`Options for ${w.name}`}>
+              <DropdownMenuItem onClick={() => onEdit({ type: 'wallet', wallet: w })}><Pencil /> Edit</DropdownMenuItem>
+              {w.archived
+                ? <DropdownMenuItem onClick={() => setArchived(w, false)}><ArchiveRestore /> Restore</DropdownMenuItem>
+                : <DropdownMenuItem onClick={() => setArchived(w, true)}><Archive /> Archive</DropdownMenuItem>}
+              <DropdownMenuItem variant="destructive" onClick={() => setDeleting(w)}><Trash2 /> Delete</DropdownMenuItem>
+            </RowMenu>
+          </WalletItem>
+        ))}
+      </ItemGroup>}
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(o) => { if (!o) setDeleting(null) }}
@@ -138,12 +214,22 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
         description="Only wallets with no transactions can be deleted. This can't be undone."
         confirm="Delete wallet"
         onConfirm={async () => {
-          await api.wallets.remove(deleting!.id)
-          drop('wallets', deleting!.id)
-          done('Wallet deleted', { description: deleting!.name })
+          const w = deleting!
+          try {
+            await api.wallets.remove(w.id)
+          } catch (e) {
+            if ((e as { status?: number }).status !== 409) throw e
+            // It has transactions: close the dialog and offer Archive, which hides it and keeps the history.
+            toast.error(`${w.name} has transactions`, w.archived
+              ? { description: "It can't be deleted. It's already archived, so it's hidden from new transactions." }
+              : { description: 'Archive it instead to hide it and keep its history.', action: { label: 'Archive', onClick: () => setArchived(w, true) }, duration: 8000 })
+            return
+          }
+          dropCached('wallets', w.id)
+          done('Wallet deleted', { description: w.name })
         }}
       />
-    </Card>
+    </section>
   )
 }
 
@@ -152,35 +238,33 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
   const [deleting, setDeleting] = useState<Category | null>(null)
 
   return (
-    <div className="grid max-w-4xl items-start gap-5 md:grid-cols-2 md:gap-6">
+    <div className="grid gap-8">
       {(['expense', 'income'] as const).map((kind) => (
-        <Card key={kind}>
-          <CardHeader>
-            <CardTitle role="heading" aria-level={2}>{kind === 'expense' ? 'Spending categories' : 'Income categories'}</CardTitle>
-            <CardDescription>{kind === 'expense' ? 'Shown when you add an expense.' : 'Shown when you add income.'}</CardDescription>
-            <CardAction><Button variant="outline" size="sm" aria-label={kind === 'expense' ? 'Add spending category' : 'Add income category'} onClick={() => onEdit({ type: 'category', kind })}><Plus /><span className="hidden sm:inline">Add category</span></Button></CardAction>
-          </CardHeader>
-          <CardContent>
-            {loading ? <LoadingItems rows={kind === 'expense' ? 5 : 3} amount={false} /> : !categories.some((c) => c.kind === kind) ? (
-              <p className="text-sm text-muted-foreground">
-                {kind === 'expense' ? 'No spending categories. Add one to record expenses.' : 'No income categories. Add one to record income.'}
-              </p>
-            ) : <ItemGroup>
-              {categories.filter((c) => c.kind === kind).map((c) => (
-                <Item key={c.id} size="sm">
-                  <CategoryMedia category={c} />
-                  <ItemContent><ItemTitle>{c.name}</ItemTitle></ItemContent>
-                  <ItemActions>
-                    <RowMenu label={`Options for ${c.name}`}>
-                      <DropdownMenuItem onClick={() => onEdit({ type: 'category', category: c, kind })}><Pencil /> Edit</DropdownMenuItem>
-                      <DropdownMenuItem variant="destructive" onClick={() => setDeleting(c)}><Trash2 /> Delete</DropdownMenuItem>
-                    </RowMenu>
-                  </ItemActions>
-                </Item>
-              ))}
-            </ItemGroup>}
-          </CardContent>
-        </Card>
+        <section key={kind}>
+          <SectionHeader
+            title={kind === 'expense' ? 'Spending categories' : 'Income categories'}
+            description={kind === 'expense' ? 'Shown when you add an expense.' : 'Shown when you add income.'}
+            action={<Button variant="outline" size="sm" aria-label={kind === 'expense' ? 'Add spending category' : 'Add income category'} onClick={() => onEdit({ type: 'category', kind })}><Plus /><span className="hidden sm:inline">Add category</span></Button>}
+          />
+          {loading ? <LoadingItems rows={kind === 'expense' ? 5 : 3} amount={false} /> : !categories.some((c) => c.kind === kind) ? (
+            <p className="text-sm text-muted-foreground">
+              {kind === 'expense' ? 'No spending categories. Add one to record expenses.' : 'No income categories. Add one to record income.'}
+            </p>
+          ) : <ItemGroup className="-mx-3">
+            {categories.filter((c) => c.kind === kind).map((c) => (
+              <Item key={c.id} size="sm">
+                <CategoryMedia category={c} />
+                <ItemContent><ItemTitle>{c.name}</ItemTitle></ItemContent>
+                <ItemActions>
+                  <RowMenu label={`Options for ${c.name}`}>
+                    <DropdownMenuItem onClick={() => onEdit({ type: 'category', category: c, kind })}><Pencil /> Edit</DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onClick={() => setDeleting(c)}><Trash2 /> Delete</DropdownMenuItem>
+                  </RowMenu>
+                </ItemActions>
+              </Item>
+            ))}
+          </ItemGroup>}
+        </section>
       ))}
       <ConfirmDialog
         open={deleting !== null}
@@ -190,7 +274,7 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
         confirm="Delete category"
         onConfirm={async () => {
           await api.categories.remove(deleting!.id)
-          drop('categories', deleting!.id)
+          dropCached('categories', deleting!.id)
           done('Category deleted', { description: deleting!.name })
         }}
       />
@@ -199,22 +283,16 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
 }
 
 function AccountTab({ onEdit }: { onEdit: () => void }) {
-  const { user, signOut } = useApp()
+  const { user } = useApp()
   return (
-    <Card className="max-w-md">
-      <CardHeader>
-        <CardTitle role="heading" aria-level={2}>Account</CardTitle>
-        <CardDescription>Your account details</CardDescription>
-        <CardAction><BrandMark mark="tile" className="size-12 rounded-[22%]" /></CardAction>
-      </CardHeader>
-      <CardContent>
-        <DetailList rows={[['Name', user?.name], ['Email', user?.email], ['Currency', 'Philippine peso (₱)']]} />
-      </CardContent>
-      <CardFooter className="gap-2">
-        <Button variant="outline" onClick={onEdit}><Pencil /> Edit name</Button>
-        <Button variant="outline" onClick={signOut}>Sign out</Button>
-      </CardFooter>
-    </Card>
+    <section>
+      <SectionHeader
+        title="Account"
+        description="Your name and the email you sign in with."
+        action={<Button variant="outline" size="sm" onClick={onEdit}><Pencil /> Edit name</Button>}
+      />
+      <DetailList rows={[['Name', user?.name], ['Email', user?.email]]} />
+    </section>
   )
 }
 
@@ -248,59 +326,6 @@ function AccountForm({ onClose }: { onClose: () => void }) {
   )
 }
 
-export function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () => void }) {
-  const [name, setName] = useState(wallet?.name ?? '')
-  const [type, setType] = useState<string>(wallet?.type ?? 'e_wallet')
-  const [balance, setBalance] = useState(wallet ? String(wallet.balance) : '')
-  const [run, busy] = useAction()
-  const title = wallet ? 'Edit wallet' : 'Add wallet'
-  const balanceBlank = balance.trim() === ''
-  const balanceNum = Number(balance)
-  const valid = Boolean(name.trim()) && (balanceBlank || Number.isFinite(balanceNum))
-
-  const save = () => run(async () => {
-    const trimmed = name.trim()
-    const shownBalance = balanceBlank ? (wallet?.balance ?? 0) : balanceNum
-    upsert('wallets', wallet
-      ? await api.wallets.update(wallet.id, {
-        name: trimmed,
-        type: type as WalletType,
-        ...(!balanceBlank && balanceNum !== wallet.balance ? { balance: balanceNum } : {}),
-      })
-      : await api.wallets.create({ name: trimmed, type: type as WalletType, balance: shownBalance }))
-    onClose()
-    done(wallet ? 'Changes saved' : 'Wallet added', { description: `${trimmed} · ${money(shownBalance)}` })
-  })
-
-  return (
-    <ResponsivePanel
-      onClose={onClose}
-      title={title}
-      description={wallet ? 'Update the name, type or amount.' : 'Anywhere you keep money: cash, GCash, a bank account or a card.'}
-      footer={<BusyButton type="submit" form="wallet-form" busy={busy} disabled={!valid}>{wallet ? 'Save changes' : 'Add wallet'}</BusyButton>}
-    >
-      <form id="wallet-form" onSubmit={(e) => { e.preventDefault(); if (valid) save() }} className="grid gap-4 pb-4">
-        <div className="grid gap-2">
-          <Label htmlFor="wallet-name">Name</Label>
-          <Input id="wallet-name" autoFocus placeholder="e.g. GCash, BPI Savings" value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="wallet-type">Type</Label>
-          <SimpleSelect id="wallet-type" value={type} onChange={setType} options={WALLET_TYPES} />
-        </div>
-        <div className="grid gap-2">
-          {/* Not "balance": AntTipid isn't linked to the bank or e-wallet, so this is what the user types in. */}
-          <Label htmlFor="wallet-balance">{wallet ? 'Amount in this wallet' : 'Starting amount'}</Label>
-          <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} aria-describedby="wallet-balance-hint" />
-          <p id="wallet-balance-hint" className="text-sm text-muted-foreground">
-            {wallet ? 'Change it to match what you actually have.' : "What's in it today."} Transactions you record add to or take from it.
-          </p>
-        </div>
-      </form>
-    </ResponsivePanel>
-  )
-}
-
 function CategoryForm({ category, kind, onClose }: { category?: Category; kind: CategoryKind; onClose: () => void }) {
   const [name, setName] = useState(category?.name ?? '')
   const [icon, setIcon] = useState(category?.icon ?? 'other')
@@ -309,7 +334,7 @@ function CategoryForm({ category, kind, onClose }: { category?: Category; kind: 
 
   const save = () => run(async () => {
     const trimmed = name.trim()
-    upsert('categories', category
+    upsertCached('categories', category
       ? await api.categories.update(category.id, { name: trimmed, icon })
       : await api.categories.create({ name: trimmed, kind, icon }))
     onClose()

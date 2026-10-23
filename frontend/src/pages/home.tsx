@@ -1,7 +1,7 @@
 // Home answers one question first: how much can I still spend this month? Then what needs attention, then details.
 import { lazy, Suspense, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, PenLine, ScanLine, Settings } from 'lucide-react'
+import { Check, PenLine, ScanLine } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -52,11 +52,6 @@ export function HomePage() {
         page="Home"
         headline={`${greeting}, ${user?.name.split(' ')[0] ?? 'there'}`}
         description={longDate(todayIso())}
-        action={
-          <Button variant="ghost" size="icon" className="md:hidden" aria-label="Settings" nativeButton={false} render={<Link to="/settings" />}>
-            <Settings />
-          </Button>
-        }
       />
 
       {/* minmax(0, …) tracks: the carousel scrolls inside its column instead of widening the page. */}
@@ -133,7 +128,7 @@ export function HomePage() {
               <CardTitle role="heading" aria-level={2}>Wallets</CardTitle>
               <CardDescription className="tabular-nums">{refLoading ? 'Loading balances' : `${money(total)} across ${activeWallets.length} ${activeWallets.length === 1 ? 'wallet' : 'wallets'}`}</CardDescription>
               <CardAction>
-                <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/settings" />}>Manage</Button>
+                <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/settings?tab=wallets" />}>Manage</Button>
               </CardAction>
             </CardHeader>
             <CardContent>
@@ -177,7 +172,7 @@ const SETUP_HIDDEN = 'anttipid-setup-hidden'
 
 // Only first-run setup opens these, so Home doesn't wait on the Budgets and Settings files to render.
 const BudgetForm = lazy(() => import('@/pages/budgets').then((m) => ({ default: m.BudgetForm })))
-const WalletForm = lazy(() => import('@/pages/settings').then((m) => ({ default: m.WalletForm })))
+const WalletForm = lazy(() => import('@/components/wallet-form').then((m) => ({ default: m.WalletForm })))
 
 /** First run: the three steps until Home can show what's left to spend each day. */
 function SetupSteps({ hasWallet, hasBudget, hasExpense, budgets, onHide }: {

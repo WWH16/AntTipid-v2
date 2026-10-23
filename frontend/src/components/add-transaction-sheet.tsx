@@ -27,7 +27,7 @@ import { cleanReceiptItems, itemProblem, itemsTotal, shrinkPhoto, suggestWalletI
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
 
 // Only a first-time user with no wallet sees this, so the add flow doesn't wait on the Settings file.
-const WalletForm = lazy(() => import('@/pages/settings').then((m) => ({ default: m.WalletForm })))
+const WalletForm = lazy(() => import('@/components/wallet-form').then((m) => ({ default: m.WalletForm })))
 
 const LAST_WALLET = 'anttipid-last-wallet'
 const readLastWallet = () => { try { return localStorage.getItem(LAST_WALLET) ?? '' } catch { return '' } }

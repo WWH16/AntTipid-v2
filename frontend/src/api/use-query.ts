@@ -76,6 +76,12 @@ export function setCached<T>(key: string, update: (data: T) => T) {
   listeners.forEach((l) => l())
 }
 
+// Put a saved wallet or category in its list at once, so rows change without waiting for the reload after every save.
+export const upsertCached = <T extends { id: string }>(key: 'wallets' | 'categories', item: T) =>
+  setCached<T[]>(key, (list) => (list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item]))
+export const dropCached = (key: 'wallets' | 'categories', id: string) =>
+  setCached<{ id: string }[]>(key, (list) => list.filter((x) => x.id !== id))
+
 export function useQuery<T>(key: string, load: () => Promise<T>) {
   const v = useSyncExternalStore(subscribe, () => version)
   // Last loaded data for this key, plus any setCached change made since (re-renders on those without reloading).
