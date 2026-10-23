@@ -197,6 +197,51 @@
   animation: receipt-row-in .3s ease-out both;
 }
 
+/* Hero card ant: walks the top edge end to end at a steady pace, then about-faces and heads back. The pace stays
+   linear because the gait runs at a fixed rate: any slowdown near the edges would leave the legs stepping in place.
+   Its three visible legs walk in an alternating gait (front and rear together, middle opposite). Each step is a walk,
+   not a gallop: the foot stays planted for most of the cycle, pushing back steadily as the body passes over it, then
+   lifts and swings forward quickly. Planted longer than half the cycle, both sets of feet share the ground for a
+   moment every step, which is what reads as walking. The feelers sweep ahead. Resting spot (reduced motion): 52%. */
+.ant-walk {
+  transform: translateX(52%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ant-walk {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(100%); }
+  }
+  @keyframes ant-turn {
+    50% { transform: scaleX(-1); }
+  }
+  /* Negative rotation reaches the foot ahead (toward the head); the lift draws the foot in toward the hip mid-swing. */
+  @keyframes ant-step {
+    0%, 100% { rotate: -10deg; translate: 0 0; animation-timing-function: linear; }
+    65% { rotate: 10deg; translate: 0 0; animation-timing-function: ease-in-out; }
+    82% { translate: 0 -2.5px; }
+  }
+  @keyframes ant-feel {
+    0%, 100% { rotate: -5deg; }
+    40% { rotate: 6deg; }
+  }
+  .ant-walk {
+    animation: ant-walk 40s linear infinite;
+  }
+  .ant {
+    animation: ant-turn 40s step-end infinite;
+  }
+  .ant-leg {
+    animation: ant-step .7s infinite;
+  }
+  .ant-leg-mid {
+    animation-delay: -.35s;
+  }
+  .ant-feeler {
+    transform-origin: 74px 20px;
+    animation: ant-feel 1.3s ease-in-out infinite;
+  }
+}
+
 /* Landing motion. Every element's resting state is its finished state, so nothing hides if an animation never runs.
    Hero (on load): the copy rises in reading order, the phone lands flat out of a tilt, then its screen behaves like Home:
    both bars fill to today's numbers and the recent transactions log in, newest last, at the top.

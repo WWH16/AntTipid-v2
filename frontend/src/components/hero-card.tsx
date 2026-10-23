@@ -41,17 +41,23 @@ export function HeroCard({ className, children, ...props }: ComponentProps<typeo
         <path fill={`url(#${id}c)`} fillRule="evenodd" d="M122 126A60 60 0 1 1 242 126A60 60 0 1 1 122 126ZM134 126A48 48 0 1 0 230 126A48 48 0 1 0 134 126Z" />
         <path fill={`url(#${id}c)`} d="M164 96H173V156H164ZM164 96H183.2A20.4 20.4 0 0 1 183.2 136.8H164V127.8H183.2A11.4 11.4 0 0 0 183.2 105H164ZM154.4 109.8H210.8V114.3H154.4ZM154.4 118.8H210.8V123.3H154.4Z" />
       </svg>
-      <svg
-        viewBox="0 0 100 60"
-        aria-hidden
-        className="pointer-events-none absolute top-0 left-[52%] -z-10 w-20 -scale-y-100 text-sidebar-primary opacity-20"
-      >
-        <pattern id={`${id}a`} width="2.4" height="2.4" patternUnits="userSpaceOnUse">
-          <path d="M1.2 .1L2.3 1.2L1.2 2.3L.1 1.2Z" fill="currentColor" />
-        </pattern>
-        <path fill={`url(#${id}a)`} d="M14 30A14 10 0 1 1 42 30A14 10 0 1 1 14 30ZM47 29A8 5.5 0 1 1 63 29A8 5.5 0 1 1 47 29ZM64.5 26A7.5 7.5 0 1 1 79.5 26A7.5 7.5 0 1 1 64.5 26Z" />
-        <path fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeDasharray="0 2.4" d="M42 30H47M76 20L82 9L94 6M73 19L76 8L86 2M52 33L44 42L38 56M55 34L56 45L52 57M58 33L66 42L74 55" />
-      </svg>
+      {/* The ant patrols the top edge (index.css, .ant-walk): the track is the card minus the ant's width, so
+          translating it by its own width carries the ant from the left edge to the right one. */}
+      <div aria-hidden className="ant-walk pointer-events-none absolute top-0 right-20 left-0 -z-10">
+        <svg viewBox="0 0 100 60" className="ant w-20 -scale-y-100 text-sidebar-primary opacity-20">
+          <pattern id={`${id}a`} width="2.4" height="2.4" patternUnits="userSpaceOnUse">
+            <path d="M1.2 .1L2.3 1.2L1.2 2.3L.1 1.2Z" fill="currentColor" />
+          </pattern>
+          <path fill={`url(#${id}a)`} d="M14 30A14 10 0 1 1 42 30A14 10 0 1 1 14 30ZM47 29A8 5.5 0 1 1 63 29A8 5.5 0 1 1 47 29ZM64.5 26A7.5 7.5 0 1 1 79.5 26A7.5 7.5 0 1 1 64.5 26Z" />
+          <g fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeDasharray="0 2.4">
+            <path d="M42 30H47" />
+            <path className="ant-feeler" d="M76 20L82 9L94 6M73 19L76 8L86 2" />
+            <path className="ant-leg" style={{ transformOrigin: '52px 33px' }} d="M52 33L44 42L38 56" />
+            <path className="ant-leg ant-leg-mid" style={{ transformOrigin: '55px 34px' }} d="M55 34L56 45L52 57" />
+            <path className="ant-leg" style={{ transformOrigin: '58px 33px' }} d="M58 33L66 42L74 55" />
+          </g>
+        </svg>
+      </div>
     </Card>
   )
 }
