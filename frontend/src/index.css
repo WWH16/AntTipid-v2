@@ -398,10 +398,10 @@
         grid-area: 3 / 1;
         justify-self: center;
         align-self: start;
-        height: calc(100% - 1.25rem);
+        height: calc(100% - .75rem);
         max-width: 100%;
         aspect-ratio: 9 / 19.5;
-        margin-top: 10px;
+        margin-top: 6px;
         border-radius: 2.6rem;
       }
       .tour-phone {
@@ -414,7 +414,8 @@
         color: var(--foreground);
         /* Solid status bar, so a screen scrolled up runs under it rather than through the clock. */
         background: linear-gradient(var(--background) 2.6rem, transparent 2.6rem);
-        box-shadow: 0 0 0 8px #0b0f08, 0 0 0 9.5px var(--input), 0 40px 70px -28px rgb(0 0 0 / .7);
+        /* Thin bezel, as on a current phone, so the screen reads big rather than framed small. */
+        box-shadow: 0 0 0 4px #0b0f08, 0 0 0 5.5px var(--input), 0 40px 70px -28px rgb(0 0 0 / .7);
         pointer-events: none;
       }
       .tour-phone::before {
