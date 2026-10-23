@@ -10,24 +10,31 @@ export interface DraftReceiptItem {
 export const toDraftItems = (items: ReceiptItem[] = []): DraftReceiptItem[] =>
   items.map((i) => ({ name: i.name, qty: String(i.qty), price: String(i.price) }))
 
+// Unit prices are saved to the centavo, so every total here uses the rounded price and matches after saving.
+export const centavos = (price: string) => Math.round(Number(price) * 100) / 100
+
+/** One line's total. NaN while the row is unfinished. */
+export const lineTotal = (i: DraftReceiptItem) =>
+  Number(i.qty) > 0 && i.price.trim() !== '' && Number(i.price) >= 0 ? Math.round(Number(i.qty) * centavos(i.price) * 100) / 100 : NaN
+
 export function itemsTotal(items: DraftReceiptItem[]): number {
-  const sum = items.reduce((acc, i) => {
-    const qty = Number(i.qty)
-    const price = Number(i.price)
-    return qty > 0 && price >= 0 ? acc + qty * price : acc
-  }, 0)
+  const sum = items.reduce((acc, i) => acc + (lineTotal(i) || 0), 0)
   return Math.round(sum * 100) / 100
+}
+
+/** What a started row still needs before it can be saved, e.g. "a price". Blank rows need nothing: they're dropped. */
+export function itemProblem(i: DraftReceiptItem): string | null {
+  if (!i.name.trim() && i.price.trim() === '') return null
+  if (!i.name.trim()) return 'a name'
+  if (!(Number(i.qty) > 0)) return 'a quantity above 0'
+  if (!Number.isFinite(lineTotal(i))) return 'a price'
+  return null
 }
 
 export function cleanReceiptItems(items: DraftReceiptItem[], hadItems = false): ReceiptItem[] | undefined {
   const cleaned = items
-    .filter((i) => i.name.trim() !== '' && i.qty.trim() !== '' && i.price.trim() !== '')
-    .map((i) => ({
-      name: i.name.trim(),
-      qty: Number(i.qty),
-      price: Math.round(Number(i.price) * 100) / 100,
-    }))
-    .filter((i) => i.qty > 0 && Number.isFinite(i.price) && i.price >= 0)
+    .filter((i) => i.name.trim() !== '' && Number.isFinite(lineTotal(i)))
+    .map((i) => ({ name: i.name.trim(), qty: Number(i.qty), price: centavos(i.price) }))
   return cleaned.length > 0 ? cleaned : hadItems ? [] : undefined
 }
 

@@ -1,4 +1,4 @@
-// One confirm step for every delete that can't be undone, so they all read and behave the same.
+// One confirm step for every delete, so they all read and behave the same.
 import { Loader2 } from 'lucide-react'
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,

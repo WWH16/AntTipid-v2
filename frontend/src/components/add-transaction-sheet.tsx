@@ -22,7 +22,7 @@ import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
 import { money, todayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/transactions'
-import { cleanReceiptItems, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
+import { cleanReceiptItems, itemProblem, itemsTotal, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
 
 // Only a first-time user with no wallet sees this, so the add flow doesn't wait on the Settings file.
@@ -60,13 +60,19 @@ function AddFlow() {
   // Fall back to the first wallet when nothing was used before (or the remembered one is gone).
   const walletId = editing || activeWallets.some((w) => w.id === pickedWallet) ? pickedWallet : (activeWallets[0]?.id ?? '')
   const value = Number(amount)
+  // Items only count for expenses; a started row that can't be saved would otherwise vanish on save.
+  const itemIndex = kind === 'expense' ? items.findIndex((i) => itemProblem(i)) : -1
   const missing =
     !(value > 0) ? 'Enter an amount' :
     kind !== 'transfer' && !categoryId ? 'Pick a category' :
     !walletId ? (activeWallets.length ? 'Choose a wallet' : 'Add a wallet in Settings first') :
     kind === 'transfer' && !toWalletId ? 'Choose where the money goes' :
     kind === 'transfer' && toWalletId === walletId ? 'Pick two different wallets' :
+    itemIndex >= 0 ? `Item ${itemIndex + 1} needs ${itemProblem(items[itemIndex])}, or remove it` :
     null
+  // Checked against the items as they are now, so the warning goes once they're fixed.
+  const subtotal = itemsTotal(items)
+  const itemsOff = kind === 'expense' && subtotal > 0 && Math.abs(subtotal - value) >= 0.01
 
   const save = () => run(async () => {
     const body: NewTransaction = {
@@ -133,8 +139,8 @@ function AddFlow() {
       onClose={closeAdd}
       title={editing ? 'Edit transaction' : 'Add transaction'}
       description={receipt
-        ? receipt.lowConfidence
-          ? `The photo was hard to read, so check every field before saving.`
+        ? itemsOff
+          ? `The items add up to ${money(subtotal)}, not ${money(value || 0)}. Check for a misread price or a missing item. A discount can also explain it.`
           : `Filled in from your ${receipt.merchant} receipt. Check it, then save.`
         : 'Amount and category are all you need.'}
       footer={

@@ -57,3 +57,21 @@ export function dayLabel(iso: string) {
 
 export const longDate = (iso: string) =>
   parse(iso).toLocaleDateString('en-PH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+// What each form field is called on screen, for FastAPI's field errors below.
+const FIELD_NAMES: Record<string, string> = {
+  amount: 'amount', date: 'date', title: 'description', note: 'note', name: 'name', balance: 'balance', limit: 'limit',
+}
+
+/**
+ * A rejected field (422) comes as a developer-facing list, e.g. [{loc: ['body', 'items', 1, 'qty'], msg: '...'}].
+ * Say which field to fix instead.
+ */
+export function fieldError(detail: unknown): string | null {
+  if (!Array.isArray(detail)) return null
+  const loc: unknown[] = detail[0]?.loc ?? []
+  const row = loc[loc.indexOf('items') + 1]
+  if (loc.includes('items') && typeof row === 'number') return `Item ${row + 1} on the receipt list isn't valid. Check its name, quantity and price.`
+  const field = FIELD_NAMES[String(loc.at(-1))]
+  return field ? `The ${field} isn't valid. Check it and try again.` : "Some details aren't valid. Check the form and try again."
+}
