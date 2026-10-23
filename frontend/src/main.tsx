@@ -7,6 +7,11 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import App from './App'
 import './index.css'
 
+// Offline shell and installability. Production only: in dev the worker would cache Vite's unbundled modules.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js'))
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

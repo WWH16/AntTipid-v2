@@ -8,4 +8,6 @@ export default defineConfig({
   resolve: { alias: { '@': path.resolve(import.meta.dirname, './src') } },
   // FastAPI runs on :8000 (backend/README.md). Same-origin /api means no CORS and phones on the LAN reach it too.
   server: { proxy: { '/api': 'http://localhost:8000' } },
+  // dist/asset-manifest.json lists every built file, so the service worker can precache the whole app for offline use.
+  build: { manifest: 'asset-manifest.json' },
 })

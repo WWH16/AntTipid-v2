@@ -1,6 +1,9 @@
 {
   "name": "AntTipid",
   "short_name": "AntTipid",
+  "description": "Free expense and budget tracker for the Philippine peso.",
+  "start_url": "/",
+  "lang": "en-PH",
   "icons": [
     {
       "src": "/brand/app-icon.svg",
