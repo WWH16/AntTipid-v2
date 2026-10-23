@@ -86,10 +86,40 @@ export function useRefData() {
   }
 }
 
-/** The month a screen is showing, kept in the URL (?month=2026-10) so back/forward and links keep it. */
+/** Pages with a month switcher; they all read the month from ?month. */
+export const MONTH_PAGES = new Set(['/activity', '/budgets', '/reports'])
+
+/** A link to one of the month pages on `month`, in the shape useMonth reads (no param for the current month). */
+export function monthLink(path: string, month: string, more: Record<string, string> = {}) {
+  const q = new URLSearchParams(month < currentMonth() ? { month, ...more } : more)
+  return q.size ? `${path}?${q}` : path
+}
+
+/** The current month, checked again whenever the app comes back into view, so a new month is picked up on return. */
+export function useCurrentMonth() {
+  const [month, setMonth] = useState(currentMonth)
+  useEffect(() => {
+    const check = () => setMonth(currentMonth())
+    document.addEventListener('visibilitychange', check)
+    return () => document.removeEventListener('visibilitychange', check)
+  }, [])
+  return month
+}
+
+/**
+ * The month a screen is showing, kept in the URL (?month=2026-08) so back/forward and links keep it.
+ * Only past months are written; no param means the current month, so an open tab rolls over with the calendar.
+ * A malformed or future ?month falls back to the current month.
+ */
 export function useMonth() {
   const [params, setParams] = useSearchParams()
-  const month = params.get('month') ?? currentMonth()
-  const setMonth = (m: string) => setParams((p) => { p.set('month', m); return p }, { replace: true })
+  const now = currentMonth()
+  const raw = params.get('month')
+  const month = raw && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw) && raw < now ? raw : now
+  const setMonth = (m: string) => setParams((p) => {
+    if (m < currentMonth()) p.set('month', m)
+    else p.delete('month')
+    return p
+  }, { replace: true })
   return [month, setMonth] as const
 }

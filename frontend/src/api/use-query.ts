@@ -13,7 +13,7 @@ const cache = new Map<string, { version: number; request?: Promise<unknown>; dat
 
 // Saved across visits: lists and totals only, including a month's unfiltered Activity list. Not search or filter
 // results (one entry per keystroke) and not single transactions (their receipt link is a short-lived signed URL).
-const SAVED = /^(wallets|categories|recent:|summary:|budgets:|report:|tx:\{"month":"[^"]+"\}$)/
+const SAVED = /^(wallets|categories|months$|recent:|summary:|budgets:|report:|tx:\{"month":"[^"]+"\}$)/
 const STORE = 'anttipid-cache-v1:'
 let storeKey: string | null = null
 
@@ -58,6 +58,14 @@ function fetchShared(key: string, load: () => Promise<unknown>) {
 export function invalidate() {
   version++
   listeners.forEach((l) => l())
+}
+
+/** Reload everything on screen, like invalidate, and resolve once those reloads have settled. */
+export async function refresh() {
+  invalidate()
+  // Screens start their reloads in an effect after this render; give them a moment to register.
+  await new Promise((r) => setTimeout(r, 50))
+  await Promise.allSettled([...cache.values()].filter((e) => e.version === version && e.request).map((e) => e.request))
 }
 
 /** Show a change in a loaded list at once instead of after the reload. The reload still replaces it. */

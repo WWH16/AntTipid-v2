@@ -1,5 +1,6 @@
 // Every transaction for a month, newest first, grouped by day. Filters sit above the list.
 import { memo, useEffect, useState } from 'react'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Download, ReceiptText, Search, SearchX, SlidersHorizontal, X } from 'lucide-react'
 import { useApp, useMonth, useRefData } from '@/app-state'
@@ -29,7 +30,14 @@ export function ActivityPage() {
   const { wallets, categories } = useRefData()
   const [kind, setKind] = useState<'all' | TransactionKind>('all')
   const [walletId, setWalletId] = useState('all')
-  const [categoryId, setCategoryId] = useState('all')
+  // Category lives in the URL so Reports can link straight to one category's transactions.
+  const [params, setParams] = useSearchParams()
+  const categoryId = params.get('category') ?? 'all'
+  const setCategoryId = (id: string) => setParams((p) => {
+    if (id === 'all') p.delete('category')
+    else p.set('category', id)
+    return p
+  }, { replace: true })
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [moreFilters, setMoreFilters] = useState(false)
@@ -57,11 +65,19 @@ export function ActivityPage() {
   const filtered = kind !== 'all' || walletId !== 'all' || categoryId !== 'all' || !!search
   const clear = () => { setKind('all'); setWalletId('all'); setCategoryId('all'); setSearch(''); setDebouncedSearch('') }
 
+  // A link to one day (#day-2026-08-14, from Reports) scrolls to it once the list is on screen.
+  const { hash } = useLocation()
+  const listShown = !!data?.length
+  useEffect(() => {
+    if (listShown && hash.startsWith('#day-')) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
+  }, [hash, listShown])
+
   return (
     <>
       <PageHeader
         page="Activity"
-        headline={!data ? monthLabel(month) : `${data.length} ${filtered ? (data.length === 1 ? 'match' : 'matches') : (data.length === 1 ? 'transaction' : 'transactions')} in ${monthLabel(month)}`}
+        // The month is in the switcher right below, so the headline doesn't repeat it.
+        headline={!data ? 'Activity' : `${data.length} ${filtered ? (data.length === 1 ? 'match' : 'matches') : (data.length === 1 ? 'transaction' : 'transactions')}`}
         description={isMobile ? 'Tap a row for details, or swipe it left to edit or delete.' : 'Select a row to see its details.'}
         action={
           <Button variant="outline" onClick={() => exportCsv(filters)} disabled={!data?.length}>
@@ -144,7 +160,7 @@ const DayList = memo(function DayList({ list }: { list: Transaction[] }) {
       {[...Map.groupBy(list, (t) => t.date)].map(([day, items], i) => {
         const spent = sumOf(items, 'expense')
         return (
-          <section key={day} className="grid gap-1">
+          <section key={day} id={`day-${day}`} className="grid scroll-mt-16 gap-1">
             {i > 0 && <Separator className="mb-2 md:mb-3" />}
             <div className="flex items-baseline justify-between gap-4 text-sm">
               <h2 className="font-medium">{dayLabel(day)}</h2>

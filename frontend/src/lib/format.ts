@@ -1,8 +1,10 @@
 const peso = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' })
 const pesoWhole = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 })
+const pesoCompact = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', notation: 'compact', maximumFractionDigits: 1 })
 
-/** ₱1,234.50 — or ₱1,235 with whole: true for headline numbers. */
-export const money = (n: number, opts: { whole?: boolean } = {}) => (opts.whole ? pesoWhole : peso).format(n)
+/** ₱1,234.50 — or ₱1,235 with whole: true for headline numbers, ₱12.3K with compact: true for tight spots. */
+export const money = (n: number, opts: { whole?: boolean; compact?: boolean } = {}) =>
+  (opts.compact ? pesoCompact : opts.whole ? pesoWhole : peso).format(n)
 
 /** Keeps digits, one decimal point (later ones are dropped), a leading minus when allowNegative is set, and at most 10 whole-peso digits (₱9,999,999,999), so numbers stay exact. */
 export function cleanMoneyInput(v: string, allowNegative = false): string {
@@ -26,7 +28,10 @@ export function formatMoneyInput(v: string, allowNegative = false): string {
 /** Local calendar date as YYYY-MM-DD (not UTC). */
 export const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-export const todayIso = () => isoDate(new Date())
+// "Today" and "this month" follow the server's calendar (APP_TIMEZONE, Manila), so the app and its totals
+// flip to a new day or month at the same moment wherever the phone is.
+const manilaDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' })
+export const todayIso = () => manilaDate.format(new Date())
 export const currentMonth = () => todayIso().slice(0, 7)
 
 const parse = (iso: string) => new Date(`${iso.length === 7 ? iso + '-01' : iso}T12:00:00`)

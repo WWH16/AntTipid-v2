@@ -3,7 +3,8 @@
 // Wallet defaults to the last one used and the date to today.
 import { lazy, startTransition, Suspense, useEffect, useRef, useState } from 'react'
 import { Camera, Check, Loader2, ScanLine, Upload } from 'lucide-react'
-import { useApp, useRefData } from '@/app-state'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { MONTH_PAGES, monthLink, useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { BusyButton } from '@/components/busy-button'
 import { CategoryIcon } from '@/components/category-icon'
@@ -20,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
-import { money, todayIso } from '@/lib/format'
+import { currentMonth, money, monthLabel, todayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/transactions'
 import { cleanReceiptItems, itemProblem, itemsTotal, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
@@ -56,6 +57,9 @@ function AddFlow() {
   const [items, setItems] = useState<DraftReceiptItem[]>(() => toDraftItems(editing?.items))
   const [addingWallet, setAddingWallet] = useState(false)
   const [run, saving] = useAction()
+  const [viewedMonth] = useMonth()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
 
   // Fall back to the first wallet when nothing was used before (or the remembered one is gone).
   const walletId = editing || activeWallets.some((w) => w.id === pickedWallet) ? pickedWallet : (activeWallets[0]?.id ?? '')
@@ -92,7 +96,16 @@ function AddFlow() {
     if (receiptPhoto && body.source === 'receipt') await api.transactions.uploadReceipt(saved.id, receiptPhoto)
     try { localStorage.setItem(LAST_WALLET, walletId) } catch { /* private mode */ }
     closeAdd()
-    done(editing ? 'Changes saved' : `${KIND_LABEL[kind]} saved`, {
+    // Dated in another month than the one on screen: it won't show up here, so say where it went and offer to go there.
+    const savedMonth = body.date.slice(0, 7)
+    const elsewhere = savedMonth !== viewedMonth && savedMonth <= currentMonth()
+    done(editing ? 'Changes saved' : `${KIND_LABEL[kind]} saved`, elsewhere ? {
+      description: `${money(body.amount)}, ${body.title}, in ${monthLabel(savedMonth)}`,
+      action: {
+        label: `Show ${monthLabel(savedMonth, 'short')}`,
+        onClick: () => navigate(monthLink(MONTH_PAGES.has(pathname) ? pathname : '/activity', savedMonth)),
+      },
+    } : {
       description: `${money(body.amount)}, ${body.title}`,
       action: { label: 'View', onClick: () => openDetail(saved.id) },
     })

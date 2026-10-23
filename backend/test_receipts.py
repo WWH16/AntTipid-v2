@@ -264,10 +264,14 @@ def test_routes_and_user_isolation():
             rep_mon = client.get("/api/reports/monthly", params={"month": "2026-10"}, headers=ha).json()
             assert rep_mon["byCategory"] == [{"categoryId": food_id, "total": 250}]
             assert len(rep_mon["trend"]) == 6 and rep_mon["trend"][-1] == {"month": "2026-10", "income": 5000, "spent": 250}
+            # Month picker: only months with transactions, oldest first; spent counts expenses only
+            rep_months = client.get("/api/reports/months", headers=ha).json()
+            assert rep_months == {"budget": 10000, "months": [{"month": "2026-10", "spent": 250}]}
 
             # 6. User isolation: User B cannot see or touch any of User A's rows
             assert client.get("/api/wallets", headers=hb).json() == []
             assert client.get("/api/transactions", headers=hb).json() == []
+            assert client.get("/api/reports/months", headers=hb).json() == {"budget": 0, "months": []}
             assert client.get("/api/budgets", params={"month": "2026-10"}, headers=hb).json() == []
             assert client.get(f"/api/transactions/{exp['id']}", headers=hb).status_code == 404
             assert client.patch(f"/api/wallets/{w1['id']}", json={"name": "Hacked"}, headers=hb).status_code == 404

@@ -156,3 +156,13 @@ class MonthlyReport(CamelModel):
     by_category: list[CategoryTotal]
     trend: list[TrendPoint]
     daily: list[DayPoint]
+
+
+class MonthTotal(CamelModel):
+    month: str
+    spent: float
+
+
+class MonthHistory(CamelModel):
+    budget: float  # overall monthly budget as set now; 0 when none is set
+    months: list[MonthTotal]  # only months that have transactions, oldest first

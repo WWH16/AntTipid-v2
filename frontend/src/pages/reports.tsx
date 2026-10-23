@@ -76,8 +76,8 @@ export function ReportsPage() {
     <>
       <PageHeader
         page="Reports"
-        headline={!data ? 'Reports' : top ? `${category(top.categoryId)?.name ?? 'Other'} took ${Math.round((top.total / spentTotal) * 100)}% of your spending` : `No spending in ${monthLabel(month)}`}
-        description={`${monthLabel(month)}. Tap any chart for details.`}
+        headline={!data ? 'Reports' : top ? `${category(top.categoryId)?.name ?? 'Other'} took ${Math.round((top.total / spentTotal) * 100)}% of your spending` : 'No spending recorded'}
+        description="Tap any chart for details."
       />
       <MonthSwitcher month={month} onChange={setMonth} />
 

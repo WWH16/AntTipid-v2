@@ -1,7 +1,7 @@
 // Every call the app makes: Supabase Auth for sign-in, the FastAPI backend for everything else.
 import { authMessage, supabase, toUser } from '@/lib/supabase'
 import type {
-  Budget, BudgetStatus, Category, MonthSummary, MonthlyReport, NewTransaction,
+  Budget, BudgetStatus, Category, MonthHistory, MonthSummary, MonthlyReport, NewTransaction,
   ReceiptScan, Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
 import { download, http, json } from './client'
@@ -93,6 +93,7 @@ export const api = {
   reports: {
     summary: (month: string) => http<MonthSummary>('/reports/summary', { query: { month } }),
     monthly: (month: string) => http<MonthlyReport>('/reports/monthly', { query: { month } }),
+    months: () => http<MonthHistory>('/reports/months'),
   },
   receipts: {
     // Expects a photo already shrunk with shrinkPhoto (the scan panel reuses it for the preview and the upload).

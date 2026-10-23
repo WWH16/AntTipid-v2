@@ -8,7 +8,9 @@ from psycopg import errors
 from auth import AuthUser, User
 from db import user_tx
 from ledger import category_kind
-from models import BudgetIn, BudgetStatus, CategoryTotal, DayPoint, Month, MonthlyReport, MonthSummary, TrendPoint
+from models import (
+    BudgetIn, BudgetStatus, CategoryTotal, DayPoint, Month, MonthHistory, MonthlyReport, MonthSummary, MonthTotal, TrendPoint,
+)
 from months import days_in, days_shown, month_range, shift_month
 
 router = APIRouter()
@@ -150,4 +152,25 @@ def monthly(month: Month, user: User):
             for t in [trend.get(m, {"income": 0, "spent": 0})]
         ],
         daily=[DayPoint(day=d, spent=daily.get(d, 0)) for d in range(1, days_shown(month) + 1)],
+    )
+
+
+@router.get("/reports/months", response_model=MonthHistory)
+def month_history(user: User):
+    """Totals for every month with transactions, oldest first: the month picker's range, amounts and budget marks."""
+    with user_tx(user) as conn:
+        rows = conn.execute(
+            """
+            select to_char(date, 'YYYY-MM') as month, coalesce(sum(amount) filter (where kind = 'expense'), 0) as spent
+            from transactions where user_id = %s
+            group by 1 order by 1
+            """,
+            (user.id,),
+        ).fetchall()
+        budget = conn.execute(
+            "select limit_amount from budgets where user_id = %s and category_id is null", (user.id,)
+        ).fetchone()
+    return MonthHistory(
+        budget=float(budget["limit_amount"]) if budget else 0,
+        months=[MonthTotal(month=r["month"], spent=float(r["spent"])) for r in rows],
     )

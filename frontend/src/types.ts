@@ -69,6 +69,12 @@ export interface MonthSummary {
   dayOfMonth: number
 }
 
+/** Every month with transactions, oldest first, for the month picker. */
+export interface MonthHistory {
+  budget: number // overall monthly budget as set now; 0 when none is set
+  months: { month: string; spent: number }[]
+}
+
 export interface MonthlyReport {
   month: string
   byCategory: { categoryId: string; total: number }[]

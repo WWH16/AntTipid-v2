@@ -1,6 +1,8 @@
-import { ChartColumn, ChevronsUpDown, House, ListOrdered, LogOut, PiggyBank, Plus, Settings } from 'lucide-react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useApp } from '@/app-state'
+import { useEffect, useRef, useState } from 'react'
+import { ChartColumn, ChevronsUpDown, House, ListOrdered, LogOut, PiggyBank, Plus, RefreshCw, Settings } from 'lucide-react'
+import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { MONTH_PAGES, monthLink, useApp, useCurrentMonth } from '@/app-state'
+import { refresh } from '@/api/use-query'
 import { AddTransactionSheet } from '@/components/add-transaction-sheet'
 import { LogoWithTagline } from '@/components/logo'
 import { TransactionSheet } from '@/components/transaction-sheet'
@@ -30,6 +32,14 @@ export function AppShell() {
   const { openAdd } = useApp()
   const { pathname } = useLocation()
   const isActive = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to))
+  // Month pages share the month being viewed: switching between them keeps it, even by way of Home or
+  // Settings, until the app is closed. Home itself always shows now.
+  const viewed = useSearchParams()[0].get('month')
+  const [month, setMonth] = useState<string | null>(null)
+  if (MONTH_PAGES.has(pathname) && viewed !== month) setMonth(viewed)
+  const linkTo = (to: string) => (month && MONTH_PAGES.has(to) ? monthLink(to, month) : to)
+  // A new month starting while the app is open restarts the page, so "this month" and its data move with it.
+  const thisMonth = useCurrentMonth()
 
   return (
     <SidebarProvider>
@@ -54,7 +64,7 @@ export function AppShell() {
                     <SidebarMenuButton
                       isActive={isActive(to)}
                       className="data-active:bg-transparent data-active:text-sidebar-primary data-active:hover:bg-transparent"
-                      render={<NavLink to={to} />}
+                      render={<NavLink to={linkTo(to)} />}
                     >
                       <Icon />
                       <span>{label}</span>
@@ -72,13 +82,13 @@ export function AppShell() {
 
       <SidebarInset>
         <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:gap-6 md:p-6">
-          <Outlet />
+          <Outlet key={thisMonth} />
         </main>
       </SidebarInset>
 
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-sidebar-border bg-sidebar pb-[env(safe-area-inset-bottom)] text-sidebar-foreground md:hidden">
         <div className="grid grid-cols-5 items-center gap-1 p-2">
-          {NAV.slice(0, 2).map((item) => <BottomLink key={item.to} {...item} active={isActive(item.to)} />)}
+          {NAV.slice(0, 2).map((item) => <BottomLink key={item.to} {...item} to={linkTo(item.to)} active={isActive(item.to)} />)}
           <Button
             size="icon-lg"
             className="size-14 -translate-y-4 justify-self-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-black/30 ring-4 ring-sidebar transition-transform hover:bg-sidebar-primary/90 active:scale-95"
@@ -87,12 +97,13 @@ export function AppShell() {
           >
             <Plus className="size-6" />
           </Button>
-          {NAV.slice(2).map((item) => <BottomLink key={item.to} {...item} active={isActive(item.to)} />)}
+          {NAV.slice(2).map((item) => <BottomLink key={item.to} {...item} to={linkTo(item.to)} active={isActive(item.to)} />)}
         </div>
       </nav>
 
       <AddTransactionSheet />
       <TransactionSheet />
+      <PullToRefresh />
     </SidebarProvider>
   )
 }
@@ -112,6 +123,69 @@ function BottomLink({ to, label, icon: Icon, active }: { to: string; label: stri
       <Icon />
       {label}
     </Button>
+  )
+}
+
+const PULL = 64 // how far to pull (after resistance) before letting go reloads
+
+/** Installed app only, since browsers have their own: pull down from the top of a page to reload its data. */
+function PullToRefresh() {
+  const [pull, setPull] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const working = useRef(false)
+
+  useEffect(() => {
+    const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone
+    if (!standalone) return
+    let startY: number | null = null
+    let distance = 0
+    const onStart = (e: TouchEvent) => {
+      const inPage = e.target instanceof Element && e.target.closest('#main')
+      startY = inPage && !working.current && window.scrollY <= 0 && e.touches.length === 1 ? e.touches[0].clientY : null
+      distance = 0
+    }
+    const onMove = (e: TouchEvent) => {
+      if (startY === null) return
+      distance = Math.max(0, (e.touches[0].clientY - startY) / 2)
+      setPull(Math.min(distance, PULL * 1.5))
+    }
+    const onCancel = () => { startY = null; setPull(0) }
+    const onEnd = () => {
+      if (startY === null) return
+      onCancel()
+      if (distance < PULL) return
+      working.current = true
+      setBusy(true)
+      void refresh().finally(() => { working.current = false; setBusy(false) })
+    }
+    document.addEventListener('touchstart', onStart, { passive: true })
+    document.addEventListener('touchmove', onMove, { passive: true })
+    document.addEventListener('touchend', onEnd, { passive: true })
+    document.addEventListener('touchcancel', onCancel, { passive: true })
+    return () => {
+      document.removeEventListener('touchstart', onStart)
+      document.removeEventListener('touchmove', onMove)
+      document.removeEventListener('touchend', onEnd)
+      document.removeEventListener('touchcancel', onCancel)
+    }
+  }, [])
+
+  if (!pull && !busy) return null
+  return (
+    <div
+      role="status"
+      className="pointer-events-none fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 flex justify-center"
+      style={{ transform: `translateY(${busy ? 56 : pull - 16}px)` }}
+    >
+      <span className="flex size-9 items-center justify-center rounded-full border bg-card shadow-md">
+        <RefreshCw
+          className={cn('size-4 text-primary', busy && 'motion-safe:animate-spin')}
+          style={busy ? undefined : { rotate: `${(pull / PULL) * 270}deg`, opacity: Math.min(1, pull / PULL) }}
+          aria-hidden
+        />
+        <span className="sr-only">{busy ? 'Refreshing' : 'Pull to refresh'}</span>
+      </span>
+    </div>
   )
 }
 

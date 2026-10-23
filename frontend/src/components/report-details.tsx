@@ -1,6 +1,7 @@
 // Drill-down panels for the Reports charts: one day, one category, one month.
 import { lazy, Suspense } from 'react'
-import { useRefData } from '@/app-state'
+import { useNavigate } from 'react-router-dom'
+import { monthLink, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { BudgetBadge } from '@/components/budget'
@@ -62,11 +63,14 @@ export function DayDetail({ month, day, onClose }: { month: string; day: number;
   const { data } = useQuery(`tx:${month}`, () => api.transactions.list({ month }))
   const items = (data ?? []).filter((t) => t.date === date)
   const spent = sumOf(items, 'expense')
+  const navigate = useNavigate()
   return (
     <ResponsivePanel
       onClose={onClose}
       title={dayLabel(date)}
       description={spent ? `${money(spent)} spent this day` : 'Nothing spent this day'}
+      // Replace, not push: the panel's own history entry goes, so Back from Activity returns to Reports.
+      footer={items.length > 0 && <Button variant="outline" onClick={() => navigate(`${monthLink('/activity', month)}#day-${date}`, { replace: true })}>See in Activity</Button>}
     >
       {!data ? <LoadingItems rows={3} /> : items.length ? (
         <ItemGroup className="pb-4">{items.map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
@@ -98,12 +102,18 @@ export function CategoryDetail({ month, categoryId, onClose }: { month: string; 
   const total = history.at(-1)?.spent ?? 0
   const monthTotal = report?.byCategory.reduce((s, c) => s + c.total, 0) ?? 0
   const budget = budgets?.find((b) => b.categoryId === categoryId)
+  const navigate = useNavigate()
 
   return (
     <ResponsivePanel
       onClose={onClose}
       title={cat?.name ?? 'Category'}
       description={`Spending in ${monthLabel(month)}`}
+      footer={thisMonth.length > 0 && (
+        <Button variant="outline" onClick={() => navigate(monthLink('/activity', month, { category: categoryId }), { replace: true })}>
+          See in Activity
+        </Button>
+      )}
     >
       {!all ? (
         <div aria-busy className="grid gap-6 pb-4">
