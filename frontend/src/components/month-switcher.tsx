@@ -9,9 +9,9 @@ import { cn } from '@/lib/utils'
 import type { MonthHistory } from '@/types'
 
 // Small to the eye, 44px to the thumb: the visible control stays compact and an invisible ::after
-// pads the tap area out to 44px. Arrows are 32px on phones, 36px from md up.
+// pads the tap area out to 44px. One size everywhere: the pill is 38px tall on phones and desktops alike.
 const HIT = 'relative after:absolute after:-inset-1.5'
-const ARROW = `${HIT} size-8! min-h-0! min-w-0! rounded-full md:size-9!`
+const ARROW = `${HIT} size-8! min-h-0! min-w-0! rounded-full`
 
 /**
  * Month picker that stays pinned to the top while the page scrolls, so the month being viewed
@@ -26,6 +26,16 @@ export function MonthSwitcher({ month, onChange, children }: { month: string; on
   const first = history ? (history.months[0]?.month ?? now) : undefined
   const trigger = useRef<HTMLButtonElement>(null)
 
+  // At rest the bar sits on the page with no surface of its own. Once it sticks (top: -1px puts its top pixel
+  // out of view), it gets a frosted background and a bottom border so content scrolling under it stays legible.
+  const bar = useRef<HTMLDivElement>(null)
+  const [stuck, setStuck] = useState(false)
+  useEffect(() => {
+    const io = new IntersectionObserver(([e]) => setStuck(e.intersectionRatio < 1), { threshold: 1 })
+    io.observe(bar.current!)
+    return () => io.disconnect()
+  }, [])
+
   const go = (m: string) => {
     onChange(m)
     // The control just used is about to be disabled or hidden: keep keyboard focus on the month instead of losing it.
@@ -38,9 +48,15 @@ export function MonthSwitcher({ month, onChange, children }: { month: string; on
   useStepGestures(step)
 
   return (
-    <div className="sticky top-0 z-30 -mx-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b bg-background px-4 py-2 md:-mx-6 md:px-6">
+    <div
+      ref={bar}
+      className={cn(
+        'sticky -top-px z-30 -mx-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-transparent px-4 py-2 transition-colors duration-200 md:-mx-6 md:px-6',
+        stuck && 'border-border bg-background/80 backdrop-blur-md',
+      )}
+    >
       <div className="flex items-center gap-3">
-        <div className="flex items-center rounded-full border bg-card p-0.5 shadow-sm md:p-1">
+        <div className="flex items-center rounded-full border bg-card p-0.5 shadow-sm">
           <Button variant="ghost" size="icon" className={ARROW} aria-label="Previous month" disabled={!!first && month <= first} onClick={() => step(-1)}>
             <ChevronLeft />
           </Button>
@@ -51,7 +67,7 @@ export function MonthSwitcher({ month, onChange, children }: { month: string; on
         </div>
         {month < now && (
           // Same height and outline as the month pill beside it, so it reads as a button.
-          <Button variant="outline" className={`${HIT} h-9.5! min-h-0! min-w-0! rounded-full px-3 text-primary after:-inset-y-1 md:h-11.5!`} onClick={() => go(now)}>
+          <Button variant="outline" className={`${HIT} h-9.5! min-h-0! min-w-0! rounded-full px-3 text-primary after:-inset-y-1`} onClick={() => go(now)}>
             This month
           </Button>
         )}
@@ -96,7 +112,7 @@ function MonthPicker({ month, onChange, history, first, triggerRef }: {
             variant="ghost"
             // Fixed width (fits "Sep 2026" on phones, "September 2026" from sm up), so the arrows never move as the month
             // changes. Phones get the short name so the pill and "This month" fit side by side on a 360px screen.
-            className="relative h-8! min-h-0! w-28 gap-1.5 rounded-full px-2 font-semibold after:absolute after:-inset-y-1.5 after:inset-x-0 sm:w-40 md:h-9! md:w-44"
+            className="relative h-8! min-h-0! w-28 gap-1.5 rounded-full px-2 font-semibold after:absolute after:-inset-y-1.5 after:inset-x-0 sm:w-40"
           />
         }
       >

@@ -87,10 +87,9 @@ export function ActivityPage() {
       />
 
       <MonthSwitcher month={month} onChange={setMonth}>
-        <p className="text-sm text-muted-foreground">
-          Spent <span className="font-medium text-foreground tabular-nums">{money(sumOf(data, 'expense'))}</span>
-          {', earned '}
-          <span className="font-medium text-foreground tabular-nums">{money(sumOf(data, 'income'))}</span>
+        <p className="flex gap-4 text-sm text-muted-foreground tabular-nums">
+          <span>Spent <span className="font-semibold text-foreground">{money(sumOf(data, 'expense'))}</span></span>
+          <span>Earned <span className="font-semibold text-foreground">{money(sumOf(data, 'income'))}</span></span>
         </p>
       </MonthSwitcher>
 

@@ -258,7 +258,7 @@ export function LandingPage() {
         </section>
 
         {/* Preview */}
-        <section id="preview" aria-labelledby="preview-title" className="bg-primary text-primary-foreground">
+        <section id="preview" aria-labelledby="preview-title" className="bg-primary canvas-dark text-primary-foreground">
           <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
             <div className="grid max-w-2xl gap-3">
               <h2 id="preview-title" className="text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">A look inside the app</h2>
@@ -333,7 +333,7 @@ export function LandingPage() {
 
         {/* Final CTA */}
         <section aria-labelledby="cta-title" className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6 sm:pb-20">
-          <div className="grid justify-items-center gap-5 rounded-3xl bg-primary px-5 py-10 text-center text-primary-foreground sm:gap-6 sm:px-6 sm:py-14 md:py-20">
+          <div className="grid justify-items-center gap-5 rounded-3xl bg-primary canvas-dark px-5 py-10 text-center text-primary-foreground sm:gap-6 sm:px-6 sm:py-14 md:py-20">
             <h2 id="cta-title" className="max-w-xl text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">
               Make every sahod last the whole month.
             </h2>

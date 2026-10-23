@@ -99,6 +99,25 @@
     --btn-danger-press: inset 0 2px 3px rgb(196 43 49 / .22);
 }
 
+/* Canvas: a faint woven grain under the flat greens, so big surfaces read as material, not a fill.
+   Warp and weft are two stretched noise fields averaged to mid-grey; soft-light leaves mid-grey as a no-op,
+   so the colour stays the token and only the weave shows (filters run in sRGB, so that grey really is mid).
+   Each tile is rasterised once, then repeats. Soft-light moves dark colours far more than pale ones,
+   so --canvas-dark (the dark green bars) is a lower-contrast grain than --canvas (the pale page).
+   Depth: the page is lit from the top (a soft wash that fades out over the first screen), dark green
+   surfaces catch the same light along their top, and cards sit on the page with a soft, low, green-tinted shadow. */
+:root {
+    --canvas: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='c' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='.9 .025' numOctaves='2' seed='4' stitchTiles='stitch' result='warp'/><feTurbulence type='fractalNoise' baseFrequency='.025 .9' numOctaves='2' seed='9' stitchTiles='stitch'/><feComposite in2='warp' operator='arithmetic' k2='.5' k3='.5'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncR type='linear' slope='0.65' intercept='0.175'/><feFuncG type='linear' slope='0.65' intercept='0.175'/><feFuncB type='linear' slope='0.65' intercept='0.175'/><feFuncA type='linear' slope='0' intercept='1'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23c)'/></svg>");
+    --canvas-dark: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='c' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='.9 .025' numOctaves='2' seed='4' stitchTiles='stitch' result='warp'/><feTurbulence type='fractalNoise' baseFrequency='.025 .9' numOctaves='2' seed='9' stitchTiles='stitch'/><feComposite in2='warp' operator='arithmetic' k2='.5' k3='.5'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncR type='linear' slope='0.24' intercept='0.38'/><feFuncG type='linear' slope='0.24' intercept='0.38'/><feFuncB type='linear' slope='0.24' intercept='0.38'/><feFuncA type='linear' slope='0' intercept='1'/></feComponentTransfer></filter><rect width='100%' height='100%' filter='url(%23c)'/></svg>");
+    --card-shadow: 0 1px 2px rgb(22 51 0 / .05), 0 10px 24px -14px rgb(22 51 0 / .16);
+}
+
+/* Every dark green surface: sidebar, bottom nav, Home's summary card, the landing page's green sections. */
+@utility canvas-dark {
+  background-image: linear-gradient(to bottom, rgb(255 255 255 / .06), transparent 45%), var(--canvas-dark);
+  background-blend-mode: normal, soft-light;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -108,6 +127,16 @@
   body {
     @apply bg-background text-foreground;
     }
+  /* The page surface: body on the landing and sign-in pages, the sidebar inset inside the app (it covers body). */
+  body, [data-slot=sidebar-inset] {
+    background-image: radial-gradient(ellipse 90% 100% at 50% 0%, rgb(255 255 255 / .7), transparent), var(--canvas);
+    background-blend-mode: normal, soft-light;
+    background-repeat: no-repeat, repeat;
+    background-size: 100% 36rem, auto;
+  }
+  [data-slot=sidebar-inner] {
+    @apply canvas-dark;
+  }
   html {
     @apply font-sans;
     scrollbar-color: var(--input) transparent;

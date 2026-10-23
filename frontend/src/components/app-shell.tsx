@@ -86,7 +86,7 @@ export function AppShell() {
         </main>
       </SidebarInset>
 
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-sidebar-border bg-sidebar pb-[env(safe-area-inset-bottom)] text-sidebar-foreground md:hidden">
+      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-sidebar-border bg-sidebar canvas-dark pb-[env(safe-area-inset-bottom)] text-sidebar-foreground md:hidden">
         <div className="grid grid-cols-5 items-center gap-1 p-2">
           {NAV.slice(0, 2).map((item) => <BottomLink key={item.to} {...item} to={linkTo(item.to)} active={isActive(item.to)} />)}
           <Button
