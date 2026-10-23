@@ -276,7 +276,7 @@ export function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () =
     <ResponsivePanel
       onClose={onClose}
       title={title}
-      description={wallet ? 'Update the name, type or current balance.' : 'Anywhere you keep money: cash, GCash, a bank account or a card.'}
+      description={wallet ? 'Update the name, type or amount.' : 'Anywhere you keep money: cash, GCash, a bank account or a card.'}
       footer={<BusyButton type="submit" form="wallet-form" busy={busy} disabled={!valid}>{wallet ? 'Save changes' : 'Add wallet'}</BusyButton>}
     >
       <form id="wallet-form" onSubmit={(e) => { e.preventDefault(); if (valid) save() }} className="grid gap-4 pb-4">
@@ -289,8 +289,12 @@ export function WalletForm({ wallet, onClose }: { wallet?: Wallet; onClose: () =
           <SimpleSelect id="wallet-type" value={type} onChange={setType} options={WALLET_TYPES} />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="wallet-balance">Current balance</Label>
-          <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} />
+          {/* Not "balance": AntTipid isn't linked to the bank or e-wallet, so this is what the user types in. */}
+          <Label htmlFor="wallet-balance">{wallet ? 'Amount in this wallet' : 'Starting amount'}</Label>
+          <MoneyInput id="wallet-balance" placeholder="0" allowNegative value={balance} onChange={setBalance} aria-describedby="wallet-balance-hint" />
+          <p id="wallet-balance-hint" className="text-sm text-muted-foreground">
+            {wallet ? 'Change it to match what you actually have.' : "What's in it today."} Transactions you record add to or take from it.
+          </p>
         </div>
       </form>
     </ResponsivePanel>
