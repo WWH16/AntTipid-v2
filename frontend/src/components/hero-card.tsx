@@ -26,7 +26,8 @@ export function HeroCard({ className, children, ...props }: ComponentProps<typeo
       {/* Both marks are a fine pixel print: shapes filled with a grid of tiny diamonds, lines drawn as rows of dots. Ids are per card,
           since several cards can be on one page. -z-10 inside isolate: above the card's fill, under its content.
           The coin (shapes from public/brand/symbol-color.svg), oversized and cropped in the corner. The ant (its own
-          side-view silhouette: head, chest, rear, six jointed legs) walks upside down along the top edge. */}
+          side-view silhouette: head, chest, rear, six jointed legs) walks upside down along the top edge.
+          Both at 20%: on narrow phones the heading runs under the ant, and faint text over a diamond stays above 4.5:1. */}
       <svg
         viewBox="122 66 120 120"
         aria-hidden
@@ -41,7 +42,7 @@ export function HeroCard({ className, children, ...props }: ComponentProps<typeo
       <svg
         viewBox="0 0 100 60"
         aria-hidden
-        className="pointer-events-none absolute top-0 left-[52%] -z-10 w-20 -scale-y-100 text-sidebar-primary opacity-30"
+        className="pointer-events-none absolute top-0 left-[52%] -z-10 w-20 -scale-y-100 text-sidebar-primary opacity-20"
       >
         <pattern id={`${id}a`} width="2.4" height="2.4" patternUnits="userSpaceOnUse">
           <path d="M1.2 .3L2.1 1.2L1.2 2.1L.3 1.2Z" fill="currentColor" />
