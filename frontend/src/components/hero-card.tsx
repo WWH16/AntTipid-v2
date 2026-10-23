@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils'
 /**
  * The one dark-green card per page (Home "left to spend", Budgets "whole month").
  * Same forest + lime pairing as the sidebar; child slots are re-toned for the dark surface.
- * The ant from the logo walks along the bottom corner, its feet cut by the card edge,
- * as a faint lime watermark: the brand's mark, not a stock gradient.
+ * The logo's peso coin sits oversized in the bottom corner, cropped by the card, and an ant walks
+ * upside down along the top edge: faint lime marks of the brand's own world, not a stock gradient.
  */
 export function HeroCard({ className, children, ...props }: ComponentProps<typeof Card>) {
   return (
@@ -22,14 +22,29 @@ export function HeroCard({ className, children, ...props }: ComponentProps<typeo
       {...props}
     >
       {children}
-      {/* The ant from public/brand/symbol-color.svg, walking in from the corner toward the numbers.
-          -z-10 inside isolate: above the card's fill, under its content. */}
+      {/* Coin shapes from public/brand/symbol-color.svg. -z-10 inside isolate: above the card's fill, under its content.
+          The coin, oversized and cropped in the corner. The ant (its own side-view silhouette: head, chest, rear,
+          six jointed legs) walks upside down along the card's top edge, feet on the edge like a ceiling. */}
       <svg
-        viewBox="4 60 132 130"
+        viewBox="122 66 120 120"
         aria-hidden
-        className="pointer-events-none absolute right-3 -bottom-3 -z-10 w-28 text-sidebar-primary opacity-[.12]"
+        className="pointer-events-none absolute -right-12 -bottom-14 -z-10 size-52 -rotate-12 text-sidebar-primary opacity-[.08]"
       >
-        <path fill="currentColor" d="M24 128A22 22 0 1 1 68 128A22 22 0 1 1 24 128ZM67 136A30 18 0 1 1 127 136A30 18 0 1 1 67 136ZM45.8 108.45L38.3 80.45A6 6 0 0 0 26.7 83.55L34.2 111.55A6 6 0 0 0 45.8 108.45ZM35.13 76.61L14.63 66.61A6 6 0 0 0 9.37 77.39L29.87 87.39A6 6 0 0 0 35.13 76.61ZM73.87 145.84L61.87 179.84A6.5 6.5 0 0 0 74.13 184.16L86.13 150.16A6.5 6.5 0 0 0 73.87 145.84ZM90.5 148L90.5 182A6.5 6.5 0 0 0 103.5 182L103.5 148A6.5 6.5 0 0 0 90.5 148ZM107.87 150.16L119.87 184.16A6.5 6.5 0 0 0 132.13 179.84L120.13 145.84A6.5 6.5 0 0 0 107.87 150.16ZM59.8 110.55L67.51 81.77A6 6 0 0 0 55.92 78.66L48.2 107.45A6 6 0 0 0 59.8 110.55ZM65.96 75.97L52.45 62.47A6 6 0 0 0 43.96 70.95L57.47 84.46A6 6 0 0 0 65.96 75.97Z" />
+        <path fill="currentColor" fillRule="evenodd" d="M122 126A60 60 0 1 1 242 126A60 60 0 1 1 122 126ZM134 126A48 48 0 1 0 230 126A48 48 0 1 0 134 126Z" />
+        <path fill="currentColor" d="M164 96H173V156H164ZM164 96H183.2A20.4 20.4 0 0 1 183.2 136.8H164V127.8H183.2A11.4 11.4 0 0 0 183.2 105H164ZM154.4 109.8H210.8V114.3H154.4ZM154.4 118.8H210.8V123.3H154.4Z" />
+      </svg>
+      <svg
+        viewBox="0 0 100 60"
+        aria-hidden
+        className="pointer-events-none absolute top-0 left-[58%] -z-10 w-14 -scale-y-100 text-sidebar-primary opacity-[.14]"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="3.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M14 30A14 10 0 1 1 42 30A14 10 0 1 1 14 30ZM47 29A8 5.5 0 1 1 63 29A8 5.5 0 1 1 47 29ZM64.5 26A7.5 7.5 0 1 1 79.5 26A7.5 7.5 0 1 1 64.5 26Z" />
+        <path fill="none" d="M42 30H47M76 20L82 9L94 6M73 19L76 8L86 2M52 33L44 42L38 56M55 34L56 45L52 57M58 33L66 42L74 55" />
       </svg>
     </Card>
   )
