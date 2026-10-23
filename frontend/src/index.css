@@ -191,6 +191,572 @@
   animation: receipt-row-in .3s ease-out both;
 }
 
+/* Landing motion. Every element's resting state is its finished state, so nothing hides if an animation never runs.
+   Hero (on load): the copy rises in reading order, the phone lands flat out of a tilt, then its screen behaves like Home:
+   both bars fill to today's numbers and the recent transactions log in, newest last, at the top.
+   Below the hero (scroll-driven, skipped where unsupported, e.g. Firefox): feature icons drop in and their copy is
+   written in; the preview pins a phone that steps through its three screens; the closing panel widens to the full screen.
+   (The how-it-works steps have their own block below, since part of it also runs under reduced motion.)
+   --i staggers siblings. Reduced motion: none of it runs. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(16px); }
+  }
+  .rise {
+    animation: rise .7s cubic-bezier(.16, 1, .3, 1) calc(var(--i, 0) * 90ms + 60ms) both;
+  }
+
+  @keyframes phone-land {
+    from { opacity: 0; transform: perspective(1400px) translateY(56px) rotateX(16deg) scale(.95); }
+  }
+  .phone-land {
+    transform-origin: 50% 100%;
+    animation: phone-land 1s cubic-bezier(.16, 1, .3, 1) .3s both;
+  }
+  @keyframes bar-fill {
+    from { transform: scaleX(0); }
+  }
+  .phone-land [data-slot=progress-indicator] {
+    transform-origin: left;
+    animation: bar-fill 1s cubic-bezier(.16, 1, .3, 1) 1s both;
+  }
+  .phone-land [data-slot=progress] + [data-slot=progress] [data-slot=progress-indicator] {
+    animation-delay: 1.2s;
+  }
+  @keyframes log-in {
+    from { opacity: 0; transform: translateY(-12px); clip-path: inset(0 0 100% 0); }
+  }
+  .log-in {
+    animation: log-in .5s cubic-bezier(.16, 1, .3, 1) calc(1.5s + var(--i, 0) * 160ms) both;
+  }
+  /* The screen's sequence waits, held at its start, until most of the phone is on screen (TryIt sets data-play).
+     Below lg the phone sits under the copy and is usually scrolled to after it has landed, so the sequence starts sooner. */
+  .phone-land:not([data-play]) :is([data-slot=progress-indicator], .log-in) {
+    animation-play-state: paused;
+  }
+  @media (width < 64rem) {
+    .phone-land [data-slot=progress-indicator] { animation-delay: .15s; }
+    .phone-land [data-slot=progress] + [data-slot=progress] [data-slot=progress-indicator] { animation-delay: .35s; }
+    .log-in { animation-delay: calc(.6s + var(--i, 0) * 160ms); }
+  }
+
+  @supports (animation-timeline: view()) {
+    @keyframes coin-drop {
+      from { opacity: 0; transform: translateY(-18px) scale(.6) rotate(-16deg); }
+    }
+    @keyframes write-in {
+      from { opacity: .15; clip-path: inset(0 100% 0 0); }
+    }
+    .feature > :first-child {
+      animation: coin-drop cubic-bezier(.16, 1, .3, 1) both;
+      animation-timeline: view();
+      animation-range: entry calc(20% + var(--i, 0) * 10%) entry calc(75% + var(--i, 0) * 10%);
+    }
+    .feature > :not(:first-child) {
+      animation: write-in cubic-bezier(.16, 1, .3, 1) both;
+      animation-timeline: view();
+      animation-range: entry calc(35% + var(--i, 0) * 10%) cover calc(40% + var(--i, 0) * 5%);
+    }
+
+    /* Preview tour: the section is three screens tall and its stage stays pinned under the header. A whole phone sits
+       in the stage and the app's screens slide through it sideways, scrubbed by the scroll: Budgets, then Add
+       transaction (a scanned receipt), then Reports. Each screen plays its moment while it holds: bars fill row by row
+       and badges land; the scan line fills in the form; the month's spending line draws, the six-month chart grows and
+       the categories fill, the screen scrolling down to each in turn.
+       Beside the phone the captions form a step list: a lit line runs from one step's node to the next exactly while
+       the screens slide, and the node it reaches lights up. Phones show the current caption under a progress bar.
+       Scroll map (share of the pinned scroll): hold 0-25, slide, hold 41.7-58.3, slide, hold 75-100.
+       Short screens (a phone held sideways) keep the static layout, since a pinned stage would cut the phone down. */
+    @media (height >= 34rem) {
+      .tour {
+        view-timeline: --tour block;
+        height: 340svh;
+      }
+      .tour-stage {
+        position: sticky;
+        top: 4rem;
+        height: calc(100svh - 4rem);
+        overflow: clip;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 1.25rem;
+        padding-block: 1.5rem;
+      }
+      .tour-grid {
+        min-height: 0;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 1rem;
+      }
+      .tour-grid > figure {
+        display: contents;
+      }
+      /* Per screen: its index, when its moment starts, when its node lights, and its in/out states (phone captions). */
+      /* --s: when a screen whose content runs past the phone scrolls down to its end. */
+      .tour-grid > figure:nth-of-type(1) { --i: 0; --m: 2%; --s: 13%; --n: 0%; --in-o: 1; --in-y: 0; --in-s: 1; }
+      .tour-grid > figure:nth-of-type(2) { --i: 1; --m: 43%; --s: 51%; --n: 41.667%; }
+      .tour-grid > figure:nth-of-type(3) { --i: 2; --m: 76%; --s: 84%; --n: 75%; --out-o: 1; --out-y: 0; --out-s: 1; }
+      /* Reports runs its cards in turn, top to bottom, while the screen scrolls down to them. */
+      .tour-grid .tour-mid { --m: 83%; }
+      .tour-grid .tour-late { --m: 90%; }
+
+      /* Phones: a three-part progress bar, then the current caption. */
+      .tour-progress {
+        display: grid;
+        grid-area: 1 / 1;
+        grid-template-columns: repeat(3, 1fr);
+        gap: .375rem;
+      }
+      .tour-progress > span {
+        height: 3px;
+        border-radius: 999px;
+        background: rgb(255 255 255 / .18);
+        overflow: hidden;
+      }
+      .tour-progress > span::after {
+        content: "";
+        display: block;
+        height: 100%;
+        background: #9FE870;
+        transform-origin: left;
+        animation: rail-fill linear both;
+        animation-timeline: --tour;
+      }
+      .tour-progress > span:nth-child(1)::after { animation-range: contain 0% contain 33.333%; }
+      .tour-progress > span:nth-child(2)::after { animation-range: contain 33.333% contain 66.667%; }
+      .tour-progress > span:nth-child(3)::after { animation-range: contain 66.667% contain 100%; }
+      @keyframes rail-fill {
+        from { transform: scale(0, 1); }
+      }
+      .tour-grid > figure > figcaption {
+        grid-area: 2 / 1;
+        align-self: end;
+        animation: screen-swap linear both;
+        animation-timeline: --tour;
+        animation-range: contain calc(var(--i) * 33.333%) contain calc((var(--i) + 1) * 33.333%);
+      }
+      @keyframes screen-swap {
+        0% { opacity: var(--in-o, 0); transform: translateY(var(--in-y, 1rem)) scale(var(--in-s, .98)); }
+        18%, 82% { opacity: 1; transform: none; }
+        100% { opacity: var(--out-o, 0); transform: translateY(var(--out-y, -1rem)) scale(var(--out-s, .98)); }
+      }
+
+      /* The phone: the whole device, sized to the stage's height. It draws the bezel, status bar, island and home bar
+         over the screens, which share its box. */
+      .tour-phone,
+      .tour-grid > figure > .tour-screen {
+        grid-area: 3 / 1;
+        justify-self: center;
+        align-self: start;
+        height: calc(100% - 1.25rem);
+        max-width: 100%;
+        aspect-ratio: 9 / 19.5;
+        margin-top: 10px;
+        border-radius: 2.6rem;
+      }
+      .tour-phone {
+        display: flex;
+        position: relative;
+        z-index: 2;
+        align-items: start;
+        justify-content: space-between;
+        padding: .95rem 1.5rem 0 1.75rem;
+        color: var(--foreground);
+        /* Solid status bar, so a screen scrolled up runs under it rather than through the clock. */
+        background: linear-gradient(var(--background) 2.6rem, transparent 2.6rem);
+        box-shadow: 0 0 0 8px #0b0f08, 0 0 0 9.5px var(--input), 0 40px 70px -28px rgb(0 0 0 / .7);
+        pointer-events: none;
+      }
+      .tour-phone::before {
+        content: "";
+        position: absolute;
+        top: .6rem;
+        left: 50%;
+        width: 32%;
+        height: 1.55rem;
+        translate: -50% 0;
+        border-radius: 999px;
+        background: #0b0f08;
+      }
+      .tour-phone::after {
+        content: "";
+        position: absolute;
+        bottom: .5rem;
+        left: 50%;
+        width: 36%;
+        height: 4px;
+        translate: -50% 0;
+        border-radius: 999px;
+        background: rgb(255 255 255 / .55);
+      }
+      /* The bottom bar follows the tour: Budgets is lit on the first screen, Add is tapped just before the Add
+         transaction screen slides in, and Reports lights as its screen arrives. */
+      .tour-tabbar {
+        position: absolute;
+        inset: auto 0 0;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        align-items: center;
+        padding: .4rem .15rem 1.15rem;
+        border-top: 1px solid var(--sidebar-border);
+        border-radius: 0 0 2.6rem 2.6rem;
+      }
+      .tour-tabbar > span {
+        display: grid;
+        justify-items: center;
+        gap: .2rem;
+        /* Phones get the narrowest phone frame, so the labels drop a size to keep a gap between them. */
+        font-size: .5rem;
+        font-weight: 500;
+        letter-spacing: -.01em;
+        color: rgb(255 255 255 / .72);
+      }
+      @media (width >= 48rem) {
+        .tour-tabbar > span {
+          font-size: .625rem;
+          letter-spacing: 0;
+        }
+      }
+      .tour-tabbar svg {
+        width: 1.05rem;
+        height: 1.05rem;
+      }
+      .tour-tabbar > [data-tab=add] > span {
+        display: grid;
+        place-items: center;
+        width: 2.6rem;
+        height: 2.6rem;
+        margin-top: -1.35rem;
+        border-radius: 999px;
+        box-shadow: 0 0 0 3px var(--sidebar), 0 8px 14px -6px rgb(0 0 0 / .45);
+        animation: tab-tap cubic-bezier(.16, 1, .3, 1) both;
+        animation-timeline: --tour;
+        animation-range: contain 20% contain 27%;
+      }
+      .tour-tabbar > [data-tab=add] svg {
+        width: 1.3rem;
+        height: 1.3rem;
+      }
+      @keyframes tab-tap {
+        40% { transform: scale(.84); box-shadow: 0 0 0 3px var(--sidebar), 0 0 0 9px rgb(159 232 112 / .28); }
+      }
+      .tour-tabbar > [data-tab=budgets] {
+        animation: tab-off linear both;
+        animation-timeline: --tour;
+        animation-range: contain 25% contain 30%;
+      }
+      @keyframes tab-off {
+        from { color: var(--sidebar-primary); }
+      }
+      .tour-tabbar > [data-tab=reports] {
+        animation: tab-on linear both;
+        animation-timeline: --tour;
+        animation-range: contain 66% contain 72%;
+      }
+      @keyframes tab-on {
+        to { color: var(--sidebar-primary); }
+      }
+
+      /* Each screen fills the phone, slides one width per page and is clipped to the phone's own rounded screen, so the
+         next screen enters at the right edge as the last one leaves at the left. */
+      .tour-grid > figure > .tour-screen {
+        z-index: 1;
+        padding: 2.9rem .75rem 0;
+        animation: screen-slide linear both;
+        animation-timeline: --tour;
+        animation-range: contain 0% contain 100%;
+      }
+      .tour-grid > figure > .tour-screen {
+        container-type: size;
+      }
+      .tour-grid > figure > .tour-screen > div > div {
+        zoom: .8;
+      }
+      /* Scrolls by however far the page runs past the phone (none if it fits), stopping clear of the home bar. */
+      @keyframes screen-scroll {
+        to { transform: translateY(min(0px, 100cqh - 100% - 4.75rem)); }
+      }
+      .tour-grid > figure > .tour-screen > div {
+        animation: screen-scroll cubic-bezier(.65, 0, .35, 1) both;
+        animation-timeline: --tour;
+        animation-range: contain var(--s) contain calc(var(--s) + 9%);
+      }
+      .tour-grid > figure:nth-of-type(1) > .tour-screen {
+        --t0: 0; --t1: -100%; --t2: -100%;
+        --c0: inset(0 round 2.6rem); --c1: inset(0 0 0 100% round 2.6rem); --c2: inset(0 0 0 100% round 2.6rem);
+      }
+      .tour-grid > figure:nth-of-type(2) > .tour-screen {
+        --t0: 100%; --t1: 0; --t2: -100%;
+        --c0: inset(0 100% 0 0 round 2.6rem); --c1: inset(0 round 2.6rem); --c2: inset(0 0 0 100% round 2.6rem);
+      }
+      .tour-grid > figure:nth-of-type(3) > .tour-screen {
+        --t0: 100%; --t1: 100%; --t2: 0;
+        --c0: inset(0 100% 0 0 round 2.6rem); --c1: inset(0 100% 0 0 round 2.6rem); --c2: inset(0 round 2.6rem);
+      }
+      @keyframes screen-slide {
+        0%, 25% { transform: translateX(var(--t0)); clip-path: var(--c0); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+        41.667%, 58.333% { transform: translateX(var(--t1)); clip-path: var(--c1); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+        75%, 100% { transform: translateX(var(--t2)); clip-path: var(--c2); }
+      }
+
+      /* Each screen's moment, while it holds. --k staggers rows inside a card, and columns in the chart. */
+      .tour-grid :is([data-slot=item-group], [data-slot=card-content]) > :nth-child(2) { --k: 1; }
+      .tour-grid :is([data-slot=item-group], [data-slot=card-content]) > :nth-child(3) { --k: 2; }
+      .tour-grid :is([data-slot=item-group], [data-slot=card-content]) > :nth-child(4) { --k: 3; }
+      .tour-grid [data-slot=progress-indicator] {
+        transform-origin: left;
+        animation: bar-fill cubic-bezier(.16, 1, .3, 1) both;
+        animation-timeline: --tour;
+        animation-range: contain calc(var(--m) + var(--k, 0) * 3%) contain calc(var(--m) + 10% + var(--k, 0) * 3%);
+      }
+      @keyframes bar-rise {
+        from { transform: scaleY(0); }
+      }
+      .tour-grid .trend-bars > * > span {
+        transform-origin: bottom;
+        animation: bar-rise cubic-bezier(.16, 1, .3, 1) both;
+        animation-timeline: --tour;
+        animation-range: contain calc(var(--m) + var(--k) * 1.4%) contain calc(var(--m) + 6% + var(--k) * 1.4%);
+      }
+      .tour-grid .trend-bars > * > span + span {
+        animation-range: contain calc(var(--m) + 1% + var(--k) * 1.4%) contain calc(var(--m) + 7% + var(--k) * 1.4%);
+      }
+      /* Spending through the month: the running total draws left to right as the pace line and area sweep in. */
+      @keyframes line-draw {
+        from { stroke-dashoffset: 1; }
+        to { stroke-dashoffset: 0; }
+      }
+      @keyframes wipe-in {
+        from { clip-path: inset(0 100% 0 0); }
+        to { clip-path: inset(0); }
+      }
+      .tour-grid .pace-line {
+        stroke-dasharray: 1;
+        animation: line-draw cubic-bezier(.45, 0, .2, 1) both;
+        animation-timeline: --tour;
+        animation-range: contain var(--m) contain calc(var(--m) + 7%);
+      }
+      .tour-grid .pace-reveal {
+        animation: wipe-in cubic-bezier(.45, 0, .2, 1) both;
+        animation-timeline: --tour;
+        animation-range: contain var(--m) contain calc(var(--m) + 7%);
+      }
+      .tour-grid .scan-pass {
+        animation-timeline: --tour;
+        animation-range: contain var(--m) contain calc(var(--m) + 10%);
+      }
+      @keyframes badge-land {
+        from { opacity: 0; transform: scale(.4); }
+      }
+      .tour-grid [data-slot=badge] {
+        animation: badge-land cubic-bezier(.16, 1, .3, 1) both;
+        animation-timeline: --tour;
+        animation-range: contain calc(var(--m) + 9% + var(--k, 0) * 1.5%) contain calc(var(--m) + 13% + var(--k, 0) * 1.5%);
+      }
+
+      @media (width >= 48rem) {
+        /* The heading joins the step list on the left, so the phone can take the stage's full height on the right. */
+        .tour-stage {
+          grid-template-columns: minmax(0, 1fr) auto;
+          grid-template-rows: repeat(4, auto) minmax(0, 1fr);
+          column-gap: 5rem;
+          row-gap: 2.25rem;
+        }
+        .tour-stage > :first-child {
+          grid-area: 1 / 1;
+          margin-top: 1.5rem;
+        }
+        .tour-grid {
+          display: contents;
+        }
+        .tour-progress {
+          display: none;
+        }
+        .tour-phone,
+        .tour-grid > figure > .tour-screen {
+          grid-area: 1 / 2 / 6 / 3;
+          height: calc(100% - 20px);
+        }
+        .tour-grid > figure > .tour-screen > div > div {
+          zoom: .85;
+        }
+        /* The step list: every caption shows, each with a node; a lit line runs node to node while the screens slide. */
+        .tour-grid > figure > figcaption {
+          grid-column: 1;
+          align-self: start;
+          position: relative;
+          max-width: 26rem;
+          gap: .375rem;
+          padding-left: 2.25rem;
+          animation: none;
+        }
+        .tour-grid > figure:nth-of-type(1) > figcaption { grid-row: 2; }
+        .tour-grid > figure:nth-of-type(2) > figcaption { grid-row: 3; }
+        .tour-grid > figure:nth-of-type(3) > figcaption { grid-row: 4; }
+        .tour-node {
+          display: block;
+          position: absolute;
+          left: 0;
+          top: .5625rem;
+          width: .875rem;
+          height: .875rem;
+          border-radius: 999px;
+          background: var(--primary);
+          box-shadow: inset 0 0 0 2px rgb(255 255 255 / .35);
+          animation: node-on cubic-bezier(.16, 1, .3, 1) both;
+          animation-timeline: --tour;
+          animation-range: contain calc(var(--n) - 4%) contain var(--n);
+        }
+        @keyframes node-on {
+          to {
+            background: #9FE870;
+            box-shadow: inset 0 0 0 2px #9FE870, 0 0 0 5px rgb(159 232 112 / .16), 0 0 16px rgb(159 232 112 / .5);
+          }
+        }
+        .tour-link {
+          display: block;
+          position: absolute;
+          left: calc(.4375rem - 1px);
+          top: 1.6875rem;
+          bottom: -2.5625rem;
+          width: 2px;
+          border-radius: 999px;
+          background: rgb(255 255 255 / .16);
+        }
+        .tour-grid > figure:nth-of-type(3) .tour-link {
+          display: none;
+        }
+        .tour-link > span {
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background: linear-gradient(to bottom, #9FE870 55%, #E6FBD6);
+          box-shadow: 0 0 10px 1px rgb(159 232 112 / .55);
+          animation: link-run both;
+          animation-timing-function: cubic-bezier(.65, 0, .35, 1);
+          animation-timeline: --tour;
+          animation-range: contain calc(25% + var(--i) * 33.333%) contain calc(41.667% + var(--i) * 33.333%);
+        }
+        @keyframes link-run {
+          from { clip-path: inset(0 -12px 100% -12px); }
+          to { clip-path: inset(-12px); }
+        }
+        .tour-grid > figure > figcaption > :nth-child(3) {
+          font-size: 1.75rem;
+          line-height: 2rem;
+          letter-spacing: -.02em;
+          animation: title-on linear both;
+          animation-timeline: --tour;
+          animation-range: contain calc(var(--n) - 6%) contain calc(var(--n) + 29%);
+        }
+        .tour-grid > figure:nth-of-type(1) > figcaption > :nth-child(3) { --on-from: #9FE870; }
+        .tour-grid > figure:nth-of-type(3) > figcaption > :nth-child(3) { --on-to: #9FE870; }
+        @keyframes title-on {
+          0% { color: var(--on-from, currentColor); }
+          17%, 83% { color: #9FE870; }
+          100% { color: var(--on-to, currentColor); }
+        }
+        .tour-grid > figure > figcaption > :last-child {
+          font-size: 1.0625rem;
+        }
+      }
+    }
+
+    /* The receipt is read top to bottom: a card-colored cover slides off under the scan line. */
+    @keyframes scan-pass {
+      90% { opacity: 1; }
+      to { opacity: 0; transform: translateY(100%); }
+    }
+    .scan-pass {
+      position: absolute;
+      inset: 0;
+      background: var(--card);
+      animation: scan-pass linear both;
+      animation-timeline: view();
+      animation-range: entry 50% cover 55%;
+    }
+    .scan-pass::before {
+      content: "";
+      position: absolute;
+      inset-inline: 0;
+      top: -2.5rem;
+      height: 2.5rem;
+      background: linear-gradient(to bottom, transparent, rgb(159 232 112 / .35));
+    }
+    .scan-pass::after {
+      content: "";
+      position: absolute;
+      inset-inline: 0;
+      top: -1px;
+      height: 2px;
+      background: #9FE870;
+      box-shadow: 0 0 12px 2px rgb(159 232 112 / .8);
+    }
+
+    /* The closing panel starts as a card the width of the page's content and widens to the screen's full width,
+       edge to edge, by the time it is fully in view. */
+    @keyframes panel-open {
+      from { clip-path: inset(2rem max(1rem, (100% - 69rem) / 2) round 1.5rem); }
+      to { clip-path: inset(0 round 0); }
+    }
+    .panel-open {
+      animation: panel-open cubic-bezier(.16, 1, .3, 1) both;
+      animation-timeline: view();
+      animation-range: entry 0% contain 0%;
+    }
+  }
+}
+
+/* How it works: the list is one timeline, so the line and the steps it reaches stay in step. Each number fills
+   when the line reaches it. Reduced motion keeps that color change and shows the line already drawn. */
+@supports (animation-timeline: view()) {
+  .steps {
+    view-timeline: --steps block;
+  }
+  @keyframes step-on {
+    from {
+      background-color: var(--background);
+      color: var(--primary);
+      box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--primary) 30%, transparent);
+    }
+  }
+  .steps > li > [data-step-dot] {
+    animation: step-on ease-out both;
+    animation-timeline: --steps;
+    animation-range: cover calc(12% + var(--i) * 18%) cover calc(18% + var(--i) * 18%);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes link-draw {
+      from { transform: scale(var(--link-from)); }
+    }
+    .steps [data-step-link] > span {
+      --link-from: 1 0;
+      transform-origin: top;
+      animation: link-draw linear both;
+      animation-timeline: --steps;
+      animation-range: cover calc(18% + var(--i) * 18%) cover calc(30% + var(--i) * 18%);
+    }
+    @media (width >= 48rem) {
+      .steps [data-step-link] > span {
+        --link-from: 0 1;
+        transform-origin: left;
+      }
+    }
+  }
+}
+
+/* FAQ answers open and close by height instead of snapping (where ::details-content is supported). */
+.faq {
+  interpolate-size: allow-keywords;
+}
+.faq details::details-content {
+  block-size: 0;
+  overflow: clip;
+  transition: block-size .3s cubic-bezier(.16, 1, .3, 1), content-visibility .3s allow-discrete;
+}
+.faq details[open]::details-content {
+  block-size: auto;
+}
+
 /* Reduced motion: keep fades so open/close still reads, drop sliding and spinning. */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

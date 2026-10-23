@@ -1,12 +1,14 @@
 // What signed-out visitors see at /: what AntTipid is and does, then sign in. Google's consent-screen review reads this page.
 // The hero runs Home's real "left to spend" card on numbers the visitor types; the previews below use sample data.
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { BatteryFull, Check, ChartPie, ChevronDown, Download, Gauge, Menu, PiggyBank, ReceiptText, Signal, Wallet, Wifi } from 'lucide-react'
-import { BudgetItem } from '@/components/budget'
+import { BatteryFull, ChartColumn, Check, ChartPie, ChevronDown, Download, Gauge, House, ListOrdered, Menu, PiggyBank, Plus, ReceiptText, Signal, Wallet, Wifi } from 'lucide-react'
+import { BudgetBadge, BudgetItem } from '@/components/budget'
 import { CategoryMedia } from '@/components/category-icon'
+import { HeroCard } from '@/components/hero-card'
 import { LogoWithTagline } from '@/components/logo'
 import { MoneyInput } from '@/components/money-input'
+import { ReceiptItems } from '@/components/receipt-items'
 import { SafeToSpendCard } from '@/components/safe-to-spend-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,7 +17,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
 import { Progress, ProgressLabel } from '@/components/ui/progress'
+import { budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
 import { money } from '@/lib/format'
+import { monthTotals } from '@/lib/report'
 import type { BudgetStatus, Category } from '@/types'
 
 const SIGN_UP = '/sign-in?mode=signup'
@@ -52,6 +56,9 @@ const FAQ = [
   { q: 'Can I get my data out or delete it?', a: `Download any month of transactions as a CSV from Activity. To delete your account and everything in it, email ${CONTACT} from the address you sign in with.` },
 ]
 
+/** Stagger index for the landing's .rise / .log-in / step animations. */
+const stagger = (i: number) => ({ '--i': i }) as CSSProperties
+
 // Preview sample month: ₱5,760 spent, ₱18,500 earned. Category budgets show all three states.
 const cat = (name: string): Category => ({ id: name.toLowerCase(), name, icon: name.toLowerCase(), kind: 'expense' })
 
@@ -67,6 +74,23 @@ const SAMPLE_ACTIVITY = [
   { title: 'Grab to work', where: 'Transport, GCash', amount: 245, category: cat('Transport') },
   { title: 'Meralco bill', where: 'Bills, Bank account', amount: 1650, category: cat('Bills') },
 ]
+
+// The whole-month budget the category spending adds up to: ₱5,760 of ₱12,000.
+const MONTH_BUDGET: BudgetStatus = { id: 'all', categoryId: null, limit: 12000, warnAt: 80, spent: 5760 }
+
+const SAMPLE_RECEIPT = [
+  { name: 'Rice, 5 kg', qty: 1, price: 310 },
+  { name: 'Eggs, 1 tray', qty: 1, price: 245 },
+  { name: 'Cooking oil', qty: 1, price: 135 },
+]
+
+// Running total for the first 18 days of a 30-day month, ending at the ₱5,760 spent: the Meralco bill on day 5, groceries
+// on day 16. It stays under the on-budget pace, like the "On track" budget.
+const PACE_DAYS = 30
+const SAMPLE_RUNNING = [180, 420, 610, 760, 2410, 2560, 2790, 3010, 3150, 3380, 3700, 3840, 4060, 4280, 4520, 5210, 5450, 5760]
+
+// Six months of income and spending ending this month; the month in progress has spent less so far.
+const SAMPLE_TREND = [[17200, 9850], [17200, 11300], [18500, 10420], [18500, 12960], [18500, 9140], [18500, 5760]]
 
 const SAMPLE_SPENDING = [
   { name: 'Food', amount: 2180 },
@@ -89,10 +113,24 @@ function TryIt() {
   const s = { budget: Number(budget) || 0, spent: Number(spent) || 0, ...today }
   const left = s.budget - s.spent
 
+  // Start the screen's fill-and-log-in sequence once most of the phone is visible; on phones it starts below the fold.
+  const phone = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = phone.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return
+      el.dataset.play = ''
+      io.disconnect()
+    }, { threshold: 0.4 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
   return (
     <div className="grid gap-3">
       {/* iPhone-style frame: thin black bezel, metal rim, Dynamic Island, side buttons. Only the inputs and the card are live. */}
-      <div className="relative mx-auto w-full max-w-[21rem] rounded-[3.25rem] bg-black p-[7px] shadow-2xl ring-[1.5px] shadow-primary/25 ring-input">
+      <div ref={phone} className="phone-land relative mx-auto w-full max-w-[21rem] rounded-[3.25rem] bg-black p-[7px] shadow-2xl ring-[1.5px] shadow-primary/25 ring-input">
         <span aria-hidden className="absolute top-[17%] -left-[3px] h-7 w-[3px] rounded-l-sm bg-input" />
         <span aria-hidden className="absolute top-[24%] -left-[3px] h-12 w-[3px] rounded-l-sm bg-input" />
         <span aria-hidden className="absolute top-[33%] -left-[3px] h-12 w-[3px] rounded-l-sm bg-input" />
@@ -123,8 +161,9 @@ function TryIt() {
           <div aria-hidden className="grid gap-1 select-none">
             <p className="px-1 text-sm font-semibold">Recent activity</p>
             <ItemGroup className="gap-1">
-              {SAMPLE_ACTIVITY.map((t) => (
-                <Item key={t.title} size="xs">
+              {/* Newest at the top, so it logs in last. */}
+              {SAMPLE_ACTIVITY.map((t, i) => (
+                <Item key={t.title} size="xs" className="log-in" style={stagger(SAMPLE_ACTIVITY.length - 1 - i)}>
                   <CategoryMedia category={t.category} />
                   <ItemContent>
                     <ItemTitle>{t.title}</ItemTitle>
@@ -138,20 +177,100 @@ function TryIt() {
           <span aria-hidden className="absolute bottom-2 left-1/2 h-1 w-28 -translate-x-1/2 rounded-full bg-foreground/80" />
         </div>
       </div>
-      <p className="text-center text-sm text-muted-foreground">Try your own numbers. It uses today’s date and the same math as Home.</p>
+      <p style={stagger(8)} className="rise text-center text-sm text-muted-foreground">Try your own numbers. It uses today’s date and the same math as Home.</p>
     </div>
   )
 }
 
-function PreviewPanel({ title, body, children }: { title: string; body: string; children: ReactNode }) {
+/** One app screen in the preview with its caption. In the pinned tour the screen slides through the phone and the
+    caption joins the step list (its node and link are drawn only there). Without the tour the caption sits above its
+    screen: one centred column below lg, three across from lg. */
+function PreviewPanel({ title, body, headline, description, children }: { title: string; body: string; headline: string; description?: string; children: ReactNode }) {
   return (
-    <figure className="grid content-start gap-4">
-      <div aria-hidden className="pointer-events-none select-none">{children}</div>
-      <figcaption className="grid gap-1">
+    <figure className="mx-auto grid w-full max-w-sm content-start gap-4 lg:max-w-none">
+      <div aria-hidden className="tour-screen pointer-events-none overflow-hidden rounded-3xl bg-background p-4 text-foreground select-none">
+        {/* Outer div: scrolls the screen in the tour when its content runs past the phone. Inner: the page. */}
+        <div>
+          <div className="grid content-start gap-3">
+            <div>
+              <p className="text-lg leading-tight font-semibold tracking-tight text-balance">{headline}</p>
+              {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+            </div>
+            {children}
+          </div>
+        </div>
+      </div>
+      <figcaption className="order-first grid gap-1">
+        <span aria-hidden className="tour-node hidden" />
+        <span aria-hidden className="tour-link hidden"><span /></span>
         <span className="font-semibold text-primary-foreground">{title}</span>
         <span className="text-sm leading-relaxed text-primary-foreground/70">{body}</span>
       </figcaption>
     </figure>
+  )
+}
+
+/** A filled-in form field as the app shows it after a scan. */
+function FilledField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1">
+      <span className="text-xs font-medium">{label}</span>
+      <span className="flex h-9 items-center rounded-lg border bg-background px-2.5 text-sm tabular-nums">{value}</span>
+    </div>
+  )
+}
+
+/** Reports' "Spending through the month": the running total so far against the dashed on-budget pace, as plain SVG
+    (the real chart is recharts, too heavy for this page). */
+function PaceLine() {
+  const [w, h] = [300, 120]
+  const top = MONTH_BUDGET.limit * 1.08
+  const x = (day: number) => ((day - 1) / (PACE_DAYS - 1)) * w
+  const y = (v: number) => h - (v / top) * h
+  const line = SAMPLE_RUNNING.map((v, i) => `${i ? 'L' : 'M'}${x(i + 1).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  const area = `${line} L${x(SAMPLE_RUNNING.length).toFixed(1)},${h} L0,${h} Z`
+  return (
+    <div className="grid gap-2">
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="h-28 w-full overflow-visible">
+        {[0.25, 0.5, 0.75, 1].map((f) => <line key={f} x1="0" x2={w} y1={h * f} y2={h * f} stroke="var(--border)" vectorEffect="non-scaling-stroke" />)}
+        <g className="pace-reveal">
+          <path d={area} fill="var(--chart-2)" fillOpacity={0.15} />
+          <line x1="0" y1={h} x2={w} y2={y(MONTH_BUDGET.limit)} stroke="var(--muted-foreground)" strokeWidth={2} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+        </g>
+        <path d={line} className="pace-line" pathLength={1} fill="none" stroke="var(--chart-2)" strokeWidth={2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+      <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">{[1, 10, 20, PACE_DAYS].map((d) => <span key={d}>{d}</span>)}</div>
+      <div className="flex justify-center gap-4 text-xs">
+        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-[3px] bg-chart-2" />Spent so far</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 border-t-2 border-dashed border-muted-foreground" />On-budget pace</span>
+      </div>
+    </div>
+  )
+}
+
+/** Reports' "Income and spending" chart for six months, drawn as plain bars (the real one is recharts, too heavy for this page). */
+function TrendBars() {
+  const [months] = useState(() => {
+    const now = new Date()
+    return SAMPLE_TREND.map((_, k) => new Date(now.getFullYear(), now.getMonth() - 5 + k).toLocaleString('en', { month: 'short' }))
+  })
+  const top = Math.max(...SAMPLE_TREND.flat())
+  return (
+    <div className="grid gap-2">
+      <div className="trend-bars grid h-28 grid-cols-6 items-end gap-1.5 bg-[repeating-linear-gradient(to_top,var(--border)_0_1px,transparent_1px_25%)]">
+        {SAMPLE_TREND.map(([income, spent], k) => (
+          <div key={months[k]} className="flex h-full items-end justify-center gap-0.5" style={{ '--k': k } as CSSProperties}>
+            <span className="w-2.5 rounded-t-[3px] bg-chart-1" style={{ height: `${(income / top) * 100}%` }} />
+            <span className="w-2.5 rounded-t-[3px] bg-chart-2" style={{ height: `${(spent / top) * 100}%` }} />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-6 gap-1.5 text-center text-[11px] text-muted-foreground">{months.map((m) => <span key={m}>{m}</span>)}</div>
+      <div className="flex justify-center gap-4 text-xs">
+        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-[3px] bg-chart-1" />Income</span>
+        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-[3px] bg-chart-2" />Spending</span>
+      </div>
+    </div>
   )
 }
 
@@ -197,22 +316,22 @@ export function LandingPage() {
         {/* Hero */}
         <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-8 pb-14 sm:gap-12 sm:px-6 sm:pt-12 sm:pb-20 md:pt-20 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
           <div className="grid gap-5 sm:gap-6">
-            <h1 className="text-[2.25rem] leading-[1.05] font-bold tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl">
+            <h1 className="rise text-[2.25rem] leading-[1.05] font-bold tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl">
               <span className="sr-only">AntTipid: </span>Know where every peso goes.
             </h1>
-            <p className="max-w-[34rem] leading-relaxed sm:text-lg text-muted-foreground">
+            <p style={stagger(1)} className="rise max-w-[34rem] leading-relaxed sm:text-lg text-muted-foreground">
               <em className="font-medium text-foreground not-italic">Tipid</em> means spending carefully so your money lasts until the
               next sahod. AntTipid is a free tracker that helps: log what you spend and earn across cash, GCash, Maya and your bank,
               set a budget for each category, and see how much is left to spend this month.
             </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div style={stagger(2)} className="rise flex flex-col gap-3 sm:flex-row">
               <Button size="lg" className="cta-win" nativeButton={false} render={<Link to={SIGN_UP} />}>Start keeping more of your money</Button>
               <Button size="lg" variant="outline" nativeButton={false} render={<a href="#how-it-works" />}>See how it works</Button>
             </div>
-            <p className="-mt-1 text-sm text-muted-foreground sm:-mt-2">
+            <p style={stagger(3)} className="rise -mt-1 text-sm text-muted-foreground sm:-mt-2">
               Already have an account? <Link to="/sign-in" className="font-medium text-foreground underline underline-offset-4">Log in</Link>
             </p>
-            <ul className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <ul style={stagger(3)} className="rise flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
               {['Free, no ads', 'Never asks for your bank or GCash login', 'Works on your phone'].map((t) => (
                 <li key={t} className="flex items-center gap-1.5"><Check className="size-4 text-chart-1" aria-hidden />{t}</li>
               ))}
@@ -230,8 +349,8 @@ export function LandingPage() {
               body="Built around one question: how much can I still spend this month?"
             />
             <ul className="grid gap-x-12 gap-y-7 sm:grid-cols-2 sm:gap-y-10">
-              {FEATURES.map(({ icon: Icon, title, body }) => (
-                <li key={title} className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+              {FEATURES.map(({ icon: Icon, title, body }, i) => (
+                <li key={title} style={stagger(i % 2)} className="feature grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
                   <span className="row-span-2 flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
                     <Icon className="size-5" aria-hidden />
                   </span>
@@ -246,10 +365,16 @@ export function LandingPage() {
         {/* How it works */}
         <section id="how-it-works" aria-labelledby="how-title" className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
           <SectionHeading id="how-title" title="Set up in a few minutes" />
-          <ol className="grid gap-7 md:grid-cols-3 md:gap-8">
+          <ol className="steps grid gap-7 md:grid-cols-3 md:gap-8">
             {STEPS.map((s, i) => (
-              <li key={s.title} className="grid content-start gap-3">
-                <span className="flex size-10 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground tabular-nums" aria-hidden>{i + 1}</span>
+              <li key={s.title} style={stagger(i)} className="relative grid grid-cols-[2.5rem_1fr] content-start gap-x-4 gap-y-1 md:grid-cols-1 md:gap-3">
+                <span data-step-dot className="row-span-2 flex size-10 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground tabular-nums md:row-span-1" aria-hidden>{i + 1}</span>
+                {/* Connector to the next step: down the left on phones, across the top from md. */}
+                {i < STEPS.length - 1 && (
+                  <span data-step-link aria-hidden className="absolute top-12 -bottom-5 left-5 w-0.5 -translate-x-1/2 rounded-full bg-primary/15 md:top-5 md:-right-4 md:bottom-auto md:left-14 md:h-0.5 md:w-auto md:translate-x-0 md:-translate-y-1/2">
+                    <span className="block size-full rounded-full bg-primary" />
+                  </span>
+                )}
                 <h3 className="font-semibold sm:text-lg">{s.title}</h3>
                 <p className="leading-relaxed text-muted-foreground">{s.body}</p>
               </li>
@@ -258,15 +383,50 @@ export function LandingPage() {
         </section>
 
         {/* Preview */}
-        <section id="preview" aria-labelledby="preview-title" className="bg-primary canvas-dark text-primary-foreground">
-          <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
+        <section id="preview" aria-labelledby="preview-title" className="tour bg-primary canvas-dark text-primary-foreground">
+          <div className="tour-stage mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
             <div className="grid max-w-2xl gap-3">
               <h2 id="preview-title" className="text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">A look inside the app</h2>
               <p className="leading-relaxed sm:text-lg text-primary-foreground/70">Sample numbers on the real screens.</p>
             </div>
-            <div className="grid gap-8 md:grid-cols-3 md:gap-6">
-              <PreviewPanel title="Budgets" body="Over and near-limit budgets come first, so you know where to slow down.">
+            <div className="tour-grid grid gap-8 lg:grid-cols-3 lg:gap-6">
+              {/* Pinned tour only: progress through the three screens (phones), and the phone they slide across. */}
+              <div aria-hidden className="tour-progress hidden"><span /><span /><span /></div>
+              <div aria-hidden className="tour-phone hidden">
+                <span className="text-xs font-semibold tabular-nums">9:41</span>
+                <span className="flex items-center gap-1 [&_svg]:size-3"><Signal /><Wifi /><BatteryFull /></span>
+                {/* The app's bottom bar on phones: four pages with Add raised in the middle. */}
+                <span className="tour-tabbar bg-sidebar canvas-dark text-sidebar-foreground">
+                  <span><House />Home</span>
+                  <span><ListOrdered />Activity</span>
+                  <span data-tab="add"><span className="bg-sidebar-primary text-sidebar-primary-foreground ring-sidebar"><Plus /></span></span>
+                  <span data-tab="budgets"><PiggyBank />Budgets</span>
+                  <span data-tab="reports"><ChartColumn />Reports</span>
+                </span>
+              </div>
+
+              <PreviewPanel
+                title="Budgets"
+                body="Over and near-limit budgets come first, so you know where to slow down."
+                headline="2 budgets need a look"
+                description="Transport and Bills are near or over the limit this month."
+              >
+                <HeroCard size="sm">
+                  <CardHeader>
+                    <CardDescription>Whole month, all spending</CardDescription>
+                    <CardTitle className="text-2xl font-semibold tabular-nums">{budgetRemaining(MONTH_BUDGET)}</CardTitle>
+                    <CardAction><BudgetBadge state={budgetState(MONTH_BUDGET)} solid /></CardAction>
+                  </CardHeader>
+                  <CardContent><Progress value={budgetPercent(MONTH_BUDGET)} aria-label="Budget used" /></CardContent>
+                  <CardFooter className="text-sm text-muted-foreground tabular-nums">
+                    {money(MONTH_BUDGET.spent, { whole: true })} of {money(MONTH_BUDGET.limit, { whole: true })}
+                  </CardFooter>
+                </HeroCard>
                 <Card size="sm">
+                  <CardHeader>
+                    <CardTitle>By category</CardTitle>
+                    <CardDescription>Over and near-limit budgets first.</CardDescription>
+                  </CardHeader>
                   <CardContent>
                     <ItemGroup className="gap-1">
                       {SAMPLE_BUDGETS.map(({ b, category }) => <BudgetItem key={b.id} b={b} category={category} />)}
@@ -275,35 +435,65 @@ export function LandingPage() {
                 </Card>
               </PreviewPanel>
 
-              <PreviewPanel title="Receipt scan" body="Snap the receipt. The store, date, items and total are filled in for you to check.">
-                <Card size="sm">
+              <PreviewPanel
+                title="Receipt scan"
+                body="Snap the receipt. The store, date, items and total are filled in for you to check."
+                headline="Add transaction"
+                description="Read from your receipt. Check it, then save."
+              >
+                <Card size="sm" className="relative">
                   <CardHeader>
                     <CardTitle>Puregold</CardTitle>
-                    <CardDescription>October 21, Groceries</CardDescription>
+                    <CardDescription>3 items read</CardDescription>
                     <CardAction><Badge variant="secondary"><ReceiptText aria-hidden />Scanned</Badge></CardAction>
                   </CardHeader>
-                  <CardContent className="grid gap-2 text-sm">
-                    {[['Rice, 5 kg', 310], ['Eggs, 1 tray', 245], ['Cooking oil', 135]].map(([name, price]) => (
-                      <div key={name} className="flex justify-between gap-4"><span>{name}</span><span className="tabular-nums">{money(price as number)}</span></div>
-                    ))}
+                  <CardContent className="grid gap-3">
+                    <FilledField label="Amount" value={money(690)} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <FilledField label="Category" value="Groceries" />
+                      <FilledField label="Paid from" value="Cash" />
+                    </div>
+                    <FilledField label="Description" value="Puregold" />
+                    <ReceiptItems items={SAMPLE_RECEIPT} total={690} />
                   </CardContent>
-                  <CardFooter className="justify-between font-semibold"><span>Total</span><span className="tabular-nums">{money(690)}</span></CardFooter>
+                  <div className="scan-pass" />
                 </Card>
               </PreviewPanel>
 
-              <PreviewPanel title="Reports" body="Earned, spent and saved for the month, and where the spending went.">
+              <PreviewPanel
+                title="Reports"
+                body="Earned, spent and saved, spending against your budget’s pace, six months of income and spending, and where it went."
+                headline="Food took 38% of your spending"
+              >
+                <div className="grid grid-cols-3 gap-2">
+                  {monthTotals(18500, 5760).map(([label, value, tone]) => (
+                    <Card key={label} size="sm">
+                      <CardHeader>
+                        <CardDescription>{label}</CardDescription>
+                        <CardTitle className={`text-sm font-semibold tabular-nums ${tone}`}>{money(value, { whole: true })}</CardTitle>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </div>
                 <Card size="sm">
-                  <CardHeader className="grid-cols-3 gap-2 text-center">
-                    {[['Earned', 18500], ['Spent', 5760], ['Saved', 12740]].map(([label, n]) => (
-                      <div key={label} className="grid gap-0.5">
-                        <span className="text-xs text-muted-foreground">{label}</span>
-                        <span className="text-sm font-semibold tabular-nums">{money(n as number, { whole: true })}</span>
-                      </div>
-                    ))}
+                  <CardHeader>
+                    <CardTitle>Spending through the month</CardTitle>
+                    <CardDescription>Running total against your monthly budget.</CardDescription>
                   </CardHeader>
-                  <CardContent className="grid gap-3">
+                  <CardContent><PaceLine /></CardContent>
+                </Card>
+                <Card size="sm" className="tour-mid">
+                  <CardHeader>
+                    <CardTitle>Income and spending</CardTitle>
+                    <CardDescription>Last 6 months</CardDescription>
+                  </CardHeader>
+                  <CardContent><TrendBars /></CardContent>
+                </Card>
+                <Card size="sm" className="tour-late">
+                  <CardHeader><CardTitle>Where your money went</CardTitle></CardHeader>
+                  <CardContent className="grid gap-3 [&_[data-slot=progress-indicator]]:bg-chart-2">
                     {SAMPLE_SPENDING.map((c) => (
-                      <Progress key={c.name} value={Math.round((c.amount / 5760) * 100)}>
+                      <Progress key={c.name} value={Math.round((c.amount / 2180) * 100)}>
                         <ProgressLabel>{c.name}</ProgressLabel>
                         <span className="ml-auto text-sm text-muted-foreground tabular-nums">{money(c.amount, { whole: true })}</span>
                       </Progress>
@@ -316,7 +506,7 @@ export function LandingPage() {
         </section>
 
         {/* FAQ */}
-        <section id="faq" aria-labelledby="faq-title" className="mx-auto grid w-full max-w-3xl gap-8 px-4 py-14 sm:gap-10 sm:px-6 sm:py-20">
+        <section id="faq" aria-labelledby="faq-title" className="faq mx-auto grid w-full max-w-3xl gap-8 px-4 py-14 sm:gap-10 sm:px-6 sm:py-20">
           <SectionHeading id="faq-title" title="Questions, answered" />
           <div className="grid gap-3">
             {FAQ.map(({ q, a }) => (
@@ -332,8 +522,8 @@ export function LandingPage() {
         </section>
 
         {/* Final CTA */}
-        <section aria-labelledby="cta-title" className="mx-auto w-full max-w-6xl px-4 pb-14 sm:px-6 sm:pb-20">
-          <div className="grid justify-items-center gap-5 rounded-3xl bg-primary canvas-dark px-5 py-10 text-center text-primary-foreground sm:gap-6 sm:px-6 sm:py-14 md:py-20">
+        <section aria-labelledby="cta-title">
+          <div className="panel-open grid justify-items-center gap-5 bg-primary canvas-dark px-5 py-14 text-center text-primary-foreground sm:gap-6 sm:px-6 sm:py-20 md:py-28">
             <h2 id="cta-title" className="max-w-xl text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">
               Make every sahod last the whole month.
             </h2>
@@ -353,7 +543,7 @@ export function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t">
+      <footer>
         <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:grid-cols-[1fr_auto] md:items-end">
           <div className="grid gap-4">
             <LogoWithTagline height={34} small />
