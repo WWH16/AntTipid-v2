@@ -147,7 +147,8 @@
   }
   html {
     @apply font-sans;
-    scrollbar-color: var(--input) transparent;
+    /* Forest thumb, softened toward the page so it doesn't outweigh the content; inherits to every scroller. */
+    scrollbar-color: color-mix(in oklab, var(--primary) 55%, var(--background)) transparent;
     }
   /* Browser-drawn surfaces follow the palette too. */
   ::selection {
