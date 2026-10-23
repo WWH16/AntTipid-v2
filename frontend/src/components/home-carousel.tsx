@@ -19,11 +19,6 @@ export function Carousel({ label, slides }: { label: string; slides: { title: st
   const [index, setIndex] = useState(0)
   const slideWidth = () => ((ref.current?.firstElementChild as HTMLElement | null)?.offsetWidth ?? 1) + GAP
 
-  function go(i: number) {
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches
-    ref.current?.scrollTo({ left: i * slideWidth(), behavior: reduce ? 'auto' : 'smooth' })
-  }
-
   return (
     <section aria-roledescription="carousel" aria-label={label} className="grid grid-cols-1 gap-1">
       <div
@@ -31,7 +26,8 @@ export function Carousel({ label, slides }: { label: string; slides: { title: st
         onScroll={() => setIndex(Math.round((ref.current?.scrollLeft ?? 0) / slideWidth()))}
         // Bleeds to the screen edge on phones so the next card peeks in from the side.
         // contain-paint: without it, mobile Chrome widens the whole page to fit the off-screen slides.
-        className="-mx-4 flex contain-paint snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 md:mx-0 md:scroll-px-0 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // motion-safe:scroll-smooth: the dots glide between slides, or jump when reduced motion is on.
+        className="-mx-4 flex contain-paint motion-safe:scroll-smooth snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 md:mx-0 md:scroll-px-0 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ gap: GAP }}
       >
         {slides.map((s, i) => (
@@ -54,7 +50,7 @@ export function Carousel({ label, slides }: { label: string; slides: { title: st
             type="button"
             aria-label={`Show ${s.title}`}
             aria-current={i === index}
-            onClick={() => go(i)}
+            onClick={() => ref.current?.scrollTo({ left: i * slideWidth() })}
             className="group flex h-6 items-center px-1 focus-visible:outline-none"
           >
             <span className={cn(

@@ -35,7 +35,7 @@ export function HomePage() {
   const activeWallets = wallets.filter((w) => !w.archived)
   const total = activeWallets.reduce((s, w) => s + w.balance, 0)
 
-  const [hour] = useState(() => new Date().getHours())
+  const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
   const [setupHidden, setSetupHidden] = useState(() => { try { return localStorage.getItem(SETUP_HIDDEN) === '1' } catch { return false } })
@@ -106,33 +106,27 @@ export function HomePage() {
           </Card>
         </div>
 
-        <div className="contents lg:grid lg:grid-cols-1 lg:content-start lg:gap-6">
-          {/* The honeypot ant stands on the card edge, keeping watch on budgets without adding height. */}
-          <div className="relative order-2 lg:order-none">
+        <div className="contents lg:relative lg:grid lg:grid-cols-1 lg:content-start lg:gap-6">
+          {/* The honeypot ant stands on the top edge of this column's first card, whichever that is, without adding height. */}
           <BrandMark mark="ant" className="pointer-events-none absolute right-6 bottom-full hidden w-16 lg:block" />
-          <Card>
-            <CardHeader>
-              <CardTitle role="heading" aria-level={2}>Needs attention</CardTitle>
-              <CardDescription>Budgets near or over their limit</CardDescription>
-              <CardAction>
-                <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/budgets" />}>All budgets</Button>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              {budgets.loading ? <LoadingItems rows={2} progress /> : attention.length ? (
+          {/* Only when a budget is near or over its limit: nothing to look at means no card at all
+              (and no loading placeholder, so a card never flashes in and back out). */}
+          {attention.length > 0 && (
+            <Card className="order-2 lg:order-none">
+              <CardHeader>
+                <CardTitle role="heading" aria-level={2}>Needs attention</CardTitle>
+                <CardDescription>Budgets near or over their limit</CardDescription>
+                <CardAction>
+                  <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/budgets" />}>All budgets</Button>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
                 <ItemGroup>
                   {attention.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} />)}
                 </ItemGroup>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {(budgets.data ?? []).some((b) => b.categoryId)
-                    ? 'All budgets are on track.'
-                    : 'No category budgets yet. Give a category a limit and it shows up here when spending gets close.'}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-          </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="order-4 lg:order-none">
             <CardHeader>
