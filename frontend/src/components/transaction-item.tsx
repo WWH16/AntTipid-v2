@@ -6,7 +6,6 @@ import { CategoryMedia } from '@/components/category-icon'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
-import { useIsMobile } from '@/hooks/use-mobile'
 import { done } from '@/lib/done'
 import { money } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -53,7 +52,6 @@ const SWIPE_ACTION = 'h-full flex-1 flex-col gap-1 rounded-none text-xs'
 export function TransactionItem({ t }: { t: Transaction }) {
   const { openDetail, openAdd } = useApp()
   const { category, wallet } = useRefData()
-  const isMobile = useIsMobile()
   const [offset, setOffset] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -103,7 +101,7 @@ export function TransactionItem({ t }: { t: Transaction }) {
         </div>
       )}
       <Item
-        size={isMobile ? 'xs' : 'default'}
+        size="xs"
         render={
           <button
             type="button"
@@ -119,12 +117,12 @@ export function TransactionItem({ t }: { t: Transaction }) {
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}
         style={{ transform: `translateX(${offset}px)` }}
-        className={cn('relative touch-pan-y bg-card text-left hover:bg-muted', !dragging && 'transition-transform duration-200 ease-out')}
+        className={cn('relative touch-pan-y bg-card py-1.5 text-left hover:bg-muted', !dragging && 'transition-transform duration-200 ease-out')}
       >
         <CategoryMedia category={category(t.categoryId)} kind={t.kind} />
         <ItemContent className="min-w-0">
-          <ItemTitle className="block truncate">{t.title}</ItemTitle>
-          <ItemDescription>{description}</ItemDescription>
+          <ItemTitle className="block truncate leading-tight">{t.title}</ItemTitle>
+          <ItemDescription className="line-clamp-1 leading-tight">{description}</ItemDescription>
         </ItemContent>
         <ItemActions><SignedAmount t={t} /></ItemActions>
       </Item>
