@@ -1,6 +1,12 @@
-import { useId, type ComponentProps } from 'react'
+import { useId, useRef, type ComponentProps, type MouseEvent } from 'react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+
+/** Whether the pointer is on the ant: its box on screen, padded 8px so a small, moving target is easy to land on. */
+function hitsAnt(walker: HTMLElement | null, e: MouseEvent) {
+  const r = walker?.firstElementChild?.getBoundingClientRect()
+  return !!r && e.clientX > r.left - 8 && e.clientX < r.right + 8 && e.clientY > r.top - 8 && e.clientY < r.bottom + 8
+}
 
 /**
  * The one dark-green card per page (Home "left to spend", Budgets "whole month").
@@ -10,6 +16,36 @@ import { cn } from '@/lib/utils'
  */
 export function HeroCard({ className, children, ...props }: ComponentProps<typeof Card>) {
   const id = useId().replace(/[^\w-]/g, '')
+  const walker = useRef<HTMLDivElement>(null)
+  const bolting = useRef(false)
+
+  // The ant sits under the card's content, so the card listens and checks whether the pointer is on it.
+  // Hover (mouse only): it stops mid-stride and its feelers tap fast, sniffing the cursor; it walks on once the cursor leaves.
+  // Click or tap: it startles and bolts, every part sped up together (so walk, turn and gait stay in step), easing
+  // back to a walk over 1.4s. Reduced motion: no animations, so both are no-ops.
+  function sniff(on: boolean) {
+    if (!walker.current || bolting.current) return
+    for (const a of walker.current.getAnimations({ subtree: true })) {
+      if ((a as CSSAnimation).animationName === 'ant-feel') a.playbackRate = on ? 3 : 1
+      else if (on) a.pause()
+      else a.play()
+    }
+  }
+  function bolt() {
+    if (!walker.current || bolting.current) return
+    sniff(false)
+    bolting.current = true
+    const anims = walker.current.getAnimations({ subtree: true })
+    const start = performance.now()
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / 1400, 1)
+      for (const a of anims) a.playbackRate = 1 + 7 * (1 - p) ** 2
+      if (p < 1) requestAnimationFrame(tick)
+      else bolting.current = false
+    }
+    requestAnimationFrame(tick)
+  }
+
   return (
     <Card
       className={cn(
@@ -20,6 +56,9 @@ export function HeroCard({ className, children, ...props }: ComponentProps<typeo
         '[&_[data-slot=skeleton]]:bg-primary-foreground/15',
         className,
       )}
+      onPointerMove={(e) => e.pointerType === 'mouse' && sniff(hitsAnt(walker.current, e))}
+      onPointerLeave={() => sniff(false)}
+      onClick={(e) => hitsAnt(walker.current, e) && bolt()}
       {...props}
     >
       {children}
@@ -43,7 +82,7 @@ export function HeroCard({ className, children, ...props }: ComponentProps<typeo
       </svg>
       {/* The ant patrols the top edge (index.css, .ant-walk): the track is the card minus the ant's width, so
           translating it by its own width carries the ant from the left edge to the right one. */}
-      <div aria-hidden className="ant-walk pointer-events-none absolute top-0 right-20 left-0 -z-10">
+      <div ref={walker} aria-hidden className="ant-walk pointer-events-none absolute top-0 right-20 left-0 -z-10">
         <svg viewBox="0 0 100 60" className="ant w-20 -scale-y-100 text-sidebar-primary opacity-20">
           <pattern id={`${id}a`} width="2.4" height="2.4" patternUnits="userSpaceOnUse">
             <path d="M1.2 .1L2.3 1.2L1.2 2.3L.1 1.2Z" fill="currentColor" />
