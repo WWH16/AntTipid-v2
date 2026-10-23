@@ -937,23 +937,20 @@
   width: 36px;
 }
 
-/* Touch screens: 44px minimum hit area on controls (WCAG 2.5.5); tabs stay 36px inside their strip. */
+/* Touch screens: 44px minimum hit area on controls (WCAG 2.5.5) without changing how big they look,
+   so a phone renders the same as a narrow desktop window. An invisible ::before pads the tap area
+   out to 44px on any side where the control is smaller. Menu rows grow for real: they're stacked lists. */
 @media (pointer: coarse) {
-  [data-slot=button], [data-slot=select-trigger], [data-slot=toggle-group-item], [data-slot=dropdown-menu-trigger] {
+  :is([data-slot=button], [data-slot=select-trigger], [data-slot=toggle-group-item], [data-slot=dropdown-menu-trigger]):not(.absolute, .fixed, .sticky) {
+    position: relative;
+  }
+  :is([data-slot=button], [data-slot=select-trigger], [data-slot=toggle-group-item], [data-slot=dropdown-menu-trigger], [data-slot=tabs-trigger])::before {
+    content: '';
+    position: absolute;
+    inset-block: min(0px, (100% - 44px) / 2);
+    inset-inline: min(0px, (100% - 44px) / 2);
+  }
+  [data-slot=select-item], [data-slot=dropdown-menu-item] {
     min-height: 44px;
-    min-width: 44px;
-  }
-  [data-slot=input], [data-slot=input-group], [data-slot=select-item], [data-slot=dropdown-menu-item] {
-    min-height: 44px;
-  }
-  /* Input inside an input group: group border is 1px each side. */
-  [data-slot=input-group-control] {
-    min-height: 42px;
-  }
-  [data-slot=tabs-list] {
-    height: auto;
-  }
-  [data-slot=tabs-trigger] {
-    min-height: 36px;
   }
 }

@@ -121,8 +121,8 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
           <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
             {/* Compact on purpose: overrides the 36px tab rule so the switch stays small in the card corner. */}
             <TabsList aria-label="Spending period" className="h-7! p-0.5">
-              <TabsTrigger value="week" className="min-h-0! px-2 text-xs">Week</TabsTrigger>
-              <TabsTrigger value="month" className="min-h-0! px-2 text-xs">Month</TabsTrigger>
+              <TabsTrigger value="week" className="px-2 text-xs">Week</TabsTrigger>
+              <TabsTrigger value="month" className="px-2 text-xs">Month</TabsTrigger>
             </TabsList>
           </Tabs>
         </CardAction>

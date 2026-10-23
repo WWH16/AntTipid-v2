@@ -8,10 +8,8 @@ import { currentMonth, money, monthLabel, shiftMonth } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { MonthHistory } from '@/types'
 
-// Small to the eye, 44px to the thumb: the visible control stays compact and an invisible ::after
-// pads the tap area out to 44px. One size everywhere: the pill is 38px tall on phones and desktops alike.
-const HIT = 'relative after:absolute after:-inset-1.5'
-const ARROW = `${HIT} size-8! min-h-0! min-w-0! rounded-full`
+// One size everywhere: the pill is 38px tall on phones and desktops alike (index.css pads touch targets to 44px).
+const ARROW = 'size-8! rounded-full'
 
 /**
  * Month picker that stays pinned to the top while the page scrolls, so the month being viewed
@@ -67,7 +65,7 @@ export function MonthSwitcher({ month, onChange }: { month: string; onChange: (m
         </div>
         {month < now && (
           // Same height and outline as the month pill beside it, so it reads as a button.
-          <Button variant="outline" className={`${HIT} h-9.5! min-h-0! min-w-0! rounded-full px-3 text-primary after:-inset-y-1`} onClick={() => go(now)}>
+          <Button variant="outline" className="h-9.5! rounded-full px-3 text-primary" onClick={() => go(now)}>
             This month
           </Button>
         )}
@@ -111,7 +109,7 @@ function MonthPicker({ month, onChange, history, first, triggerRef }: {
             variant="ghost"
             // Fixed width (fits "Sep 2026" on phones, "September 2026" from sm up), so the arrows never move as the month
             // changes. Phones get the short name so the pill and "This month" fit side by side on a 360px screen.
-            className="relative h-8! min-h-0! w-28 gap-1.5 rounded-full px-2 font-semibold after:absolute after:-inset-y-1.5 after:inset-x-0 sm:w-40"
+            className="h-8! w-28 gap-1.5 rounded-full px-2 font-semibold sm:w-40"
           />
         }
       >
