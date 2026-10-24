@@ -23,3 +23,13 @@ export function GoogleIcon(props: ComponentProps<'svg'>) {
     </svg>
   )
 }
+
+/** Facebook's "f" in its blue circle, as Meta's login branding requires. Decorative: the button says "Facebook". */
+export function FacebookIcon(props: ComponentProps<'svg'>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...props}>
+      <circle cx="12" cy="12" r="12" fill="#0866FF" />
+      <path fill="#fff" d="M16.67 15.47 17.2 12h-3.33V9.75c0-.95.47-1.87 1.95-1.87h1.51V4.92s-1.37-.23-2.69-.23c-2.74 0-4.53 1.66-4.53 4.66V12H7.08v3.47h3.03V24h3.75v-8.53h2.81z" />
+    </svg>
+  )
+}

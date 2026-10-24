@@ -1,4 +1,5 @@
-// Public privacy policy, linked from the sign-in screen and from Google's consent screen (Google Auth Platform > Branding).
+// Public privacy policy, linked from the sign-in screen, Google's consent screen (Google Auth Platform > Branding)
+// and Meta's app settings (App settings > Basic: privacy policy and data deletion URLs).
 import { LegalPage, Mail, Section } from '@/components/legal-page'
 
 export function PrivacyPage() {
@@ -6,12 +7,12 @@ export function PrivacyPage() {
     <LegalPage
       title="Privacy policy"
       path="/privacy"
-      updated="October 22, 2026"
+      updated="October 24, 2026"
       intro="AntTipid is a personal expense and budget tracker. This page explains what it keeps about you, why, and how to have it deleted."
     >
       <Section title="What AntTipid keeps">
         <ul>
-          <li><span className="text-foreground">Your account:</span> your name and email address. If you sign in with Google, Google shares your name, email address and profile picture with AntTipid. The app only uses your name and email.</li>
+          <li><span className="text-foreground">Your account:</span> your name and email address. If you sign in with Google or Facebook, it shares your name, email address and profile picture with AntTipid. The app only uses your name and email.</li>
           <li><span className="text-foreground">What you enter:</span> wallets, categories, transactions, budgets, and receipt photos and items you attach to a transaction.</li>
         </ul>
         <p>AntTipid has no ads and no analytics or tracking tools, and it never sells or rents your information.</p>

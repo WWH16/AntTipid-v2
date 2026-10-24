@@ -42,7 +42,7 @@ const FEATURES = [
 ]
 
 const STEPS = [
-  { title: 'Create your free account', body: 'Sign up with your email or continue with Google. Common categories like food, transport and bills are ready for you.' },
+  { title: 'Create your free account', body: 'Sign up with your email or continue with Google or Facebook. Common categories like food, transport and bills are ready for you.' },
   { title: 'Add wallets and budgets', body: 'Add the wallets you use and their current balances, then set a budget for the month and for the categories you want to watch.' },
   { title: 'Log as you go', body: 'Type an amount and pick a category, or scan the receipt. Home updates what’s left to spend right away.' },
 ]

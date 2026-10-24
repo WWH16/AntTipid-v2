@@ -18,10 +18,10 @@ export const api = {
       if (error) throw new Error(authMessage(error))
       return toUser(data.user)
     },
-    /** Leaves the page for Google; Supabase brings the user back to /sign-in with a session (or #error_description). */
-    signInWithGoogle: async (): Promise<void> => {
+    /** Leaves the page for Google or Facebook; Supabase brings the user back to /sign-in with a session (or #error_description). */
+    signInWithProvider: async (provider: 'google' | 'facebook'): Promise<void> => {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google', options: { redirectTo: `${location.origin}/sign-in` },
+        provider, options: { redirectTo: `${location.origin}/sign-in` },
       })
       if (error) throw new Error(authMessage(error))
     },

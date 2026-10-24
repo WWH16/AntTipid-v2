@@ -109,7 +109,7 @@ export function LoadingPage() {
   )
 }
 
-/** The sign-in screen while its code downloads or the session is read: logo, then the card with the Google button and two fields.
+/** The sign-in screen while its code downloads or the session is read: logo, then the card with the Google and Facebook buttons and two fields.
  *  Bars sit inside the line boxes of the text they stand for (my-1), so the real card lands at the same height. */
 export function LoadingAuth() {
   return (
@@ -122,7 +122,10 @@ export function LoadingAuth() {
             <Skeleton className="my-1 h-3 w-56 max-w-full" />
           </CardHeader>
           <CardContent className="grid gap-6">
-            <Skeleton className="h-9 w-full rounded-lg" />
+            <div className="grid gap-3">
+              <Skeleton className="h-9 w-full rounded-lg" />
+              <Skeleton className="h-9 w-full rounded-lg" />
+            </div>
             {/* The "or" divider is one 16px line of text-xs. */}
             <Skeleton className="mx-auto my-1 h-2 w-8" />
             {/* The password label row is 2px taller: "Forgot password?" sits beside it. */}

@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, Loader2, Mail } from 'lucide-react'
 import { useApp } from '@/app-state'
 import { api } from '@/api/endpoints'
-import { GoogleIcon } from '@/components/brand-icons'
+import { FacebookIcon, GoogleIcon } from '@/components/brand-icons'
 import { LogoWithTagline } from '@/components/logo'
 import { LoadingAuth } from '@/components/states'
 import { TURNSTILE_SITE_KEY, Turnstile } from '@/components/turnstile'
@@ -37,7 +37,7 @@ export function SignInPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const isResetLink = searchParams.get('mode') === 'reset'
-  // Supabase sends expired links and unfinished Google sign-ins back with #error_description=... instead of a session.
+  // Supabase sends expired links and unfinished Google or Facebook sign-ins back with #error_description=... instead of a session.
   const linkError = new URLSearchParams(location.hash.slice(1)).get('error_description')
   const [mode, setMode] = useState<AuthMode>(() =>
     linkError ? (isResetLink ? 'forgot' : 'signIn')
@@ -110,13 +110,13 @@ export function SignInPage() {
     }
   }
 
-  /** On success the browser is already leaving for Google, so busy stays on. */
-  async function continueWithGoogle() {
+  /** On success the browser is already leaving for the provider, so busy stays on. */
+  async function continueWith(provider: 'google' | 'facebook') {
     setError('')
     setNotice('')
     setBusy(true)
     try {
-      await api.auth.signInWithGoogle()
+      await api.auth.signInWithProvider(provider)
     } catch (err) {
       setError((err as Error).message)
       setBusy(false)
@@ -257,9 +257,14 @@ export function SignInPage() {
           <CardContent className="grid gap-5 sm:gap-6">
             {(isSignIn || isSignUp) && (
               <>
-                <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={continueWithGoogle}>
-                  <GoogleIcon /> Continue with Google
-                </Button>
+                <div className="grid gap-3">
+                  <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={() => continueWith('google')}>
+                    <GoogleIcon /> Continue with Google
+                  </Button>
+                  <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={() => continueWith('facebook')}>
+                    <FacebookIcon /> Continue with Facebook
+                  </Button>
+                </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <Separator className="flex-1" /> or <Separator className="flex-1" />
                 </div>
