@@ -306,6 +306,22 @@ function SectionHeading({ id, title, body }: { id: string; title: string; body?:
 
 export function LandingPage() {
   useEffect(() => { document.title = 'AntTipid: expense and budget tracker' }, [])
+  // The scrollbar's clear track shows the page behind it, light even beside the full-width dark sections, so it reads
+  // as a pale strip cut down their right edge. While the middle of the screen is in a dark section, tint the gutter
+  // forest to match (index.css, html[data-gutter]).
+  useEffect(() => {
+    const root = document.documentElement
+    const dark = new Set<Element>()
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) dark[e.isIntersecting ? 'add' : 'delete'](e.target)
+      root.toggleAttribute('data-gutter', dark.size > 0)
+    }, { rootMargin: '-50% 0px -50% 0px' })
+    for (const el of document.querySelectorAll('[data-dark]')) io.observe(el)
+    return () => {
+      io.disconnect()
+      root.removeAttribute('data-gutter')
+    }
+  }, [])
   // The section picked from the phone menu: when the menu closes, focus moves to that section's heading so Tab carries on from there.
   const jumpTo = useRef<string | null>(null)
   return (
@@ -421,7 +437,7 @@ export function LandingPage() {
         </section>
 
         {/* Preview */}
-        <section id="preview" aria-labelledby="preview-title" className="tour bg-primary canvas-dark text-primary-foreground">
+        <section id="preview" data-dark aria-labelledby="preview-title" className="tour bg-primary canvas-dark text-primary-foreground">
           <div className="tour-stage mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
             <div className="grid max-w-2xl gap-3">
               <h2 id="preview-title" className="text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">A look inside the app</h2>
@@ -577,7 +593,7 @@ export function LandingPage() {
         {/* Final CTA */}
         <section aria-labelledby="cta-title">
           {/* px-8: while .panel-open clips the panel to a card 1rem in from each side, the text keeps 1rem of room inside it. */}
-          <div className="panel-open grid justify-items-center gap-5 bg-primary canvas-dark px-8 py-14 text-center text-primary-foreground sm:gap-6 sm:py-20 md:py-28">
+          <div data-dark className="panel-open grid justify-items-center gap-5 bg-primary canvas-dark px-8 py-14 text-center text-primary-foreground sm:gap-6 sm:py-20 md:py-28">
             <h2 id="cta-title" className="max-w-xl text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">
               Make every sahod last the whole month.
             </h2>
@@ -600,7 +616,7 @@ export function LandingPage() {
       {/* A dark mast under the closing panel: the privacy promise and the links, then the wordmark across the
           container, then the legal line. The rule on the footer itself runs edge to edge, so the panel and the mast
           stay two blocks on any screen width (a container-wide rule stopped short of the edges on wide screens). */}
-      <footer className="border-t border-primary-foreground/15 bg-primary canvas-dark-flat text-primary-foreground">
+      <footer data-dark className="border-t border-primary-foreground/15 bg-primary canvas-dark-flat text-primary-foreground">
         <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 pt-12 pb-8 sm:px-6 md:gap-14 md:pt-16">
           <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
             <p className="max-w-md text-lg leading-snug text-balance">Your records are private to your account. AntTipid has no ads and doesn’t sell your data.</p>

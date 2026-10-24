@@ -153,7 +153,15 @@
     @apply font-sans;
     /* Forest thumb, softened toward the page so it doesn't outweigh the content; inherits to every scroller. */
     scrollbar-color: color-mix(in oklab, var(--primary) 55%, var(--background)) transparent;
+    /* Reserve the bar's width on every page, so moving between a page that scrolls and one that doesn't (landing to
+       sign-in) never shifts the layout sideways. */
+    scrollbar-gutter: stable;
     }
+  /* The clear track shows the root's background: forest while a dark section fills the screen (set on the landing page),
+     so the bar runs on in the section's colour instead of a pale strip. Without it the body's paper shows, as before. */
+  html[data-gutter] {
+    background-color: var(--primary);
+  }
   /* Browser-drawn surfaces follow the palette too. */
   ::selection {
     background: var(--accent);
