@@ -153,14 +153,13 @@
     @apply font-sans;
     /* Forest thumb, softened toward the page so it doesn't outweigh the content; inherits to every scroller. */
     scrollbar-color: color-mix(in oklab, var(--primary) 55%, var(--background)) transparent;
-    /* Reserve the bar's width on every page, so moving between a page that scrolls and one that doesn't (landing to
-       sign-in) never shifts the layout sideways. */
-    scrollbar-gutter: stable;
     }
-  /* The clear track shows the root's background: forest while a dark section fills the screen (set on the landing page),
-     so the bar runs on in the section's colour instead of a pale strip. Without it the body's paper shows, as before. */
-  html[data-gutter] {
-    background-color: var(--primary);
+  /* Mouse screens: the page's own bar is drawn by PageScrollbar as a floating thumb, with no gutter strip beside
+     full-width sections and no sideways shift between pages that scroll and pages that don't. Phones keep theirs. */
+  @media (pointer: fine) {
+    html {
+      scrollbar-width: none;
+    }
   }
   /* Browser-drawn surfaces follow the palette too. */
   ::selection {
@@ -170,6 +169,29 @@
   input, textarea {
     caret-color: var(--primary);
     accent-color: var(--primary);
+  }
+}
+
+/* The page's floating scrollbar thumb (PageScrollbar): the native thumb's forest, a pill on the right edge, darker
+   under the pointer and while dragged. */
+.page-thumb {
+  position: fixed;
+  top: 0;
+  right: 3px;
+  z-index: 60;
+  width: 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--primary) 55%, var(--background));
+  touch-action: none;
+  transition: background-color .15s;
+}
+.page-thumb:hover,
+.page-thumb:active {
+  background: color-mix(in oklab, var(--primary) 75%, var(--background));
+}
+@media (pointer: coarse) {
+  .page-thumb {
+    display: none;
   }
 }
 
