@@ -377,6 +377,8 @@
     @media (height >= 34rem) {
       .tour {
         view-timeline: --tour block;
+        /* The step nodes' size: the node itself, and where the rails and the step text sit around it. */
+        --node: 1.5rem;
         height: 340svh;
       }
       /* Phones: the heading scrolls away and only the steps and the phone pin, so the phone gets the screen's height. */
@@ -417,12 +419,12 @@
          current caption; from md each node and rail sits beside its caption in the step list. --i is the step. */
       .tour-node {
         flex: none;
-        width: 1.25rem;
-        height: 1.25rem;
+        width: var(--node);
+        height: var(--node);
         border-radius: 999px;
-        font-size: .6875rem;
+        font-size: .8125rem;
         font-weight: 700;
-        line-height: 1.25rem;
+        line-height: var(--node);
         text-align: center;
         color: rgb(255 255 255 / .7);
         background: var(--primary);
@@ -691,21 +693,22 @@
       }
 
       @media (width >= 48rem) {
-        /* The heading joins the step list on the left, so the phone can take the stage's full height on the right. */
+        /* The heading joins the step list on the left, so the phone can take the stage's full height on the right. The
+           step list sits centred in the stage's height (the empty first and last rows share what is left), so a tall
+           tablet or monitor doesn't leave it stacked at the top over an empty lower half. */
         .tour-stage {
           position: sticky;
           top: 4rem;
           height: calc(100svh - 4rem);
           overflow: clip;
           grid-template-columns: minmax(0, 1fr) auto;
-          grid-template-rows: repeat(4, auto) minmax(0, 1fr);
+          grid-template-rows: minmax(0, 1fr) repeat(4, auto) minmax(0, 1fr);
           column-gap: 5rem;
           row-gap: 2.25rem;
           padding-block: 1.5rem;
         }
         .tour-stage > :first-child {
-          grid-area: 1 / 1;
-          margin-top: 1.5rem;
+          grid-area: 2 / 1;
         }
         .tour-grid {
           display: contents;
@@ -715,25 +718,28 @@
         }
         .tour-phone,
         .tour-grid > figure > .tour-screen {
-          grid-area: 1 / 2 / 6 / 3;
-          /* At most 42% of the width, so tall tablets keep room for the step list; centred when that cuts it short. */
-          height: min(calc(100% - 20px), calc(42vw * 19.5 / 9));
+          grid-area: 1 / 2 / -1 / 3;
+          /* At most 42% of the width, so tall tablets keep room for the step list, and 56rem tall (about 410px wide),
+             so a big monitor's phone doesn't outgrow the step list beside it; centred when either cuts it short. */
+          height: min(calc(100% - 20px), calc(42vw * 19.5 / 9), 56rem);
           align-self: center;
           margin-top: 0;
         }
         /* The step list: every caption shows, each with a node; a lit line runs node to node while the screens slide. */
         .tour-grid > figure > figcaption {
+          /* The title's line height, which places the node level with the title and the rail between nodes. */
+          --title-lh: 2rem;
           grid-column: 1;
           align-self: start;
           position: relative;
           max-width: 26rem;
           gap: .375rem;
-          padding-left: 2.25rem;
+          padding-left: calc(var(--node) + 1rem);
           animation: none;
         }
-        .tour-grid > figure:nth-of-type(1) > figcaption { grid-row: 2; }
-        .tour-grid > figure:nth-of-type(2) > figcaption { grid-row: 3; }
-        .tour-grid > figure:nth-of-type(3) > figcaption { grid-row: 4; }
+        .tour-grid > figure:nth-of-type(1) > figcaption { grid-row: 3; }
+        .tour-grid > figure:nth-of-type(2) > figcaption { grid-row: 4; }
+        .tour-grid > figure:nth-of-type(3) > figcaption { grid-row: 5; }
         /* The node sits level with the title; the rail runs down to the next node, stopping .25rem short of each. */
         .tour-grid > figure > figcaption > :is(.tour-node, .tour-rail) {
           display: block;
@@ -741,24 +747,23 @@
         }
         .tour-grid > figure > figcaption > .tour-node {
           left: 0;
-          top: .375rem;
+          top: calc((var(--title-lh) - var(--node)) / 2);
         }
         .tour-grid > figure > figcaption > .tour-rail {
           --rail-to: to bottom;
           --rail-empty: 100% 0%;
-          left: calc(.625rem - 2px);
-          top: 1.875rem;
-          bottom: -2.375rem;
+          left: calc(var(--node) / 2 - 2px);
+          top: calc((var(--title-lh) + var(--node)) / 2 + .25rem);
+          bottom: calc((var(--title-lh) - var(--node)) / -2 - 2rem);
           width: 4px;
         }
         .tour-grid > figure:nth-of-type(3) .tour-rail {
           display: none;
         }
-        /* Step text grows with the screen: tablets' narrow step column gets the smaller sizes. The title's line stays
-           2rem, so the node stays level with it. */
+        /* Step text grows with the screen: tablets' narrow step column gets the smaller sizes, laptops 28px titles. */
         .tour-grid > figure > figcaption > :nth-child(3) {
-          font-size: clamp(1.375rem, .75rem + 1.5vw, 1.75rem);
-          line-height: 2rem;
+          font-size: var(--title-size, clamp(1.375rem, .75rem + 1.5vw, 1.75rem));
+          line-height: var(--title-lh);
           letter-spacing: -.02em;
           animation: title-on linear both;
           animation-timeline: --tour;
@@ -774,6 +779,18 @@
         .tour-grid > figure > figcaption > :last-child {
           font-size: clamp(.9375rem, .8rem + .35vw, 1.0625rem);
           line-height: 1.625;
+        }
+        /* Big monitors (1440 and up): the step list keeps growing with the screen, up to 34px titles and 20px text, so
+           it holds its own beside the phone instead of staying at laptop size. */
+        @media (width >= 90rem) {
+          .tour-grid > figure > figcaption {
+            --title-size: clamp(1.75rem, .25rem + 1.75vw, 2.125rem);
+            --title-lh: calc(var(--title-size) * 1.15);
+            max-width: 30rem;
+          }
+          .tour-grid > figure > figcaption > :last-child {
+            font-size: clamp(1.0625rem, .5rem + .62vw, 1.25rem);
+          }
         }
       }
     }
