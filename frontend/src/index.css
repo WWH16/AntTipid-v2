@@ -242,6 +242,18 @@
   }
 }
 
+/* Hero phone. Its app page keeps one set of proportions at any phone size (useScreenZoom sets --screen-zoom; the status
+   bar stays real size, as on the tour phone). From md it sits beside the copy: the hero's 21rem at most, but no wider than
+   40% of the screen and short enough to sit whole in the first screen under the header. */
+.hero-screen > :not(:first-child) {
+  zoom: var(--screen-zoom, 1);
+}
+@media (width >= 48rem) {
+  .hero-phone {
+    width: min(21rem, 40vw, calc((100svh - 9.5rem) * 9 / 19.5 + 10px));
+  }
+}
+
 /* Landing motion. Every element's resting state is its finished state, so nothing hides if an animation never runs.
    Hero (on load): the copy rises in reading order, the phone lands flat out of a tilt, then its screen behaves like Home:
    both bars fill to today's numbers and the recent transactions log in, newest last, at the top.
@@ -281,11 +293,11 @@
     animation: log-in .5s cubic-bezier(.16, 1, .3, 1) calc(1.5s + var(--i, 0) * 160ms) both;
   }
   /* The screen's sequence waits, held at its start, until most of the phone is on screen (TryIt sets data-play).
-     Below lg the phone sits under the copy and is usually scrolled to after it has landed, so the sequence starts sooner. */
+     Below md the phone sits under the copy and is usually scrolled to after it has landed, so the sequence starts sooner. */
   .phone-land:not([data-play]) :is([data-slot=progress-indicator], .log-in) {
     animation-play-state: paused;
   }
-  @media (width < 64rem) {
+  @media (width < 48rem) {
     .phone-land [data-slot=progress-indicator] { animation-delay: .15s; }
     .phone-land [data-slot=progress] + [data-slot=progress] [data-slot=progress-indicator] { animation-delay: .35s; }
     .log-in { animation-delay: calc(.6s + var(--i, 0) * 160ms); }
@@ -323,67 +335,98 @@
         view-timeline: --tour block;
         height: 340svh;
       }
+      /* Phones: the heading scrolls away and only the steps and the phone pin, so the phone gets the screen's height. */
       .tour-stage {
+        height: 100%;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 1rem;
+        padding-bottom: 0;
+      }
+      .tour-grid {
         position: sticky;
         top: 4rem;
         height: calc(100svh - 4rem);
-        overflow: clip;
-        grid-template-rows: auto minmax(0, 1fr);
-        gap: 1.25rem;
-        padding-block: 1.5rem;
-      }
-      .tour-grid {
-        min-height: 0;
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: auto auto minmax(0, 1fr);
-        gap: 1rem;
+        gap: .75rem;
+        padding-block: 1rem;
       }
       .tour-grid > figure {
         display: contents;
       }
-      /* Per screen: its index, when its moment starts, when its node lights, and its in/out states (phone captions). */
+      /* Per screen: its index, when its moment starts, and its in/out states (phone captions). */
       /* --s: when a screen whose content runs past the phone scrolls down to its end. */
-      .tour-grid > figure:nth-of-type(1) { --i: 0; --m: 2%; --s: 13%; --n: 0%; --in-o: 1; --in-y: 0; --in-s: 1; }
-      .tour-grid > figure:nth-of-type(2) { --i: 1; --m: 43%; --s: 51%; --n: 41.667%; }
-      .tour-grid > figure:nth-of-type(3) { --i: 2; --m: 76%; --s: 84%; --n: 75%; --out-o: 1; --out-y: 0; --out-s: 1; }
+      .tour-grid > figure:nth-of-type(1) { --i: 0; --m: 2%; --s: 13%; --in-o: 1; --in-y: 0; --in-s: 1; }
+      .tour-grid > figure:nth-of-type(2) { --i: 1; --m: 43%; --s: 51%; }
+      .tour-grid > figure:nth-of-type(3) { --i: 2; --m: 76%; --s: 84%; --out-o: 1; --out-y: 0; --out-s: 1; }
+      /* When a step's node and title light: at the start for the first, then as each slide ends (41.667%, 75%). */
+      .tour-grid > figure,
+      .tour-progress > * {
+        --n: calc(min(var(--i), 1) * 8.333% + var(--i) * 33.333%);
+      }
       /* Reports runs its cards in turn, top to bottom, while the screen scrolls down to them. */
       .tour-grid .tour-mid { --m: 83%; }
       .tour-grid .tour-late { --m: 90%; }
 
-      /* Phones: a three-part progress bar, then the current caption. */
+      /* The steps: a numbered node per screen and a rail between nodes, the same at every size. A rail fills while the
+         screens slide, and the node it reaches lights as the next screen arrives. Phones show them as a row above the
+         current caption; from md each node and rail sits beside its caption in the step list. --i is the step. */
+      .tour-node {
+        flex: none;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 999px;
+        font-size: .6875rem;
+        font-weight: 700;
+        line-height: 1.25rem;
+        text-align: center;
+        color: rgb(255 255 255 / .7);
+        background: var(--primary);
+        box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .3);
+        animation: node-on cubic-bezier(.16, 1, .3, 1) both;
+        animation-timeline: --tour;
+        animation-range: contain calc(var(--n) - 4%) contain var(--n);
+      }
+      @keyframes node-on {
+        to {
+          color: var(--primary);
+          background: #9FE870;
+          box-shadow: inset 0 0 0 1.5px #9FE870, 0 0 0 4px rgb(159 232 112 / .16), 0 0 12px rgb(159 232 112 / .5);
+        }
+      }
+      .tour-rail {
+        border-radius: 999px;
+        background: linear-gradient(var(--rail-to, to right), #9FE870 55%, #E6FBD6) no-repeat 0 0 / var(--rail-empty, 0% 100%), rgb(255 255 255 / .16);
+        animation: rail-fill cubic-bezier(.65, 0, .35, 1) both;
+        animation-timeline: --tour;
+        animation-range: contain calc(25% + var(--i) * 33.333%) contain calc(41.667% + var(--i) * 33.333%);
+      }
+      @keyframes rail-fill {
+        to { background-size: 100% 100%, auto; }
+      }
       .tour-progress {
-        display: grid;
+        display: flex;
         grid-area: 1 / 1;
-        grid-template-columns: repeat(3, 1fr);
+        align-items: center;
         gap: .375rem;
       }
-      .tour-progress > span {
-        height: 3px;
-        border-radius: 999px;
-        background: rgb(255 255 255 / .18);
-        overflow: hidden;
+      .tour-progress > .tour-rail {
+        flex: 1;
+        height: 4px;
       }
-      .tour-progress > span::after {
-        content: "";
-        display: block;
-        height: 100%;
-        background: #9FE870;
-        transform-origin: left;
-        animation: rail-fill linear both;
-        animation-timeline: --tour;
-      }
-      .tour-progress > span:nth-child(1)::after { animation-range: contain 0% contain 33.333%; }
-      .tour-progress > span:nth-child(2)::after { animation-range: contain 33.333% contain 66.667%; }
-      .tour-progress > span:nth-child(3)::after { animation-range: contain 66.667% contain 100%; }
-      @keyframes rail-fill {
-        from { transform: scale(0, 1); }
-      }
+
+      /* Phones: the current caption under the steps, kept compact. */
       .tour-grid > figure > figcaption {
         grid-area: 2 / 1;
         align-self: end;
+        gap: .125rem;
         animation: screen-swap linear both;
         animation-timeline: --tour;
         animation-range: contain calc(var(--i) * 33.333%) contain calc((var(--i) + 1) * 33.333%);
+      }
+      .tour-grid > figure > figcaption > :last-child {
+        font-size: .8125rem;
+        line-height: 1.4;
       }
       @keyframes screen-swap {
         0% { opacity: var(--in-o, 0); transform: translateY(var(--in-y, 1rem)) scale(var(--in-s, .98)); }
@@ -398,11 +441,12 @@
         grid-area: 3 / 1;
         justify-self: center;
         align-self: start;
-        height: calc(100% - .75rem);
-        max-width: 100%;
+        /* Fills the stage's height, but never wider than the page's content (so it can't stretch) or 24rem (small
+           tablets, near the hero phone's size). The hero phone's shape and corners. */
+        height: min(calc(100% - 18px), calc(min(100vw - 3.25rem, 24rem) * 19.5 / 9));
         aspect-ratio: 9 / 19.5;
-        margin-top: 6px;
-        border-radius: 2.6rem;
+        margin-top: 9px;
+        border-radius: 2.85rem;
       }
       .tour-phone {
         display: flex;
@@ -410,22 +454,21 @@
         z-index: 2;
         align-items: start;
         justify-content: space-between;
-        padding: .95rem 1.5rem 0 1.75rem;
+        padding: 0 1.75rem;
         color: var(--foreground);
         /* Solid status bar, so a screen scrolled up runs under it rather than through the clock. */
-        background: linear-gradient(var(--background) 2.6rem, transparent 2.6rem);
-        /* The hero phone's frame (black bezel, metal rim, soft green shadow), with a thinner 4px bezel on phones
-           so the screen reads big rather than framed small. */
-        box-shadow: 0 0 0 var(--bz, 4px) #000, 0 0 0 calc(var(--bz, 4px) + 1.5px) var(--input), 0 25px 50px -12px color-mix(in oklab, var(--primary) 25%, transparent);
+        background: linear-gradient(var(--background) 3rem, transparent 3rem);
+        /* The hero phone's frame: 5px black bezel, metal rim, soft green shadow. */
+        box-shadow: 0 0 0 5px #000, 0 0 0 6.5px var(--input), 0 25px 50px -12px color-mix(in oklab, var(--primary) 25%, transparent);
         pointer-events: none;
       }
       .tour-phone::before {
         content: "";
         position: absolute;
-        top: .6rem;
+        top: .7rem;
         left: 50%;
-        width: 32%;
-        height: 1.55rem;
+        width: 5.5rem;
+        height: 1.6rem;
         translate: -50% 0;
         border-radius: 999px;
         background: #000;
@@ -435,7 +478,7 @@
         position: absolute;
         bottom: .5rem;
         left: 50%;
-        width: 36%;
+        width: 7rem;
         height: 4px;
         translate: -50% 0;
         border-radius: 999px;
@@ -451,7 +494,7 @@
         align-items: center;
         padding: .4rem .15rem 1.15rem;
         border-top: 1px solid var(--sidebar-border);
-        border-radius: 0 0 2.6rem 2.6rem;
+        border-radius: 0 0 2.85rem 2.85rem;
       }
       .tour-tabbar > span {
         display: grid;
@@ -513,7 +556,7 @@
          next screen enters at the right edge as the last one leaves at the left. */
       .tour-grid > figure > .tour-screen {
         z-index: 1;
-        padding: 2.9rem .75rem 0;
+        padding: 3.5rem 1rem 0;
         animation: screen-slide linear both;
         animation-timeline: --tour;
         animation-range: contain 0% contain 100%;
@@ -521,8 +564,9 @@
       .tour-grid > figure > .tour-screen {
         container-type: size;
       }
+      /* The page keeps the hero screen's proportions at any phone size (useScreenZoom sets --screen-zoom). */
       .tour-grid > figure > .tour-screen > div > div {
-        zoom: .8;
+        zoom: var(--screen-zoom, .8);
       }
       /* Scrolls by however far the page runs past the phone (none if it fits), stopping clear of the home bar. */
       @keyframes screen-scroll {
@@ -542,9 +586,9 @@
       .tour-grid > figure:nth-of-type(2) > .tour-screen { --t0: 100%; --t1: 0%; --t2: -100%; }
       .tour-grid > figure:nth-of-type(3) > .tour-screen { --t0: 100%; --t1: 100%; --t2: 0%; }
       @keyframes screen-slide {
-        0%, 25% { transform: translateX(var(--t0)); clip-path: inset(0 var(--t0) 0 calc(-1 * var(--t0)) round 2.6rem); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
-        41.667%, 58.333% { transform: translateX(var(--t1)); clip-path: inset(0 var(--t1) 0 calc(-1 * var(--t1)) round 2.6rem); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
-        75%, 100% { transform: translateX(var(--t2)); clip-path: inset(0 var(--t2) 0 calc(-1 * var(--t2)) round 2.6rem); }
+        0%, 25% { transform: translateX(var(--t0)); clip-path: inset(0 var(--t0) 0 calc(-1 * var(--t0)) round 2.85rem); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+        41.667%, 58.333% { transform: translateX(var(--t1)); clip-path: inset(0 var(--t1) 0 calc(-1 * var(--t1)) round 2.85rem); animation-timing-function: cubic-bezier(.65, 0, .35, 1); }
+        75%, 100% { transform: translateX(var(--t2)); clip-path: inset(0 var(--t2) 0 calc(-1 * var(--t2)) round 2.85rem); }
       }
 
       /* Each screen's moment, while it holds. --k staggers rows inside a card, and columns in the chart. */
@@ -605,10 +649,15 @@
       @media (width >= 48rem) {
         /* The heading joins the step list on the left, so the phone can take the stage's full height on the right. */
         .tour-stage {
+          position: sticky;
+          top: 4rem;
+          height: calc(100svh - 4rem);
+          overflow: clip;
           grid-template-columns: minmax(0, 1fr) auto;
           grid-template-rows: repeat(4, auto) minmax(0, 1fr);
           column-gap: 5rem;
           row-gap: 2.25rem;
+          padding-block: 1.5rem;
         }
         .tour-stage > :first-child {
           grid-area: 1 / 1;
@@ -623,12 +672,10 @@
         .tour-phone,
         .tour-grid > figure > .tour-screen {
           grid-area: 1 / 2 / 6 / 3;
-          height: calc(100% - 20px);
-          margin-top: 10px;
-          --bz: 7px;
-        }
-        .tour-grid > figure > .tour-screen > div > div {
-          zoom: .85;
+          /* At most 42% of the width, so tall tablets keep room for the step list; centred when that cuts it short. */
+          height: min(calc(100% - 20px), calc(42vw * 19.5 / 9));
+          align-self: center;
+          margin-top: 0;
         }
         /* The step list: every caption shows, each with a node; a lit line runs node to node while the screens slide. */
         .tour-grid > figure > figcaption {
@@ -643,56 +690,30 @@
         .tour-grid > figure:nth-of-type(1) > figcaption { grid-row: 2; }
         .tour-grid > figure:nth-of-type(2) > figcaption { grid-row: 3; }
         .tour-grid > figure:nth-of-type(3) > figcaption { grid-row: 4; }
-        .tour-node {
+        /* The node sits level with the title; the rail runs down to the next node, stopping .25rem short of each. */
+        .tour-grid > figure > figcaption > :is(.tour-node, .tour-rail) {
           display: block;
           position: absolute;
+        }
+        .tour-grid > figure > figcaption > .tour-node {
           left: 0;
-          top: .5625rem;
-          width: .875rem;
-          height: .875rem;
-          border-radius: 999px;
-          background: var(--primary);
-          box-shadow: inset 0 0 0 2px rgb(255 255 255 / .35);
-          animation: node-on cubic-bezier(.16, 1, .3, 1) both;
-          animation-timeline: --tour;
-          animation-range: contain calc(var(--n) - 4%) contain var(--n);
+          top: .375rem;
         }
-        @keyframes node-on {
-          to {
-            background: #9FE870;
-            box-shadow: inset 0 0 0 2px #9FE870, 0 0 0 5px rgb(159 232 112 / .16), 0 0 16px rgb(159 232 112 / .5);
-          }
+        .tour-grid > figure > figcaption > .tour-rail {
+          --rail-to: to bottom;
+          --rail-empty: 100% 0%;
+          left: calc(.625rem - 2px);
+          top: 1.875rem;
+          bottom: -2.375rem;
+          width: 4px;
         }
-        .tour-link {
-          display: block;
-          position: absolute;
-          left: calc(.4375rem - 1px);
-          top: 1.6875rem;
-          bottom: -2.5625rem;
-          width: 2px;
-          border-radius: 999px;
-          background: rgb(255 255 255 / .16);
-        }
-        .tour-grid > figure:nth-of-type(3) .tour-link {
+        .tour-grid > figure:nth-of-type(3) .tour-rail {
           display: none;
         }
-        .tour-link > span {
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          background: linear-gradient(to bottom, #9FE870 55%, #E6FBD6);
-          box-shadow: 0 0 10px 1px rgb(159 232 112 / .55);
-          animation: link-run both;
-          animation-timing-function: cubic-bezier(.65, 0, .35, 1);
-          animation-timeline: --tour;
-          animation-range: contain calc(25% + var(--i) * 33.333%) contain calc(41.667% + var(--i) * 33.333%);
-        }
-        @keyframes link-run {
-          from { clip-path: inset(0 -12px 100% -12px); }
-          to { clip-path: inset(-12px); }
-        }
+        /* Step text grows with the screen: tablets' narrow step column gets the smaller sizes. The title's line stays
+           2rem, so the node stays level with it. */
         .tour-grid > figure > figcaption > :nth-child(3) {
-          font-size: 1.75rem;
+          font-size: clamp(1.375rem, .75rem + 1.5vw, 1.75rem);
           line-height: 2rem;
           letter-spacing: -.02em;
           animation: title-on linear both;
@@ -707,7 +728,8 @@
           100% { color: var(--on-to, currentColor); }
         }
         .tour-grid > figure > figcaption > :last-child {
-          font-size: 1.0625rem;
+          font-size: clamp(.9375rem, .8rem + .35vw, 1.0625rem);
+          line-height: 1.625;
         }
       }
     }

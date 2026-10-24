@@ -99,6 +99,20 @@ const SAMPLE_SPENDING = [
   { name: 'Groceries', amount: 690 },
 ]
 
+/** Sets --screen-zoom on a phone screen: its width over the hero screen's full width on a phone (326px), so the app page
+    inside keeps one set of proportions however big the phone is drawn. The CSS zooms the page by it. */
+function useScreenZoom() {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(() => el.style.setProperty('--screen-zoom', String(el.clientWidth / 326)))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return ref
+}
+
 const linkClass = 'rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none'
 
 /** Home's "left to spend" card, live on the visitor's own numbers and today's date. */
@@ -126,17 +140,19 @@ function TryIt() {
     io.observe(el)
     return () => io.disconnect()
   }, [])
+  const screen = useScreenZoom()
 
   return (
-    <div className="grid gap-3">
+    // md:w-min: beside the copy, the column is as wide as the phone and the line under it wraps to that.
+    <div className="grid gap-3 md:w-min">
       {/* iPhone-style frame: thin black bezel, metal rim, Dynamic Island, side buttons. Only the inputs and the card are live. */}
-      <div ref={phone} className="phone-land relative mx-auto w-full max-w-[21rem] rounded-[3.25rem] bg-black p-[7px] shadow-2xl ring-[1.5px] shadow-primary/25 ring-input">
+      <div ref={phone} className="phone-land hero-phone relative mx-auto w-full max-w-[21rem] rounded-[3.15rem] bg-black p-[5px] shadow-2xl ring-[1.5px] shadow-primary/25 ring-input">
         <span aria-hidden className="absolute top-[17%] -left-[3px] h-7 w-[3px] rounded-l-sm bg-input" />
         <span aria-hidden className="absolute top-[24%] -left-[3px] h-12 w-[3px] rounded-l-sm bg-input" />
         <span aria-hidden className="absolute top-[33%] -left-[3px] h-12 w-[3px] rounded-l-sm bg-input" />
         <span aria-hidden className="absolute top-[27%] -right-[3px] h-16 w-[3px] rounded-r-sm bg-input" />
 
-        <div className="relative grid aspect-[9/19.5] content-start gap-4 overflow-hidden rounded-[2.85rem] bg-background px-4 pb-8">
+        <div ref={screen} className="hero-screen relative grid aspect-[9/19.5] content-start gap-4 overflow-hidden rounded-[2.85rem] bg-background px-4 pb-8">
           <div aria-hidden className="grid h-12 grid-cols-[1fr_auto_1fr] items-center px-3 text-foreground select-none">
             <span className="text-sm font-semibold tabular-nums">9:41</span>
             <span className="h-[1.6rem] w-[5.5rem] rounded-full bg-black" />
@@ -183,13 +199,14 @@ function TryIt() {
 }
 
 /** One app screen in the preview with its caption. In the pinned tour the screen slides through the phone and the
-    caption joins the step list (its node and link are drawn only there). Without the tour the caption sits above its
+    caption joins the step list (its node and rail are drawn only there). Without the tour the caption sits above its
     screen: one centred column below lg, three across from lg. */
-function PreviewPanel({ title, body, headline, description, children }: { title: string; body: string; headline: string; description?: string; children: ReactNode }) {
+function PreviewPanel({ step, title, body, headline, description, children }: { step: number; title: string; body: string; headline: string; description?: string; children: ReactNode }) {
+  const screen = useScreenZoom()
   return (
     <figure className="mx-auto grid w-full max-w-sm content-start gap-4 lg:max-w-none">
       {/* inert as well as aria-hidden: on narrow screens the receipt table scrolls sideways, and Chrome would make it a Tab stop. */}
-      <div aria-hidden inert className="tour-screen pointer-events-none overflow-hidden rounded-3xl bg-background p-4 text-foreground select-none">
+      <div ref={screen} aria-hidden inert className="tour-screen pointer-events-none overflow-hidden rounded-3xl bg-background p-4 text-foreground select-none">
         {/* Outer div: scrolls the screen in the tour when its content runs past the phone. Inner: the page. */}
         <div>
           <div className="grid content-start gap-3">
@@ -202,8 +219,8 @@ function PreviewPanel({ title, body, headline, description, children }: { title:
         </div>
       </div>
       <figcaption className="order-first grid gap-1">
-        <span aria-hidden className="tour-node hidden" />
-        <span aria-hidden className="tour-link hidden"><span /></span>
+        <span aria-hidden className="tour-node hidden">{step}</span>
+        <span aria-hidden className="tour-rail hidden" />
         <span className="font-semibold text-primary-foreground">{title}</span>
         <span className="text-sm leading-relaxed text-primary-foreground/70">{body}</span>
       </figcaption>
@@ -330,17 +347,19 @@ export function LandingPage() {
 
       <main id="main" className="[&_h2]:outline-none [&_section]:scroll-mt-16">
         {/* Hero */}
-        <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-8 pb-14 sm:gap-12 sm:px-6 sm:pt-12 sm:pb-20 md:pt-20 lg:grid-cols-[1.1fr_1fr] lg:gap-16">
-          <div className="grid gap-5 sm:gap-6">
-            <h1 className="rise text-[2.25rem] leading-[1.05] font-bold tracking-[-0.04em] text-balance sm:text-6xl lg:text-7xl">
+        {/* Phones: copy, then the phone. From md: side by side, the phone sized to the first screen (index.css) and the
+            heading sized to its column, so it fits any tablet or desktop screen. */}
+        <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 pt-8 pb-14 sm:gap-12 sm:px-6 sm:pt-12 sm:pb-20 md:grid-cols-[minmax(0,1fr)_auto] md:gap-10 md:pt-10 md:pb-16 lg:gap-16">
+          <div className="@container grid gap-5 sm:gap-6">
+            <h1 className="rise text-[2.25rem] leading-[1.05] font-bold tracking-[-0.04em] text-balance sm:text-[clamp(2.25rem,12cqi,4.5rem)]">
               <span className="sr-only">AntTipid: </span>Know where every peso goes.
             </h1>
-            <p style={stagger(1)} className="rise max-w-[34rem] leading-relaxed sm:text-lg text-muted-foreground">
+            <p style={stagger(1)} className="rise max-w-[34rem] leading-relaxed sm:text-lg md:text-base lg:text-lg text-muted-foreground">
               <em className="font-medium text-foreground not-italic">Tipid</em> means spending carefully so your money lasts until the
               next sahod. AntTipid is a free tracker that helps: log what you spend and earn across cash, GCash, Maya and your bank,
               set a budget for each category, and see how much is left to spend this month.
             </p>
-            <div style={stagger(2)} className="rise flex flex-col gap-3 sm:flex-row">
+            <div style={stagger(2)} className="rise flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Button size="lg" className="cta-win" nativeButton={false} render={<Link to={SIGN_UP} />}>Start keeping more of your money</Button>
               <Button size="lg" variant="outline" nativeButton={false} render={<a href="#how-it-works" />}>See how it works</Button>
             </div>
@@ -406,16 +425,23 @@ export function LandingPage() {
               <p className="leading-relaxed sm:text-lg text-primary-foreground/70">Sample numbers on the real screens.</p>
             </div>
             <div className="tour-grid grid gap-8 lg:grid-cols-3 lg:gap-6">
-              {/* Pinned tour only: progress through the three screens (phones), and the phone they slide across. */}
-              <div aria-hidden className="tour-progress hidden"><span /><span /><span /></div>
+              {/* Pinned tour only: the step nodes and rails as a row (phones; from md they sit beside the captions), and
+                  the phone the screens slide across. */}
+              <div aria-hidden className="tour-progress hidden">
+                <span className="tour-node" style={stagger(0)}>1</span>
+                <span className="tour-rail" style={stagger(0)} />
+                <span className="tour-node" style={stagger(1)}>2</span>
+                <span className="tour-rail" style={stagger(1)} />
+                <span className="tour-node" style={stagger(2)}>3</span>
+              </div>
               <div aria-hidden className="tour-phone hidden">
-                {/* Side buttons, as on the hero's phone, just outside the bezel (--bz: 4px on phones, 7px from md). */}
-                <span className="absolute top-[17%] -left-[calc(var(--bz,4px)_+_3px)] h-7 w-[3px] rounded-l-sm bg-input" />
-                <span className="absolute top-[24%] -left-[calc(var(--bz,4px)_+_3px)] h-12 w-[3px] rounded-l-sm bg-input" />
-                <span className="absolute top-[33%] -left-[calc(var(--bz,4px)_+_3px)] h-12 w-[3px] rounded-l-sm bg-input" />
-                <span className="absolute top-[27%] -right-[calc(var(--bz,4px)_+_3px)] h-16 w-[3px] rounded-r-sm bg-input" />
-                <span className="text-xs font-semibold tabular-nums">9:41</span>
-                <span className="flex items-center gap-1 [&_svg]:size-3"><Signal /><Wifi /><BatteryFull /></span>
+                {/* Side buttons and status bar, as on the hero's phone; the buttons sit just outside the 5px bezel. */}
+                <span className="absolute top-[17%] -left-[8px] h-7 w-[3px] rounded-l-sm bg-input" />
+                <span className="absolute top-[24%] -left-[8px] h-12 w-[3px] rounded-l-sm bg-input" />
+                <span className="absolute top-[33%] -left-[8px] h-12 w-[3px] rounded-l-sm bg-input" />
+                <span className="absolute top-[27%] -right-[8px] h-16 w-[3px] rounded-r-sm bg-input" />
+                <span className="flex h-12 items-center text-sm font-semibold tabular-nums">9:41</span>
+                <span className="flex h-12 items-center gap-1 [&_svg]:size-3.5"><Signal /><Wifi /><BatteryFull /></span>
                 {/* The app's bottom bar on phones: four pages with Add raised in the middle. */}
                 <span className="tour-tabbar bg-sidebar canvas-dark text-sidebar-foreground">
                   <span><House />Home</span>
@@ -427,6 +453,7 @@ export function LandingPage() {
               </div>
 
               <PreviewPanel
+                step={1}
                 title="Budgets"
                 body="Over and near-limit budgets come first, so you know where to slow down."
                 headline="2 budgets need a look"
@@ -457,6 +484,7 @@ export function LandingPage() {
               </PreviewPanel>
 
               <PreviewPanel
+                step={2}
                 title="Receipt scan"
                 body="Snap the receipt. The store, date, items and total are filled in for you to check."
                 headline="Add transaction"
@@ -482,6 +510,7 @@ export function LandingPage() {
               </PreviewPanel>
 
               <PreviewPanel
+                step={3}
                 title="Reports"
                 body="Earned, spent and saved, spending against your budget’s pace, six months of income and spending, and where it went."
                 headline="Food took 38% of your spending"
