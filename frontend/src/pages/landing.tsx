@@ -298,7 +298,7 @@ function TrendBars() {
 function SectionHeading({ id, title, body }: { id: string; title: string; body?: string }) {
   return (
     <div className="grid max-w-2xl gap-3">
-      <h2 id={id} className="text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">{title}</h2>
+      <h2 id={id} className="text-section font-semibold tracking-tight text-balance">{title}</h2>
       {body && <p className="leading-relaxed sm:text-lg text-muted-foreground">{body}</p>}
     </div>
   )
@@ -380,20 +380,21 @@ export function LandingPage() {
 
         {/* Features */}
         <section id="features" aria-labelledby="features-title" className="border-y bg-card">
-          <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
+          {/* Compact on phones (tighter padding, gaps and text); the original spacing from sm. */}
+          <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10 sm:gap-12 sm:px-6 sm:py-20">
             <SectionHeading
               id="features-title"
               title="Everything you need to stay on budget"
               body="Built around one question: how much can I still spend this month?"
             />
-            <ul className="grid gap-x-12 gap-y-7 sm:grid-cols-2 sm:gap-y-10">
+            <ul className="grid gap-x-12 gap-y-5 sm:grid-cols-2 sm:gap-y-10">
               {FEATURES.map(({ icon: Icon, title, body }, i) => (
                 <li key={title} style={stagger(i % 2)} className="feature grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
                   <span className="row-span-2 flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
                     <Icon className="size-5" aria-hidden />
                   </span>
-                  <h3 className="font-semibold">{title}</h3>
-                  <p className="max-w-[60ch] leading-relaxed text-muted-foreground">{body}</p>
+                  <h3 className="text-item font-semibold">{title}</h3>
+                  <p className="max-w-[60ch] text-item-body text-muted-foreground sm:leading-relaxed">{body}</p>
                 </li>
               ))}
             </ul>
@@ -401,20 +402,20 @@ export function LandingPage() {
         </section>
 
         {/* How it works */}
-        <section id="how-it-works" aria-labelledby="how-title" className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
+        <section id="how-it-works" aria-labelledby="how-title" className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10 sm:gap-12 sm:px-6 sm:py-20">
           <SectionHeading id="how-title" title="Set up in a few minutes" />
-          <ol className="steps grid gap-7 md:grid-cols-3 md:gap-8">
+          <ol className="steps grid gap-5 sm:gap-7 md:grid-cols-3 md:gap-8">
             {STEPS.map((s, i) => (
               <li key={s.title} style={stagger(i)} className="relative grid grid-cols-[2.5rem_1fr] content-start gap-x-4 gap-y-1 md:grid-cols-1 md:gap-3">
                 <span data-step-dot className="row-span-2 flex size-10 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground tabular-nums md:row-span-1" aria-hidden>{i + 1}</span>
                 {/* Connector to the next step: down the left on phones, across the top from md. */}
                 {i < STEPS.length - 1 && (
-                  <span data-step-link aria-hidden className="absolute top-12 -bottom-5 left-5 w-0.5 -translate-x-1/2 rounded-full bg-primary/15 md:top-5 md:-right-4 md:bottom-auto md:left-14 md:h-0.5 md:w-auto md:translate-x-0 md:-translate-y-1/2">
+                  <span data-step-link aria-hidden className="absolute top-12 -bottom-3 left-5 sm:-bottom-5 w-0.5 -translate-x-1/2 rounded-full bg-primary/15 md:top-5 md:-right-4 md:bottom-auto md:left-14 md:h-0.5 md:w-auto md:translate-x-0 md:-translate-y-1/2">
                     <span className="block size-full rounded-full bg-primary" />
                   </span>
                 )}
-                <h3 className="font-semibold sm:text-lg">{s.title}</h3>
-                <p className="leading-relaxed text-muted-foreground">{s.body}</p>
+                <h3 className="text-item font-semibold">{s.title}</h3>
+                <p className="text-item-body text-muted-foreground sm:leading-relaxed">{s.body}</p>
               </li>
             ))}
           </ol>
@@ -424,7 +425,7 @@ export function LandingPage() {
         <section id="preview" aria-labelledby="preview-title" className="tour bg-primary canvas-dark text-primary-foreground">
           <div className="tour-stage mx-auto grid w-full max-w-6xl gap-8 px-4 py-14 sm:gap-12 sm:px-6 sm:py-20">
             <div className="grid max-w-2xl gap-3">
-              <h2 id="preview-title" className="text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">A look inside the app</h2>
+              <h2 id="preview-title" className="text-section font-semibold tracking-tight text-balance">A look inside the app</h2>
               <p className="leading-relaxed sm:text-lg text-primary-foreground/70">Sample numbers on the real screens.</p>
             </div>
             <div className="tour-grid grid gap-8 lg:grid-cols-3 lg:gap-6">
@@ -578,7 +579,7 @@ export function LandingPage() {
         <section aria-labelledby="cta-title">
           {/* px-8: while .panel-open clips the panel to a card 1rem in from each side, the text keeps 1rem of room inside it. */}
           <div className="panel-open grid justify-items-center gap-5 bg-primary canvas-dark px-8 py-14 text-center text-primary-foreground sm:gap-6 sm:py-20 md:py-28">
-            <h2 id="cta-title" className="max-w-xl text-2xl leading-tight font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">
+            <h2 id="cta-title" className="max-w-2xl text-statement font-semibold tracking-tight text-balance">
               Make every sahod last the whole month.
             </h2>
             <p className="max-w-md text-primary-foreground/70">Free, private to your account, and it never asks for your bank login. Set up on your phone in a few minutes.</p>

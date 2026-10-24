@@ -12,6 +12,16 @@
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
+    /* Landing type that grows with the screen instead of stepping at breakpoints (rem part keeps browser zoom working).
+       Section heads: 24px on phones to 44px from about 1280. The closing statement a step above: 24px to 52px. */
+    --text-section: clamp(1.5rem, 0.9rem + 2.4vw, 2.75rem);
+    --text-section--line-height: 1.12;
+    --text-statement: clamp(1.5rem, 0.6rem + 3.2vw, 3.25rem);
+    --text-statement--line-height: 1.08;
+    /* Feature and step items, compact on phones: the title grows from 16px (375) to its original 18px by 640, its
+       text from 15px to the original 16px, then both hold. */
+    --text-item: clamp(1rem, 0.823rem + 0.755vw, 1.125rem);
+    --text-item-body: clamp(0.9375rem, 0.849rem + 0.377vw, 1rem);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -814,8 +824,9 @@
   }
 }
 
-/* How it works: the list is one timeline, so the line and the steps it reaches stay in step. Each number fills
-   when the line reaches it. Reduced motion keeps that color change and shows the line already drawn. */
+/* How it works: the list is one timeline, so the line and the steps it reaches stay in step with the scroll. Each
+   number fills when the line reaches it; each line eases out of its number and settles into the next.
+   Reduced motion keeps that color change and shows the line already drawn. */
 @supports (animation-timeline: view()) {
   .steps {
     view-timeline: --steps block;
@@ -833,13 +844,15 @@
     animation-range: cover calc(12% + var(--i) * 18%) cover calc(18% + var(--i) * 18%);
   }
   @media (prefers-reduced-motion: no-preference) {
+    /* The scale property: --link-from is two space-separated numbers, which transform: scale() rejects (it needs a
+       comma), so the line used to sit fully drawn and never animate. */
     @keyframes link-draw {
-      from { transform: scale(var(--link-from)); }
+      from { scale: var(--link-from); }
     }
     .steps [data-step-link] > span {
       --link-from: 1 0;
       transform-origin: top;
-      animation: link-draw linear both;
+      animation: link-draw cubic-bezier(.65, 0, .35, 1) both;
       animation-timeline: --steps;
       animation-range: cover calc(18% + var(--i) * 18%) cover calc(30% + var(--i) * 18%);
     }
