@@ -115,6 +115,9 @@ function useScreenZoom() {
 
 const linkClass = 'rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none'
 
+// Footer links sit on the dark mast: lighten on hover, lime focus ring, a 44px tap row (16px text, 10px above and below).
+const footerLink = 'block rounded-sm py-2.5 underline-offset-4 transition-colors hover:text-primary-foreground hover:underline focus-visible:ring-3 focus-visible:ring-sidebar-ring focus-visible:outline-none'
+
 /** Home's "left to spend" card, live on the visitor's own numbers and today's date. */
 function TryIt() {
   const [today] = useState(() => {
@@ -594,19 +597,36 @@ export function LandingPage() {
         </section>
       </main>
 
-      <footer>
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:grid-cols-[1fr_auto] md:items-end">
-          <div className="grid gap-4">
-            <LogoWithTagline height={34} small />
-            <p className="max-w-md">Your records are private to your account. AntTipid has no ads and doesn’t sell your data.</p>
+      {/* A dark mast under the closing panel: the privacy promise and the links, then the wordmark across the
+          container, then the legal line. The rule on the footer itself runs edge to edge, so the panel and the mast
+          stay two blocks on any screen width (a container-wide rule stopped short of the edges on wide screens). */}
+      <footer className="border-t border-primary-foreground/15 bg-primary canvas-dark-flat text-primary-foreground">
+        <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 pt-12 pb-8 sm:px-6 md:gap-14 md:pt-16">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
+            <p className="max-w-md text-lg leading-snug text-balance">Your records are private to your account. AntTipid has no ads and doesn’t sell your data.</p>
+            {/* -mt-2.5: the links' tap padding sits above their text, so this lifts the first one level with the promise. */}
+            <nav aria-label="Footer" className="-mt-2.5 grid grid-cols-2 gap-x-10 text-primary-foreground/70 sm:flex sm:gap-x-12">
+              <ul className="grid content-start">
+                <li><a href="#features" className={footerLink}>Features</a></li>
+                <li><a href="#faq" className={footerLink}>FAQ</a></li>
+              </ul>
+              <ul className="grid content-start">
+                <li><Link to="/terms" className={footerLink}>Terms</Link></li>
+                <li><Link to="/privacy" className={footerLink}>Privacy policy</Link></li>
+              </ul>
+              <a href={`mailto:${CONTACT}`} className={`col-span-2 self-start ${footerLink}`}>{CONTACT}</a>
+            </nav>
           </div>
-          <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2">
-            <a href="#features" className={linkClass}>Features</a>
-            <a href="#faq" className={linkClass}>FAQ</a>
-            <Link to="/terms" className={linkClass}>Terms</Link>
-            <Link to="/privacy" className={linkClass}>Privacy policy</Link>
-            <a href={`mailto:${CONTACT}`} className={linkClass}>{CONTACT}</a>
-          </nav>
+          {/* The wordmark spans the container, but stays under about a third of the screen's height (it is 3.6 times as
+              wide as tall), so a short laptop or a wide monitor still sees the whole footer at once. */}
+          <div className="grid gap-2">
+            <img src="/brand/logo-reversed.svg" alt="AntTipid" className="w-[min(100%,116svh)]" />
+            <p className="text-sm font-medium text-sidebar-primary sm:text-base">Expense &amp; budget tracker</p>
+          </div>
+          <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 border-t border-primary-foreground/15 pt-5 text-sm text-primary-foreground/70">
+            <p>© {new Date().getFullYear()} AntTipid</p>
+            <p>Developed by John Ansley Rocel</p>
+          </div>
         </div>
       </footer>
     </div>
