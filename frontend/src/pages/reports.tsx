@@ -12,8 +12,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { dateInMonth, dayIso, dayLabel, money, monthLabel } from '@/lib/format'
-import { outsideBudgets } from '@/lib/budget'
+import { currentMonth, dateInMonth, dayIso, dayLabel, money, monthLabel } from '@/lib/format'
+import { outsideBudgets, vsUsual } from '@/lib/budget'
 import { monthTotals } from '@/lib/report'
 
 const PaceChart = lazy(() => import('@/components/report-charts').then((m) => ({ default: m.PaceChart })))
@@ -54,6 +54,9 @@ export function ReportsPage() {
   const [detail, setDetail] = useState<ReportDetail>(null)
 
   const { category } = useRefData()
+  // Finished months only: a month still going would always look cheaper than a whole usual one.
+  const usual = data && month < currentMonth() ? vsUsual(data.byCategory, data.usual) : null
+  const usualName = usual && (category(usual.top.categoryId)?.name ?? 'Other')
   const thisMonth = data?.trend.at(-1)
   const top = data?.byCategory[0]
   const spentTotal = data?.byCategory.reduce((s, c) => s + c.total, 0) ?? 0
@@ -151,6 +154,13 @@ export function ReportsPage() {
                 <CardDescription>Spending by category in {monthLabel(month)}. Select one for details.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
+                {usual && Math.round(usual.saved) !== 0 && (
+                  <p className="text-sm font-medium tabular-nums">
+                    {usual.saved > 0
+                      ? `You spent ${money(usual.saved, { whole: true })} less than your usual month. Most of it came from ${usualName} (${money(usual.top.diff, { whole: true })} less).`
+                      : `You spent ${money(-usual.saved, { whole: true })} more than your usual month, mostly on ${usualName} (${money(-usual.top.diff, { whole: true })} more).`}
+                  </p>
+                )}
                 {outside && outside.spent > 0 && (
                   <p className="text-sm text-muted-foreground tabular-nums">
                     {money(outside.spent, { whole: true })} of {money(outside.total, { whole: true })} ({Math.round((outside.spent / outside.total) * 100)}%) went to categories without a budget.

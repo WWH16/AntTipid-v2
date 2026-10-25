@@ -81,6 +81,8 @@ export interface MonthlyReport {
   trend: { month: string; income: number; spent: number }[]
   /** Spending per day of the month, from day 1 up to today (current month) or the last day. */
   daily: { day: number; spent: number }[]
+  /** Each category's usual month (median of the 3 before), for categories with spending in 2+ of them. */
+  usual: { categoryId: string; total: number }[]
 }
 
 export interface ReceiptItem {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { budgetState, outsideBudgets, pace, paceLine } from './budget.ts'
+import { budgetState, outsideBudgets, pace, paceLine, vsUsual } from './budget.ts'
 
 const budget = (categoryId: string | null, limit: number, spent: number) => ({ id: String(categoryId), categoryId, limit, spent, warnAt: 80 })
 
@@ -46,4 +46,24 @@ test('budgetState: exactly at the limit is used up, not near it', () => {
   assert.equal(budgetState({ spent: 199.999999, limit: 200, warnAt: 80 }), 'used')
   assert.equal(budgetState({ spent: 190, limit: 200, warnAt: 80 }), 'near')
   assert.equal(budgetState({ spent: 201, limit: 200, warnAt: 80 }), 'over')
+})
+
+test('vsUsual: a finished month against the usual one, and what moved it most', () => {
+  const usual = [{ categoryId: 'food', total: 6000 }, { categoryId: 'shop', total: 2500 }, { categoryId: 'trans', total: 1500 }]
+  // Food ₱1,200 under, Shopping ₱800 under, Transport ₱250 over: ₱1,750 saved, mostly Food.
+  const month = [{ categoryId: 'food', total: 4800 }, { categoryId: 'shop', total: 1700 }, { categoryId: 'trans', total: 1750 }]
+  assert.deepEqual(vsUsual(month, usual), { saved: 1750, top: { categoryId: 'food', diff: 1200 } })
+  // Spent more overall: the category that went over most. A usual category with no spending counts as all saved.
+  assert.deepEqual(vsUsual([{ categoryId: 'food', total: 9000 }], usual.slice(0, 1)), { saved: -3000, top: { categoryId: 'food', diff: -3000 } })
+  assert.equal(vsUsual(month, []), null)
+})
+
+test('vsUsual: a finished month against the usual one, and what moved it most', () => {
+  const usual = [{ categoryId: 'food', total: 6000 }, { categoryId: 'shop', total: 2500 }, { categoryId: 'trans', total: 1500 }]
+  // Food ₱1,200 under, Shopping ₱800 under, Transport ₱250 over: ₱1,750 saved, mostly Food.
+  const month = [{ categoryId: 'food', total: 4800 }, { categoryId: 'shop', total: 1700 }, { categoryId: 'trans', total: 1750 }]
+  assert.deepEqual(vsUsual(month, usual), { saved: 1750, top: { categoryId: 'food', diff: 1200 } })
+  // Spent more overall: the category that went over most.
+  assert.deepEqual(vsUsual([{ categoryId: 'food', total: 9000 }], usual.slice(0, 1)), { saved: -3000, top: { categoryId: 'food', diff: -3000 } })
+  assert.equal(vsUsual(month, []), null)
 })

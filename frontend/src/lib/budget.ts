@@ -42,7 +42,7 @@ const daysIn = (month: string) => new Date(Number(month.slice(0, 4)), Number(mon
  * A budget at this month's pace (spent so far ÷ days so far): the day it runs out and what's safe to spend a day to
  * last the month, or what's left over if it lasts. Null when there's nothing to say: a past month, before day 5 (too
  * few days to go on), or already over (the badge says so).
- * ponytail: one big one-off (rent, tuition) inflates the pace; feature 6 (unusual purchases) leaves those out.
+ * ponytail: one big one-off inflates the pace; DSS feature 6 (paid once a month) and 9 (anomalies) leave those out.
  */
 export function pace(b: Pick<BudgetStatus, 'spent' | 'limit'>, month: string, today = todayIso()) {
   const day = Number(today.slice(8))
@@ -87,3 +87,15 @@ export function paceLine(b: Pick<BudgetStatus, 'spent' | 'limit'>, month: string
 
 /** Progress bar tone per state, matching the badge: red when over, default otherwise. */
 export const OVER_BAR: Record<BudgetState, string> = { ok: '', near: '', used: '', over: '[&_[data-slot=progress-indicator]]:bg-destructive!' }
+
+/**
+ * A finished month against the usual one, over the categories that have a usual month: how much less (positive) or
+ * more (negative) was spent, and the category that moved it most in that direction.
+ */
+export function vsUsual(byCategory: { categoryId: string; total: number }[], usual: { categoryId: string; total: number }[]) {
+  if (!usual.length) return null
+  const diffs = usual.map((u) => ({ categoryId: u.categoryId, diff: u.total - (byCategory.find((c) => c.categoryId === u.categoryId)?.total ?? 0) }))
+  const saved = diffs.reduce((s, d) => s + d.diff, 0)
+  const top = diffs.reduce((a, b) => (saved >= 0 ? b.diff > a.diff : b.diff < a.diff) ? b : a)
+  return { saved, top }
+}

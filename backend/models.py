@@ -156,6 +156,8 @@ class MonthlyReport(CamelModel):
     by_category: list[CategoryTotal]
     trend: list[TrendPoint]
     daily: list[DayPoint]
+    # Each category's usual month: the median of the 3 months before this one, for categories with spending in 2+ of them.
+    usual: list[CategoryTotal]
 
 
 class MonthTotal(CamelModel):

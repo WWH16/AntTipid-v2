@@ -1,5 +1,6 @@
 """Budgets and the monthly numbers behind Home, Budgets and Reports."""
 
+from statistics import median
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
@@ -155,6 +156,18 @@ def monthly(month: Month, user: User):
                 {"uid": user.id, "start": trend_start, "end": end},
             )
         }
+        # The 3 full months before this one, per category; the median of the months it had spending in.
+        usual_start, _ = month_range(shift_month(month, -3))
+        past: dict[str, list[float]] = {}
+        for r in conn.execute(
+            """
+            select category_id, sum(amount) as total from transactions
+            where user_id = %(uid)s and kind = 'expense' and date >= %(start)s and date < %(end)s
+            group by category_id, to_char(date, 'YYYY-MM')
+            """,
+            {"uid": user.id, "start": usual_start, "end": start},
+        ):
+            past.setdefault(str(r["category_id"]), []).append(float(r["total"]))
         daily = {
             r["day"]: float(r["spent"])
             for r in conn.execute(
@@ -175,6 +188,7 @@ def monthly(month: Month, user: User):
             for t in [trend.get(m, {"income": 0, "spent": 0})]
         ],
         daily=[DayPoint(day=d, spent=daily.get(d, 0)) for d in range(1, days_shown(month) + 1)],
+        usual=[CategoryTotal(category_id=c, total=median(t)) for c, t in past.items() if len(t) >= 2],
     )
 
 

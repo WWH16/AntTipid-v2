@@ -271,6 +271,7 @@ def test_routes_and_user_isolation():
             assert rep_sum["income"] == 5000 and rep_sum["spent"] == 250 and rep_sum["budget"] == 10000
             rep_mon = client.get("/api/reports/monthly", params={"month": "2026-10"}, headers=ha).json()
             assert rep_mon["byCategory"] == [{"categoryId": food_id, "total": 250}]
+            assert rep_mon["usual"] == []  # no earlier months yet, so no usual month to compare with
             assert len(rep_mon["trend"]) == 6 and rep_mon["trend"][-1] == {"month": "2026-10", "income": 5000, "spent": 250}
             # Month picker: only months with transactions, oldest first; spent counts expenses only
             rep_months = client.get("/api/reports/months", headers=ha).json()
