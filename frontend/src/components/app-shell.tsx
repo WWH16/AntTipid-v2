@@ -85,7 +85,7 @@ export function AppShell() {
         <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:gap-6 md:p-6">
           {!online && (
             <p role="status" className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm">
-              <WifiOff className="size-4 shrink-0" aria-hidden /> You're offline. You can look around, but changes won't save until you're back.
+              <WifiOff className="size-4 shrink-0" aria-hidden /> You're offline. You can look around, but changes won't save until you're back online.
             </p>
           )}
           <Outlet key={thisMonth} />

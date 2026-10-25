@@ -9,8 +9,10 @@ import { money } from '@/lib/format'
 import type { BudgetStatus, Category } from '@/types'
 
 const BADGE = {
-  ok: { label: 'On track', variant: 'secondary' },
+  // Usage against the limit. "On track" / "Spending fast" belong to the pace line under the bar, not the badge.
+  ok: { label: 'Under limit', variant: 'secondary' },
   near: { label: 'Near limit', variant: 'outline' },
+  used: { label: 'Used up', variant: 'outline' },
   over: { label: 'Over budget', variant: 'destructive' },
 } as const
 
@@ -23,8 +25,8 @@ export function BudgetBadge({ state, solid }: { state: BudgetState; solid?: bool
   )
 }
 
-/** One category budget: name, what's left, status and a progress bar. Clickable when onSelect is given. */
-export function BudgetItem({ b, category, onSelect }: { b: BudgetStatus; category?: Category; onSelect?: () => void }) {
+/** One category budget: name, what's left, status, a progress bar and the pace line. Clickable when onSelect is given. */
+export function BudgetItem({ b, category, onSelect, pace }: { b: BudgetStatus; category?: Category; onSelect?: () => void; pace?: string | null }) {
   return (
     <Item
       render={onSelect ? <button type="button" onClick={onSelect} /> : undefined}
@@ -36,7 +38,10 @@ export function BudgetItem({ b, category, onSelect }: { b: BudgetStatus; categor
         <ItemDescription className="tabular-nums">{budgetRemaining(b)} of {money(b.limit, { whole: true })}</ItemDescription>
       </ItemContent>
       <ItemActions><BudgetBadge state={budgetState(b)} /></ItemActions>
-      <ItemFooter><Progress value={budgetPercent(b)} className={cn('w-full', OVER_BAR[budgetState(b)])} aria-label={`${category?.name} budget used`} /></ItemFooter>
+      <ItemFooter className="flex-col items-stretch gap-2">
+        <Progress value={budgetPercent(b)} className={cn('w-full', OVER_BAR[budgetState(b)])} aria-label={`${category?.name} budget used`} />
+        {pace && <p className="text-sm text-muted-foreground">{pace}</p>}
+      </ItemFooter>
     </Item>
   )
 }

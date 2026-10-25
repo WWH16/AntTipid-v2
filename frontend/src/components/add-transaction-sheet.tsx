@@ -275,6 +275,7 @@ function AddFlow() {
         title={editing ? 'Discard your changes?' : `Discard this ${KIND_LABEL[kind].toLowerCase()}?`}
         description="What you entered won't be saved."
         confirm="Discard"
+        cancel="Keep editing"
         onConfirm={async () => closeAdd()}
       />
     </ResponsivePanel>

@@ -6,12 +6,13 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useAction } from '@/hooks/use-action'
 
-export function ConfirmDialog({ open, onOpenChange, title, description, confirm, onConfirm }: {
+export function ConfirmDialog({ open, onOpenChange, title, description, confirm, cancel = 'Keep it', onConfirm }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   title: string
   description: string
   confirm: string // the action, e.g. "Delete category"
+  cancel?: string // what not confirming keeps: "Keep it" for a delete, "Keep editing" for a discard
   onConfirm: () => Promise<unknown>
 }) {
   const [run, busy] = useAction()
@@ -27,7 +28,7 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirm,
             Cancel on the left, the action on the right. On the narrowest phones a long label ("Delete transaction")
             wraps to two lines rather than spilling out of its half. */}
         <AlertDialogFooter className="grid grid-cols-2 sm:flex [&>*]:h-auto [&>*]:min-h-9 [&>*]:py-1.5 [&>*]:whitespace-normal">
-          <AlertDialogCancel disabled={busy}>Keep it</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>{cancel}</AlertDialogCancel>
           <AlertDialogAction variant="destructive" disabled={busy} onClick={async () => { if (await run(onConfirm)) onOpenChange(false) }}>
             {busy && <Loader2 className="animate-spin" />}
             {confirm}

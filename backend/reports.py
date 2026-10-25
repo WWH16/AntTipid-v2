@@ -64,7 +64,7 @@ def _check_fits(conn, user: AuthUser, budget_id: UUID | None, category_id: UUID 
     if category_id is None and limit < assigned:
         raise HTTPException(422, f"Your category budgets add up to ₱{assigned:,.0f}. The monthly budget can't be less.")
     if category_id is not None and monthly is not None and limit > (left := monthly - assigned):
-        raise HTTPException(422, f"Only ₱{left:,.0f} of your ₱{monthly:,.0f} monthly budget is left for categories." if left > 0
+        raise HTTPException(422, f"Only ₱{left:,.0f} of your ₱{monthly:,.0f} monthly budget is unassigned." if left > 0
                             else f"Your category budgets already use all of your ₱{monthly:,.0f} monthly budget.")
 
 

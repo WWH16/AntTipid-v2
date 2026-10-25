@@ -7,7 +7,7 @@ import { setCached, useQuery } from '@/api/use-query'
 import { BudgetBadge, BudgetItem } from '@/components/budget'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, outsideBudgets } from '@/lib/budget'
+import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, outsideBudgets, paceLine } from '@/lib/budget'
 import { MoneyInput } from '@/components/money-input'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
@@ -26,7 +26,7 @@ import { money, monthLabel } from '@/lib/format'
 import type { BudgetStatus } from '@/types'
 
 type Editing = { budget?: BudgetStatus; categoryId?: string | null } | null
-const SEVERITY = { over: 0, near: 1, ok: 2 }
+const SEVERITY = { over: 0, used: 1, near: 2, ok: 3 }
 
 export function BudgetsPage() {
   const [month, setMonth] = useMonth()
@@ -41,6 +41,7 @@ export function BudgetsPage() {
   const needing = byCategory.filter((b) => budgetState(b) !== 'ok').map((b) => category(b.categoryId)?.name ?? 'Other')
   const unbudgeted = categories.filter((c) => c.kind === 'expense' && !data?.some((b) => b.categoryId === c.id))
   const outside = data && outsideBudgets(data)
+  const overallPace = overall && paceLine(overall, month)
 
   return (
     <>
@@ -70,6 +71,7 @@ export function BudgetsPage() {
               </CardHeader>
               <CardContent>
                 <Progress value={budgetPercent(overall)} className={OVER_BAR[budgetState(overall)]} aria-label="Budget used" />
+                {overallPace && <p className="mt-3 text-sm text-muted-foreground">{overallPace}</p>}
               </CardContent>
               <CardFooter className="justify-between gap-2 text-sm">
                 <span className="text-muted-foreground tabular-nums">{money(overall.spent, { whole: true })} of {money(overall.limit, { whole: true })}</span>
@@ -88,19 +90,20 @@ export function BudgetsPage() {
             <CardContent className="grid gap-4">
               {byCategory.length ? (
                 <ItemGroup>
-                  {byCategory.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} onSelect={() => setEditing({ budget: b })} />)}
+                  {byCategory.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} pace={paceLine(b, month, overall)} onSelect={() => setEditing({ budget: b })} />)}
                 </ItemGroup>
               ) : !unbudgeted.length && (
                 <EmptyState icon={Tags} title="No spending categories" body="Add one in Settings, then give it a limit here." />
               )}
               {outside && outside.spent > 0 && (outside.spent > outside.room ? (
                 <p role="status" className="text-sm text-destructive tabular-nums">
-                  {money(outside.spent, { whole: true })} spent on categories without a budget.{' '}
-                  {outside.room > 0 ? `Only ${money(outside.room, { whole: true })} of your monthly budget was left for them.` : 'Your category budgets already use the whole month.'}
+                  {outside.room > 0
+                    ? `${money(outside.spent, { whole: true })} spent on categories without a budget, ${money(outside.spent - outside.room, { whole: true })} more than the ${money(outside.room, { whole: true })} unassigned.`
+                    : `${money(outside.spent, { whole: true })} spent on categories without a budget. Your category budgets use all of your monthly budget.`}
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground tabular-nums">
-                  {money(outside.spent, { whole: true })} spent on categories without a budget, of {money(outside.room, { whole: true })} left for them.
+                  {money(outside.spent, { whole: true })} of your {money(outside.room, { whole: true })} unassigned is spent on categories without a budget.
                 </p>
               ))}
               {unbudgeted.length > 0 && (
@@ -149,7 +152,7 @@ export function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable
   const tooBig = target === 'all'
     ? amount > 0 && amount < assigned ? `Your category budgets add up to ${money(assigned, { whole: true })}. The monthly budget can't be less.` : null
     : left !== undefined && amount > left
-      ? left > 0 ? `Only ${money(left, { whole: true })} of your ${money(monthly!, { whole: true })} monthly budget is left for categories.`
+      ? left > 0 ? `Only ${money(left, { whole: true })} of your ${money(monthly!, { whole: true })} monthly budget is unassigned.`
         : `Your category budgets already use all of your ${money(monthly!, { whole: true })} monthly budget.`
       : null
   const valid = target && amount > 0 && !tooBig
@@ -203,7 +206,7 @@ export function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable
         </div>
         {tooBig ? <p role="alert" className="text-sm text-destructive">{tooBig}</p> : target !== 'all' && left !== undefined && (
           <p className="text-sm text-muted-foreground tabular-nums">
-            {money(left, { whole: true })} of your {money(monthly!, { whole: true })} monthly budget is left for categories.
+            {money(left, { whole: true })} of your {money(monthly!, { whole: true })} monthly budget is unassigned.
           </p>
         )}
       </form>

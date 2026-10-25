@@ -2,13 +2,13 @@ import { HeroCard } from '@/components/hero-card'
 import { Badge } from '@/components/ui/badge'
 import { CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
-import { budgetPercent } from '@/lib/budget'
+import { budgetPercent, paceLine } from '@/lib/budget'
 import { money } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { MonthSummary } from '@/types'
 
 /** What's left to spend, plus budget used vs. month gone, so spending faster than the month is visible. Needs s.budget > 0. */
-export function SafeToSpendCard({ s }: { s: Pick<MonthSummary, 'budget' | 'spent' | 'daysInMonth' | 'dayOfMonth'> }) {
+export function SafeToSpendCard({ s }: { s: Pick<MonthSummary, 'budget' | 'spent' | 'daysInMonth' | 'dayOfMonth'> & { month?: string } }) {
   const left = s.budget - s.spent
   const daysLeft = s.daysInMonth - s.dayOfMonth + 1 // today still counts
   const perDay = Math.max(0, left) / daysLeft
@@ -16,6 +16,9 @@ export function SafeToSpendCard({ s }: { s: Pick<MonthSummary, 'budget' | 'spent
   const timePct = Math.round((s.dayOfMonth / s.daysInMonth) * 100)
   const gap = (s.budget * s.dayOfMonth) / s.daysInMonth - s.spent
   const over = left < 0
+  // From day 5 on, the same pace line Budgets shows ("On track. You should reach month-end with ₱1,450 to
+  // spare."). Before that, and on the landing page's sample card (no month), the plain on-budget pace instead.
+  const line = s.month && !over ? paceLine({ spent: s.spent, limit: s.budget }, s.month) : null
 
   return (
     <HeroCard>
@@ -44,9 +47,9 @@ export function SafeToSpendCard({ s }: { s: Pick<MonthSummary, 'budget' | 'spent
         <p className="font-medium">
           {over
             ? `You've spent ${money(s.spent, { whole: true })} of ${money(s.budget, { whole: true })}.`
-            : gap >= 0
+            : line ?? (gap >= 0
               ? `${money(gap, { whole: true })} below the on-budget pace. Up to ${money(perDay, { whole: true })} a day keeps you on budget.`
-              : `${money(-gap, { whole: true })} above the on-budget pace. Keep to ${money(perDay, { whole: true })} a day to finish on budget.`}
+              : `${money(-gap, { whole: true })} above the on-budget pace. Keep to ${money(perDay, { whole: true })} a day to last the month.`)}
         </p>
         <p className="text-muted-foreground">
           {money(s.spent, { whole: true })} spent of {money(s.budget, { whole: true })}, {daysLeft === 1 ? 'last day of the month' : `${daysLeft} days left`}
