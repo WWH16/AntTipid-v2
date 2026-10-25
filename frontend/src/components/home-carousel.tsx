@@ -4,9 +4,13 @@ import { Link } from 'react-router-dom'
 import { useRefData } from '@/app-state'
 import { HeroCard } from '@/components/hero-card'
 import { CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { CategoryBreakdown } from '@/components/report-details'
+import { ResponsivePanel } from '@/components/responsive-panel'
 import { LoadingHero } from '@/components/states'
+import { TransactionItem } from '@/components/transaction-item'
+import { ItemGroup } from '@/components/ui/item'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { currentMonth, isoDate, money, monthLabel } from '@/lib/format'
+import { currentMonth, dayLabel, isoDate, money, monthLabel } from '@/lib/format'
 import { sumOf } from '@/lib/transactions'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
@@ -79,6 +83,7 @@ type Period = 'week' | 'month'
 export function SpendingSlide({ transactions }: { transactions?: Transaction[] }) {
   const [today] = useState(() => new Date())
   const [period, setPeriod] = useState<Period>('week')
+  const [opened, setOpened] = useState<{ title: string; from: string; to: string } | null>(null)
   if (!transactions) return <LoadingHero />
 
   const spentOn = (d: Date) => {
@@ -88,24 +93,29 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
   const shifted = (days: number, months = 0) => new Date(today.getFullYear(), today.getMonth() + months, today.getDate() + days)
 
   // One bar per day (week view) or per week (month view). Periods still ahead are null and drawn faint.
-  let bars: { label: string; tick: string; spent: number | null }[]
+  // from/to: the dates a bar covers, for its breakdown panel.
+  let bars: { label: string; tick: string; spent: number | null; from: string; to: string }[]
   let previous = 0
   if (period === 'week') {
     const todayIdx = (today.getDay() + 6) % 7
-    bars = WEEKDAYS.map((name, i) => ({ label: name, tick: name.slice(0, 1), spent: i <= todayIdx ? spentOn(shifted(i - todayIdx)) : null }))
+    bars = WEEKDAYS.map((name, i) => {
+      const date = isoDate(shifted(i - todayIdx))
+      return { label: name, tick: name.slice(0, 1), spent: i <= todayIdx ? spentOn(shifted(i - todayIdx)) : null, from: date, to: date }
+    })
     for (let i = 0; i <= todayIdx; i++) previous += spentOn(shifted(i - todayIdx - 7))
   } else {
     const days = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
     const monthName = monthLabel(currentMonth(), 'short')
     // One bar per week of the month: days 1–7, 8–14, 15–21, 22–28, 29 to the end.
-    const dayTotal = (d: number) => spentOn(new Date(today.getFullYear(), today.getMonth(), d))
+    const dayOf = (d: number) => new Date(today.getFullYear(), today.getMonth(), d)
+    const dayTotal = (d: number) => spentOn(dayOf(d))
     bars = []
     for (let start = 1; start <= days; start += 7) {
       const end = Math.min(start + 6, days)
       const range = start === end ? String(start) : `${start}–${end}`
       let spent: number | null = null
       for (let d = start; d <= Math.min(end, today.getDate()); d++) spent = (spent ?? 0) + dayTotal(d)
-      bars.push({ label: `${monthName} ${range}`, tick: range, spent })
+      bars.push({ label: `${monthName} ${range}`, tick: range, spent, from: isoDate(dayOf(start)), to: isoDate(dayOf(end)) })
     }
     for (let i = 1; i <= today.getDate(); i++) previous += spentOn(new Date(today.getFullYear(), today.getMonth() - 1, i))
   }
@@ -116,6 +126,7 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
   const biggest = bars.reduce((a, b) => ((b.spent ?? 0) > (a.spent ?? 0) ? b : a))
   const todayBar = bars.findLastIndex((d) => d.spent !== null)
   const lastPeriod = period === 'week' ? 'last week' : 'last month'
+  const unit = period === 'week' ? 'day' : 'week'
 
   return (
     <HeroCard>
@@ -136,36 +147,79 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
         {/* pt-5 keeps room above the tallest bar for its amount. */}
         <ol className="flex h-28 items-end gap-2 pt-5" aria-label={period === 'week' ? 'Spending per day this week' : 'Spending per week this month'}>
           {bars.map((d, i) => (
-            <li key={d.label} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5">
-              <span className="sr-only">{d.label}: {d.spent === null ? 'not yet' : money(d.spent, { whole: true })}</span>
-              {/* Each bar's amount sits just above it, compact (₱1.2K) to fit seven across a phone. */}
-              <span
-                aria-hidden
-                className={cn('relative w-full rounded-sm', d.spent === null ? 'bg-primary-foreground/10' : 'bg-sidebar-primary')}
-                style={{ height: `${Math.max(6, ((d.spent ?? 0) / max) * 100)}%` }}
+            <li key={d.label} className="h-full min-w-0 flex-1">
+              {/* A bar with spending opens what it was spent on. */}
+              <button
+                type="button"
+                disabled={!d.spent}
+                onClick={() => setOpened({ title: d.from === d.to ? dayLabel(d.from) : d.label, from: d.from, to: d.to })}
+                className="flex h-full w-full flex-col items-center justify-end gap-1.5 rounded-sm focus-visible:ring-2 focus-visible:ring-sidebar-primary focus-visible:outline-none"
               >
-                {!!d.spent && (
-                  <span className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-[11px] whitespace-nowrap tabular-nums opacity-80">
-                    {money(d.spent, { compact: true })}
-                  </span>
-                )}
-              </span>
-              <span aria-hidden className={cn('h-4 text-xs whitespace-nowrap', i === todayBar ? 'font-semibold' : 'opacity-70')}>
-                {d.tick}
-              </span>
+                <span className="sr-only">{d.label}: {d.spent === null ? 'not yet' : money(d.spent, { whole: true })}{d.spent ? '. Show breakdown' : ''}</span>
+                {/* Each bar's amount sits just above it, compact (₱1.2K) to fit seven across a phone. */}
+                <span
+                  aria-hidden
+                  className={cn('relative w-full rounded-sm', d.spent === null ? 'bg-primary-foreground/10' : 'bg-sidebar-primary')}
+                  style={{ height: `${Math.max(6, ((d.spent ?? 0) / max) * 100)}%` }}
+                >
+                  {!!d.spent && (
+                    <span className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-[11px] whitespace-nowrap tabular-nums opacity-80">
+                      {money(d.spent, { compact: true })}
+                    </span>
+                  )}
+                </span>
+                <span aria-hidden className={cn('h-4 text-xs whitespace-nowrap', i === todayBar ? 'font-semibold' : 'opacity-70')}>
+                  {d.tick}
+                </span>
+              </button>
             </li>
           ))}
         </ol>
+        {opened && <SpendingDetail {...opened} transactions={transactions} onClose={() => setOpened(null)} />}
       </CardContent>
       <CardFooter className="flex-col items-start gap-1 text-sm">
         <p className="font-medium tabular-nums">
           {diff <= 0 ? `${money(-diff, { whole: true })} less` : `${money(diff, { whole: true })} more`} than the same days {lastPeriod} ({money(previous, { whole: true })}).
         </p>
         <p className="text-muted-foreground">
-          {biggest.spent ? `Biggest ${period === 'week' ? 'day' : 'week'} so far: ${biggest.label}, ${money(biggest.spent, { whole: true })}` : `Nothing spent yet this ${period}.`}
+          {/* The bars are buttons; say so, in the words Reports uses for its own chart. */}
+          {biggest.spent
+            ? `Biggest ${unit} so far: ${biggest.label}, ${money(biggest.spent, { whole: true })}. Tap a ${unit} to see what you spent.`
+            : `Nothing spent yet this ${period}.`}
         </p>
       </CardFooter>
     </HeroCard>
+  )
+}
+
+/**
+ * What one bar's spending went to: by category, then each expense. Home already holds the transactions, so nothing
+ * loads. When every category has a single expense the two lists would say the same thing, so only the expenses show.
+ */
+function SpendingDetail({ title, from, to, transactions, onClose }: { title: string; from: string; to: string; transactions: Transaction[]; onClose: () => void }) {
+  const expenses = transactions.filter((t) => t.kind === 'expense' && t.date >= from && t.date <= to)
+  const byCategory = [...Map.groupBy(expenses, (t) => t.categoryId ?? '')]
+    .map(([categoryId, list]) => ({ categoryId, total: sumOf(list, 'expense') }))
+    .sort((a, b) => b.total - a.total)
+  // -mx-3 on both lists: the same inset CategoryBreakdown's rows use, so icons and amounts line up down the panel.
+  const list = <ItemGroup className="-mx-3">{expenses.map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
+  return (
+    <ResponsivePanel onClose={onClose} title={title} description={`${money(sumOf(expenses, 'expense'))} spent`}>
+      {byCategory.length < expenses.length ? (
+        <div className="grid gap-6 pb-4">
+          <div className="grid gap-2">
+            <h3 className="text-sm font-medium">By category</h3>
+            <CategoryBreakdown items={byCategory} />
+          </div>
+          <div className="grid gap-2">
+            <h3 className="text-sm font-medium">Each expense</h3>
+            {list}
+          </div>
+        </div>
+      ) : (
+        <div className="pb-4">{list}</div>
+      )}
+    </ResponsivePanel>
   )
 }
 
