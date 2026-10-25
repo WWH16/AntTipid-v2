@@ -43,16 +43,18 @@ function AddFlow() {
   const { add, closeAdd, openDetail } = useApp()
   const { wallets, categories, category, loading } = useRefData()
   const editing = add?.edit
+  // Edit and "Add again" both start from a transaction; only an edit keeps its date, note and receipt items.
+  const from = editing ?? add?.copy
   const activeWallets = wallets.filter((w) => !w.archived)
 
   const [mode, setMode] = useState<'form' | 'scan'>(add?.scan ? 'scan' : 'form')
-  const [kind, setKind] = useState<TransactionKind>(editing?.kind ?? add?.kind ?? 'expense')
-  const [amount, setAmount] = useState(editing ? String(editing.amount) : '')
-  const [categoryId, setCategoryId] = useState(editing?.categoryId ?? '')
-  const [pickedWallet, setWalletId] = useState(editing?.walletId ?? readLastWallet())
-  const [toWalletId, setToWalletId] = useState(editing?.toWalletId ?? '')
+  const [kind, setKind] = useState<TransactionKind>(from?.kind ?? add?.kind ?? 'expense')
+  const [amount, setAmount] = useState(from ? String(from.amount) : '')
+  const [categoryId, setCategoryId] = useState(from?.categoryId ?? '')
+  const [pickedWallet, setWalletId] = useState(from?.walletId ?? readLastWallet())
+  const [toWalletId, setToWalletId] = useState(from?.toWalletId ?? '')
   const [date, setDate] = useState(editing?.date ?? add?.date ?? todayIso())
-  const [title, setTitle] = useState(editing?.title ?? '')
+  const [title, setTitle] = useState(from?.title ?? '')
   const [note, setNote] = useState(editing?.note ?? '')
   const [receipt, setReceipt] = useState<ReceiptScan | null>(null)
   const [receiptPhoto, setReceiptPhoto] = useState<Blob | null>(null)

@@ -1,5 +1,5 @@
 // Details for one transaction, opened by tapping any row. Edit reopens the add panel prefilled; Delete offers Undo.
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -39,6 +39,8 @@ function Details({ id }: { id: string }) {
       description="Transaction details"
       footer={t && (
         <>
+          {/* Repeats (fare, load, lunch): the same transaction again, dated today, ready to save or adjust. */}
+          <Button variant="outline" onClick={() => openAdd({ copy: t })}><Repeat /> Add again</Button>
           <Button variant="outline" onClick={() => openAdd({ edit: t })}><Pencil /> Edit</Button>
           <Button variant="destructive" onClick={() => { closeDetail(); deleteWithUndo(t) }}><Trash2 /> Delete</Button>
         </>

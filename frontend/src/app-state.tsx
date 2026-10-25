@@ -7,7 +7,8 @@ import { currentMonth } from '@/lib/format'
 import { supabase, toUser } from '@/lib/supabase'
 import type { Transaction, TransactionKind, User } from '@/types'
 
-type AddRequest = { kind?: TransactionKind; scan?: boolean; edit?: Transaction; date?: string }
+// copy: a new transaction prefilled from an old one ("Add again"), dated today.
+type AddRequest = { kind?: TransactionKind; scan?: boolean; edit?: Transaction; copy?: Transaction; date?: string }
 
 interface AppState {
   user: User | null
