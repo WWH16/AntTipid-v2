@@ -17,12 +17,16 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirm,
   const [run, busy] = useAction()
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      {/* The phone's width less a 16px margin each side, not the stock 320px cap, so both buttons fit on one line. */}
+      <AlertDialogContent className="data-[size=default]:max-w-[calc(100%-2rem)]">
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
+        {/* Side by side on phones too, as the dialog's own small size does: two short choices read as a pair.
+            Cancel on the left, the action on the right. On the narrowest phones a long label ("Delete transaction")
+            wraps to two lines rather than spilling out of its half. */}
+        <AlertDialogFooter className="grid grid-cols-2 sm:flex [&>*]:h-auto [&>*]:min-h-9 [&>*]:py-1.5 [&>*]:whitespace-normal">
           <AlertDialogCancel disabled={busy}>Keep it</AlertDialogCancel>
           <AlertDialogAction variant="destructive" disabled={busy} onClick={async () => { if (await run(onConfirm)) onOpenChange(false) }}>
             {busy && <Loader2 className="animate-spin" />}

@@ -7,6 +7,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { MONTH_PAGES, monthLink, useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { BusyButton } from '@/components/busy-button'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { CategoryIcon } from '@/components/category-icon'
 import { MoneyInput } from '@/components/money-input'
 import { ResponsivePanel } from '@/components/responsive-panel'
@@ -57,6 +58,13 @@ function AddFlow() {
   const [items, setItems] = useState<DraftReceiptItem[]>(() => toDraftItems(editing?.items))
   const [addingWallet, setAddingWallet] = useState(false)
   const [run, saving] = useAction()
+  // What the form opened with. Anything different is the user's work, so a swipe, tap outside or Back asks before
+  // throwing it away; an untouched form just closes. (The wallet is left out: it starts on a remembered default.)
+  const draft = JSON.stringify([kind, amount, categoryId, toWalletId, date, title, note, items, receipt])
+  const [opened] = useState(draft)
+  const [discarding, setDiscarding] = useState(false)
+  // Ignored while the question is up: a tap on its buttons lands outside the sheet, which asks the sheet to close.
+  const close = () => { if (!discarding) (draft !== opened ? setDiscarding(true) : closeAdd()) }
   const [viewedMonth] = useMonth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -149,7 +157,7 @@ function AddFlow() {
 
   return (
     <ResponsivePanel
-      onClose={closeAdd}
+      onClose={close}
       title={editing ? 'Edit transaction' : 'Add transaction'}
       description={receipt
         ? itemsOff
@@ -242,6 +250,14 @@ function AddFlow() {
           <Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </form>
+      <ConfirmDialog
+        open={discarding}
+        onOpenChange={setDiscarding}
+        title={editing ? 'Discard your changes?' : `Discard this ${KIND_LABEL[kind].toLowerCase()}?`}
+        description="What you entered won't be saved."
+        confirm="Discard"
+        onConfirm={async () => closeAdd()}
+      />
     </ResponsivePanel>
   )
 }

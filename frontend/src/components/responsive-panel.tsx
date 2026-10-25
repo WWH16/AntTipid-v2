@@ -19,14 +19,23 @@ function useBackToClose(onClose: () => void) {
     if ((history.state?.panelDepth ?? 0) >= depth) history.replaceState({ ...history.state, panelDepth: depth }, '')
     else history.pushState({ ...history.state, panelDepth: depth }, '')
     let closedByBack = false
+    let alive = true
     const onPop = () => {
       if ((history.state?.panelDepth ?? 0) < depth) {
         closedByBack = true
         close.current()
+        // A panel can stay open instead (the add form asks before discarding what was typed): then it needs its
+        // history entry back, or the next Back would leave the page.
+        setTimeout(() => {
+          if (!alive) return
+          closedByBack = false
+          history.pushState({ ...history.state, panelDepth: depth }, '')
+        })
       }
     }
     window.addEventListener('popstate', onPop)
     return () => {
+      alive = false
       window.removeEventListener('popstate', onPop)
       livePanels--
       // Closed with X, Cancel or Save: drop this panel's history entry, unless another panel took it over.
