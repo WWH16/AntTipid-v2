@@ -417,11 +417,9 @@
       /* The steps: a numbered node per screen and a rail between nodes, the same at every size. A rail fills while the
          screens slide, and the node it reaches lights as the next screen arrives. Phones show them as a row above the
          current caption; from md each node and rail sits beside its caption in the step list. --i is the step.
-         Unlit, a node is a dim well in the green; lit, it fills lime inside a soft lime ring, and the rails run
-         straight into the rings, so the lit path reads as one line. */
+         Unlit, a node is a dim well in the green; lit, it fills lime inside a soft lime ring. */
       .tour-node {
         flex: none;
-        z-index: 1;
         width: var(--node);
         height: var(--node);
         border-radius: 999px;
@@ -445,7 +443,7 @@
       }
       .tour-rail {
         border-radius: 999px;
-        background: linear-gradient(#9FE870 0 0) no-repeat 0 0 / var(--rail-empty, 0% 100%), rgb(255 255 255 / .12);
+        background: linear-gradient(var(--rail-to, to right), #9FE870 55%, #E6FBD6) no-repeat 0 0 / var(--rail-empty, 0% 100%), rgb(255 255 255 / .16);
         animation: rail-fill cubic-bezier(.65, 0, .35, 1) both;
         animation-timeline: --tour;
         animation-range: contain calc(25% + var(--i) * 33.333%) contain calc(41.667% + var(--i) * 33.333%);
@@ -457,6 +455,7 @@
         display: flex;
         grid-area: 1 / 1;
         align-items: center;
+        gap: .375rem;
       }
       .tour-progress > .tour-rail {
         flex: 1;
@@ -742,7 +741,7 @@
         .tour-grid > figure:nth-of-type(1) > figcaption { grid-row: 3; }
         .tour-grid > figure:nth-of-type(2) > figcaption { grid-row: 4; }
         .tour-grid > figure:nth-of-type(3) > figcaption { grid-row: 5; }
-        /* The node sits level with the title; the rail runs edge to edge down to the next node (2.25rem: the row gap). */
+        /* The node sits level with the title; the rail runs down to the next node, stopping .25rem short of each. */
         .tour-grid > figure > figcaption > :is(.tour-node, .tour-rail) {
           display: block;
           position: absolute;
@@ -752,10 +751,11 @@
           top: calc((var(--title-lh) - var(--node)) / 2);
         }
         .tour-grid > figure > figcaption > .tour-rail {
+          --rail-to: to bottom;
           --rail-empty: 100% 0%;
           left: calc(var(--node) / 2 - 2px);
-          top: calc((var(--title-lh) + var(--node)) / 2);
-          bottom: calc((var(--title-lh) - var(--node)) / -2 - 2.25rem);
+          top: calc((var(--title-lh) + var(--node)) / 2 + .25rem);
+          bottom: calc((var(--title-lh) - var(--node)) / -2 - 2rem);
           width: 4px;
         }
         .tour-grid > figure:nth-of-type(3) .tour-rail {
