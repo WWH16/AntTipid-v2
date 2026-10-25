@@ -11,7 +11,7 @@ import { sumOf } from '@/lib/transactions'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
 
-const GAP = 12
+const GAP = 8
 
 /** Native scroll-snap carousel: swipe on touch, scroll on trackpads, dots for everyone else. */
 export function Carousel({ label, slides }: { label: string; slides: { title: string; content: ReactNode }[] }) {
@@ -27,7 +27,9 @@ export function Carousel({ label, slides }: { label: string; slides: { title: st
         // Bleeds to the screen edge on phones so the next card peeks in from the side.
         // contain-paint: without it, mobile Chrome widens the whole page to fit the off-screen slides.
         // motion-safe:scroll-smooth: the dots glide between slides, or jump when reduced motion is on.
-        className="-mx-4 flex contain-paint motion-safe:scroll-smooth snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 md:mx-0 md:scroll-px-0 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // The clip hides the left gutter: the gap is narrower than it, so a slide snapped to the gutter would
+        // otherwise leave the edge of the one before it showing.
+        className="-mx-4 flex contain-paint motion-safe:scroll-smooth snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 [clip-path:inset(0_0_0_1rem)] md:mx-0 md:scroll-px-0 md:px-0 md:[clip-path:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{ gap: GAP }}
       >
         {slides.map((s, i) => (
@@ -36,8 +38,11 @@ export function Carousel({ label, slides }: { label: string; slides: { title: st
             role="group"
             aria-roledescription="slide"
             aria-label={`${i + 1} of ${slides.length}: ${s.title}`}
-            // A sliver of the next card shows on phones so it reads as swipeable.
-            className="w-[88%] shrink-0 snap-start md:w-full [&>*]:h-full"
+            // A sliver of the next card shows on phones so it reads as swipeable: a fixed 16px (the .5rem it's short
+            // of the row, plus the 16px gutter, minus the 8px gap), not a share of the width, so it doesn't widen
+            // into a second card on bigger phones. The last slide has nothing to peek at and takes the full row,
+            // so it can snap to the gutter like the others instead of stopping short of it.
+            className="w-[calc(100%-0.5rem)] shrink-0 snap-start last:w-full md:w-full [&>*]:h-full"
           >
             {s.content}
           </div>
