@@ -35,6 +35,7 @@ export const todayIso = () => manilaDate.format(new Date())
 export const currentMonth = () => todayIso().slice(0, 7)
 
 const parse = (iso: string) => new Date(`${iso.length === 7 ? iso + '-01' : iso}T12:00:00`)
+export const yesterdayIso = () => new Date(parse(todayIso()).getTime() - 864e5).toISOString().slice(0, 10)
 
 export const monthLabel = (month: string, style: 'long' | 'short' = 'long') =>
   parse(month).toLocaleDateString('en-PH', style === 'long' ? { month: 'long', year: 'numeric' } : { month: 'short' })
@@ -55,8 +56,7 @@ export const dateInMonth = (month: string) =>
 export function dayLabel(iso: string) {
   const t = todayIso()
   if (iso === t) return 'Today'
-  const y = new Date(parse(t).getTime() - 864e5).toISOString().slice(0, 10)
-  if (iso === y) return 'Yesterday'
+  if (iso === yesterdayIso()) return 'Yesterday'
   // The year only when it isn't this one (a search across months can reach last year).
   return parse(iso).toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short', year: iso.slice(0, 4) === t.slice(0, 4) ? undefined : 'numeric' })
 }

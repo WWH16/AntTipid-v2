@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
-import { currentMonth, money, monthLabel, shiftMonth, todayIso } from '@/lib/format'
+import { currentMonth, money, monthLabel, shiftMonth, todayIso, yesterdayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/transactions'
 import { cleanReceiptItems, itemProblem, itemsTotal, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
@@ -230,7 +230,7 @@ function AddFlow() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 items-start gap-4">
           {kind !== 'transfer' && (
             <div className="grid gap-2">
               <Label htmlFor="wallet">{kind === 'income' ? 'Into wallet' : 'Paid from'}</Label>
@@ -240,6 +240,14 @@ function AddFlow() {
           <div className={kind === 'transfer' ? 'col-span-2 grid gap-2' : 'grid gap-2'}>
             <Label htmlFor="date">Date</Label>
             <Input id="date" type="date" value={date} max={todayIso()} onChange={(e) => setDate(e.target.value)} />
+            {/* Most spending is logged the same day or the day after: one tap instead of the date picker. */}
+            <div className="flex gap-1">
+              {([['Today', todayIso()], ['Yesterday', yesterdayIso()]] as const).map(([label, day]) => (
+                <Button key={label} type="button" size="xs" variant={date === day ? 'secondary' : 'outline'} aria-pressed={date === day} onClick={() => setDate(day)}>
+                  {label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="grid gap-2">
