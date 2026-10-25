@@ -255,6 +255,14 @@ def test_routes_and_user_isolation():
             # 4. Budgets & 5. Reports
             assert client.post("/api/budgets", json={"categoryId": None, "limit": 10000, "warnAt": 80}, headers=ha).status_code == 204
             assert client.post("/api/budgets", json={"categoryId": food_id, "limit": 2000, "warnAt": 75}, headers=ha).status_code == 204
+            # Category budgets share the month: together they can't add up to more than it, from either side.
+            # Food's own 2,000 doesn't count against its new limit, so it can grow to the whole 10,000.
+            assert client.post("/api/budgets", json={"categoryId": food_id, "limit": 10001, "warnAt": 75}, headers=ha).status_code == 422
+            groc_a = next(c["id"] for c in cats_a if c["name"] == "Groceries")
+            too_many = client.post("/api/budgets", json={"categoryId": groc_a, "limit": 8001, "warnAt": 80}, headers=ha)
+            assert too_many.status_code == 422 and "₱8,000" in too_many.json()["detail"]
+            too_low = client.post("/api/budgets", json={"categoryId": None, "limit": 1999, "warnAt": 80}, headers=ha)
+            assert too_low.status_code == 422 and "can't be less" in too_low.json()["detail"]
             b_list = client.get("/api/budgets", params={"month": "2026-10"}, headers=ha).json()
             assert len(b_list) == 2 and b_list[0]["categoryId"] is None and b_list[0]["spent"] == 250
             assert b_list[1]["categoryId"] == food_id and b_list[1]["spent"] == 250

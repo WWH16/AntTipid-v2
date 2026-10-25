@@ -47,11 +47,33 @@ def _check_category(conn, user: AuthUser, category_id: UUID | None) -> None:
         raise HTTPException(422, "Budgets are for spending categories.")
 
 
+def _check_fits(conn, user: AuthUser, budget_id: UUID | None, category_id: UUID | None, limit: float) -> None:
+    """Category budgets are shares of the monthly budget, so together they can't add up to more than it.
+    Checked from either side: a category limit against what's left to assign, a monthly limit against what's assigned.
+    The budget being saved (by id, or by category for the upsert) is left out of what's assigned."""
+    r = conn.execute(
+        """
+        select (select limit_amount from budgets where user_id = %(uid)s and category_id is null) as monthly,
+               (select coalesce(sum(limit_amount), 0) from budgets
+                where user_id = %(uid)s and category_id is not null
+                  and id is distinct from %(id)s and category_id is distinct from %(cat)s) as assigned
+        """,
+        {"uid": user.id, "id": budget_id, "cat": category_id},
+    ).fetchone()
+    monthly, assigned = r["monthly"], r["assigned"]
+    if category_id is None and limit < assigned:
+        raise HTTPException(422, f"Your category budgets add up to ₱{assigned:,.0f}. The monthly budget can't be less.")
+    if category_id is not None and monthly is not None and limit > (left := monthly - assigned):
+        raise HTTPException(422, f"Only ₱{left:,.0f} of your ₱{monthly:,.0f} monthly budget is left for categories." if left > 0
+                            else f"Your category budgets already use all of your ₱{monthly:,.0f} monthly budget.")
+
+
 @router.post("/budgets", status_code=204)
 def create_budget(body: BudgetIn, user: User):
     """Set the limit for a category (or the whole month). Saving one that exists updates it."""
     with user_tx(user) as conn:
         _check_category(conn, user, body.category_id)
+        _check_fits(conn, user, None, body.category_id, body.limit)
         conn.execute(
             """
             insert into budgets (user_id, category_id, limit_amount, warn_at) values (%s, %s, %s, %s)
@@ -66,6 +88,7 @@ def update_budget(budget_id: UUID, body: BudgetIn, user: User):
     try:
         with user_tx(user) as conn:
             _check_category(conn, user, body.category_id)
+            _check_fits(conn, user, budget_id, body.category_id, body.limit)
             r = conn.execute(
                 "update budgets set category_id = %s, limit_amount = %s, warn_at = %s where id = %s and user_id = %s returning id",
                 (body.category_id, body.limit, body.warn_at, budget_id, user.id),

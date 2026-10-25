@@ -7,7 +7,7 @@ import { setCached, useQuery } from '@/api/use-query'
 import { BudgetBadge, BudgetItem } from '@/components/budget'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { OVER_BAR, budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
+import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, outsideBudgets } from '@/lib/budget'
 import { MoneyInput } from '@/components/money-input'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
@@ -40,6 +40,7 @@ export function BudgetsPage() {
     .sort((a, b) => SEVERITY[budgetState(a)] - SEVERITY[budgetState(b)] || b.spent / b.limit - a.spent / a.limit)
   const needing = byCategory.filter((b) => budgetState(b) !== 'ok').map((b) => category(b.categoryId)?.name ?? 'Other')
   const unbudgeted = categories.filter((c) => c.kind === 'expense' && !data?.some((b) => b.categoryId === c.id))
+  const outside = data && outsideBudgets(data)
 
   return (
     <>
@@ -92,6 +93,16 @@ export function BudgetsPage() {
               ) : !unbudgeted.length && (
                 <EmptyState icon={Tags} title="No spending categories" body="Add one in Settings, then give it a limit here." />
               )}
+              {outside && outside.spent > 0 && (outside.spent > outside.room ? (
+                <p role="status" className="text-sm text-destructive tabular-nums">
+                  {money(outside.spent, { whole: true })} spent on categories without a budget.{' '}
+                  {outside.room > 0 ? `Only ${money(outside.room, { whole: true })} of your monthly budget was left for them.` : 'Your category budgets already use the whole month.'}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  {money(outside.spent, { whole: true })} spent on categories without a budget, of {money(outside.room, { whole: true })} left for them.
+                </p>
+              ))}
               {unbudgeted.length > 0 && (
                 <div className="grid gap-2">
                   <p className="text-sm text-muted-foreground">Categories without a budget</p>
@@ -128,7 +139,20 @@ export function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable
   ].filter((o) => o.value === target || !taken.has(o.value))
 
   const name = target === 'all' ? 'Monthly budget' : `${category(target)?.name ?? ''} budget`
-  const valid = target && Number(limit) > 0
+
+  // Category budgets are shares of the monthly budget: together they can't add up to more than it, from either
+  // side (the API checks the same). The budget being edited doesn't count against itself.
+  const amount = Number(limit)
+  const monthly = budgets.find((x) => x.categoryId === null)?.limit
+  const assigned = budgets.filter((x) => x.categoryId !== null && x.id !== b?.id).reduce((sum, x) => sum + x.limit, 0)
+  const left = monthly === undefined ? undefined : monthly - assigned
+  const tooBig = target === 'all'
+    ? amount > 0 && amount < assigned ? `Your category budgets add up to ${money(assigned, { whole: true })}. The monthly budget can't be less.` : null
+    : left !== undefined && amount > left
+      ? left > 0 ? `Only ${money(left, { whole: true })} of your ${money(monthly!, { whole: true })} monthly budget is left for categories.`
+        : `Your category budgets already use all of your ${money(monthly!, { whole: true })} monthly budget.`
+      : null
+  const valid = target && amount > 0 && !tooBig
 
   const [run, busy] = useAction()
   const [confirming, setConfirming] = useState(false)
@@ -177,6 +201,11 @@ export function BudgetForm({ editing, onClose, budgets }: { editing: NonNullable
             <SimpleSelect id="warn" value={warnAt} onChange={setWarnAt} options={[70, 75, 80, 90].map((p) => ({ value: String(p), label: `${p}% used` }))} />
           </div>
         </div>
+        {tooBig ? <p role="alert" className="text-sm text-destructive">{tooBig}</p> : target !== 'all' && left !== undefined && (
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {money(left, { whole: true })} of your {money(monthly!, { whole: true })} monthly budget is left for categories.
+          </p>
+        )}
       </form>
       <ConfirmDialog
         open={confirming}

@@ -13,6 +13,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { dateInMonth, dayIso, dayLabel, money, monthLabel } from '@/lib/format'
+import { outsideBudgets } from '@/lib/budget'
 import { monthTotals } from '@/lib/report'
 
 const PaceChart = lazy(() => import('@/components/report-charts').then((m) => ({ default: m.PaceChart })))
@@ -46,6 +47,8 @@ export function ReportsPage() {
   const { openAdd } = useApp()
   const { data, error, loading } = useQuery(`report:${month}`, () => api.reports.monthly(month))
   const { data: summary } = useQuery(`summary:${month}`, () => api.reports.summary(month))
+  const { data: budgets } = useQuery(`budgets:${month}`, () => api.budgets.list(month))
+  const outside = budgets && outsideBudgets(budgets)
   const [asTable, setAsTable] = useState(false)
   const [paceAsTable, setPaceAsTable] = useState(false)
   const [detail, setDetail] = useState<ReportDetail>(null)
@@ -147,7 +150,12 @@ export function ReportsPage() {
                 <CardTitle role="heading" aria-level={2}>Where your money went</CardTitle>
                 <CardDescription>Spending by category in {monthLabel(month)}. Select one for details.</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="grid gap-4">
+                {outside && outside.spent > 0 && (
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {money(outside.spent, { whole: true })} of {money(outside.total, { whole: true })} ({Math.round((outside.spent / outside.total) * 100)}%) went to categories without a budget.
+                  </p>
+                )}
                 {data.byCategory.length ? (
                   <CategoryBreakdown items={data.byCategory} onSelect={(categoryId) => setDetail({ type: 'category', categoryId })} />
                 ) : (
