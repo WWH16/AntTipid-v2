@@ -48,7 +48,8 @@ export function ResponsivePanel({ onClose, title, description, footer, children 
   const onOpenChange = (open: boolean) => { if (!open) onClose() }
   if (isMobile) {
     return (
-      <Drawer open onOpenChange={onOpenChange}>
+      // The grab handle says "this is a sheet: swipe it down", the way native bottom sheets do.
+      <Drawer open onOpenChange={onOpenChange} showSwipeHandle>
         <DrawerContent>
           <DrawerHeader className="group-data-[swipe-axis=y]/drawer-popup:text-left">
             <DrawerTitle className="text-lg font-semibold">{title}</DrawerTitle>
