@@ -23,6 +23,10 @@ async function request(path: string, init: RequestInit & { query?: Query } = {})
       ...(await authHeader()),
       ...init.headers,
     },
+  }).catch((e: Error) => {
+    // No response at all: the browser's own "Failed to fetch" means nothing to people. A cancel stays a cancel.
+    if (e.name === 'AbortError') throw e
+    throw new Error("You're offline. Check your connection and try again.")
   })
   if (!res.ok) {
     // The session is gone on the server's side (expired, revoked): drop it here too, which shows the sign-in page.

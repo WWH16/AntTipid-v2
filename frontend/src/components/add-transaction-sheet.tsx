@@ -340,13 +340,10 @@ function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: ()
       setState('idle')
     } catch (e) {
       if (abort.signal.aborted) return
-      // The backend's messages say what to do next ("Try a sharper photo..."). A network drop, or a proxy
-      // error when the backend is down, has none: http() then falls back to "Request failed (502)".
+      // The backend's messages say what to do next ("Try a sharper photo...", and http() words a dropped connection
+      // the same way). A proxy error when the backend is down has none: http() falls back to "Request failed (502)".
       const message = (e as Error).message
-      setScanError(
-        e instanceof TypeError ? 'No connection. Check your internet and try again.' :
-        message.startsWith('Request failed') ? "Couldn't reach the receipt reader. Try again in a minute, or type it in." :
-        message)
+      setScanError(message.startsWith('Request failed') ? "Couldn't reach the receipt reader. Try again in a minute, or type it in." : message)
       setState('error')
     }
   }

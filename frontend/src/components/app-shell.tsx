@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChartColumn, ChevronsUpDown, House, ListOrdered, LogOut, PiggyBank, Plus, RefreshCw, Settings } from 'lucide-react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { ChartColumn, ChevronsUpDown, House, ListOrdered, LogOut, PiggyBank, Plus, RefreshCw, Settings, WifiOff } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { MONTH_PAGES, monthLink, useApp, useCurrentMonth } from '@/app-state'
 import { refresh } from '@/api/use-query'
@@ -40,6 +40,7 @@ export function AppShell() {
   const linkTo = (to: string) => (month && MONTH_PAGES.has(to) ? monthLink(to, month) : to)
   // A new month starting while the app is open restarts the page, so "this month" and its data move with it.
   const thisMonth = useCurrentMonth()
+  const online = useOnline()
 
   return (
     <SidebarProvider>
@@ -82,6 +83,11 @@ export function AppShell() {
 
       <SidebarInset>
         <main id="main" className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:gap-6 md:p-6">
+          {!online && (
+            <p role="status" className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm">
+              <WifiOff className="size-4 shrink-0" aria-hidden /> You're offline. You can look around, but changes won't save until you're back.
+            </p>
+          )}
           <Outlet key={thisMonth} />
         </main>
       </SidebarInset>
@@ -106,6 +112,21 @@ export function AppShell() {
       <PullToRefresh />
     </SidebarProvider>
   )
+}
+
+/** The browser's own online flag. Coming back online reloads every screen, so nothing shows data from before. */
+function useOnline() {
+  const online = useSyncExternalStore((cb) => {
+    window.addEventListener('online', cb)
+    window.addEventListener('offline', cb)
+    return () => { window.removeEventListener('online', cb); window.removeEventListener('offline', cb) }
+  }, () => navigator.onLine)
+  useEffect(() => {
+    const reload = () => void refresh()
+    window.addEventListener('online', reload)
+    return () => window.removeEventListener('online', reload)
+  }, [])
+  return online
 }
 
 function BottomLink({ to, label, icon: Icon, active }: { to: string; label: string; icon: typeof House; active: boolean }) {
