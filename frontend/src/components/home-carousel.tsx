@@ -133,15 +133,23 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
         </CardAction>
       </CardHeader>
       <CardContent>
-        <ol className="flex h-24 items-end gap-2" aria-label={period === 'week' ? 'Spending per day this week' : 'Spending per week this month'}>
+        {/* pt-5 keeps room above the tallest bar for its amount. */}
+        <ol className="flex h-28 items-end gap-2 pt-5" aria-label={period === 'week' ? 'Spending per day this week' : 'Spending per week this month'}>
           {bars.map((d, i) => (
             <li key={d.label} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1.5">
               <span className="sr-only">{d.label}: {d.spent === null ? 'not yet' : money(d.spent, { whole: true })}</span>
+              {/* Each bar's amount sits just above it, compact (₱1.2K) to fit seven across a phone. */}
               <span
                 aria-hidden
-                className={cn('w-full rounded-sm', d.spent === null ? 'bg-primary-foreground/10' : 'bg-sidebar-primary')}
+                className={cn('relative w-full rounded-sm', d.spent === null ? 'bg-primary-foreground/10' : 'bg-sidebar-primary')}
                 style={{ height: `${Math.max(6, ((d.spent ?? 0) / max) * 100)}%` }}
-              />
+              >
+                {!!d.spent && (
+                  <span className="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-[11px] whitespace-nowrap tabular-nums opacity-80">
+                    {money(d.spent, { compact: true })}
+                  </span>
+                )}
+              </span>
               <span aria-hidden className={cn('h-4 text-xs whitespace-nowrap', i === todayBar ? 'font-semibold' : 'opacity-70')}>
                 {d.tick}
               </span>
