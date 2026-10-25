@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
+import { toast } from 'sonner'
+import { dropCachedTransaction, invalidate } from '@/api/use-query'
 import { CategoryMedia } from '@/components/category-icon'
-import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
-import { done } from '@/lib/done'
 import { money } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
@@ -21,28 +21,33 @@ export function SignedAmount({ t, className }: { t: Transaction; className?: str
   )
 }
 
-/** Confirm step before a delete; shared by the swipe action and the details panel. */
-export function DeleteTransactionDialog({ t, open, onOpenChange, onDeleted }: {
-  t?: Transaction
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onDeleted?: () => void
-}) {
-  return (
-    <ConfirmDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Delete this transaction?"
-      description={`${t?.title} will be removed and your wallet balance and budgets will update. This can't be undone.`}
-      confirm="Delete transaction"
-      onConfirm={async () => {
-        if (!t) return
-        await api.transactions.remove(t.id)
-        done('Transaction deleted', { description: t.title })
-        onDeleted?.()
-      }}
-    />
-  )
+/**
+ * Delete with Undo instead of a confirm step; shared by the swipe action and the details panel. The row leaves every
+ * list at once, and the server delete runs only when the toast goes without Undo, so Undo just reloads: nothing to
+ * re-create, and a receipt photo stays. Totals from the server (budgets, reports) catch up once the delete lands.
+ * ponytail: a delete pending when the app is closed never runs, so the transaction stays; fine for a 6s window.
+ */
+export function deleteWithUndo(t: Transaction) {
+  dropCachedTransaction(t.id)
+  let settled = false
+  const commit = async () => {
+    if (settled) return
+    settled = true
+    try {
+      await api.transactions.remove(t.id)
+    } catch {
+      toast.error(`Couldn't delete ${t.title}. Try again.`)
+    }
+    invalidate()
+  }
+  toast.success('Transaction deleted', {
+    description: t.title,
+    duration: 6000,
+    // Sonner runs onClick before onDismiss, so Undo settles first and the dismiss that follows does nothing.
+    action: { label: 'Undo', onClick: () => { settled = true; invalidate() } },
+    onAutoClose: commit,
+    onDismiss: commit,
+  })
 }
 
 const ACTIONS_WIDTH = 144 // two 72px action buttons revealed by a left swipe
@@ -64,17 +69,15 @@ export function TransactionItem({ t, swipe = false }: { t: Transaction; swipe?: 
   const { category, wallet } = useRefData()
   const [offset, setOffset] = useState(0)
   const [dragging, setDragging] = useState(false)
-  const [confirming, setConfirming] = useState(false)
   const gesture = useRef<{ x: number; y: number; base: number; axis?: 'x' | 'y'; lastX: number; lastT: number; vx: number } | null>(null)
   const swiped = useRef(false)
   const row = useRef<HTMLDivElement>(null)
   const open = offset < 0
   const settled = open && !dragging
 
-  // While open (and not asking to confirm a delete, whose dialog sits outside the row), any touch outside
-  // the row or any scroll closes it.
+  // While open, any touch outside the row or any scroll closes it.
   useEffect(() => {
-    if (!settled || confirming) return
+    if (!settled) return
     const close = () => setOffset(0)
     if (closeOpenRow !== close) closeOpenRow?.()
     closeOpenRow = close
@@ -93,7 +96,7 @@ export function TransactionItem({ t, swipe = false }: { t: Transaction; swipe?: 
       window.removeEventListener('scroll', close, { capture: true })
       if (closeOpenRow === close) closeOpenRow = null
     }
-  }, [settled, confirming])
+  }, [settled])
 
   const description = t.kind === 'transfer'
     ? `${wallet(t.walletId)?.name ?? 'Wallet'} to ${wallet(t.toWalletId)?.name ?? 'wallet'}`
@@ -144,7 +147,7 @@ export function TransactionItem({ t, swipe = false }: { t: Transaction; swipe?: 
       {open && (
         <div className="absolute inset-y-0 right-0 flex" style={{ width: Math.max(ACTIONS_WIDTH, -offset) }}>
           <Button variant="secondary" className={SWIPE_ACTION} onClick={() => { setOffset(0); openAdd({ edit: t }) }}><Pencil /> Edit</Button>
-          <Button variant="destructive" className={cn(SWIPE_ACTION, 'bg-destructive text-primary-foreground hover:bg-destructive/90')} onClick={() => setConfirming(true)}><Trash2 /> Delete</Button>
+          <Button variant="destructive" className={cn(SWIPE_ACTION, 'bg-destructive text-primary-foreground hover:bg-destructive/90')} onClick={() => { setOffset(0); deleteWithUndo(t) }}><Trash2 /> Delete</Button>
         </div>
       )}
       <Item
@@ -173,7 +176,6 @@ export function TransactionItem({ t, swipe = false }: { t: Transaction; swipe?: 
         </ItemContent>
         <ItemActions><SignedAmount t={t} /></ItemActions>
       </Item>
-      <DeleteTransactionDialog t={t} open={confirming} onOpenChange={setConfirming} onDeleted={() => setOffset(0)} />
     </div>
   )
 }

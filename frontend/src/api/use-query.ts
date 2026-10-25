@@ -82,6 +82,14 @@ export const upsertCached = <T extends { id: string }>(key: 'wallets' | 'categor
 export const dropCached = (key: 'wallets' | 'categories', id: string) =>
   setCached<{ id: string }[]>(key, (list) => list.filter((x) => x.id !== id))
 
+/** Take one transaction out of every loaded transaction list (Home, Activity, the report panels) at once. */
+export function dropCachedTransaction(id: string) {
+  for (const [key, entry] of cache) {
+    if (/^(recent|tx):/.test(key) && Array.isArray(entry.data)) entry.data = entry.data.filter((t: { id: string }) => t.id !== id)
+  }
+  listeners.forEach((l) => l())
+}
+
 export function useQuery<T>(key: string, load: () => Promise<T>) {
   const v = useSyncExternalStore(subscribe, () => version)
   // Last loaded data for this key, plus any setCached change made since (re-renders on those without reloading).

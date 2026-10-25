@@ -1,5 +1,4 @@
-// Details for one transaction, opened by tapping any row. Edit reopens the add panel prefilled; Delete asks first.
-import { useState } from 'react'
+// Details for one transaction, opened by tapping any row. Edit reopens the add panel prefilled; Delete offers Undo.
 import { Pencil, Trash2 } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
@@ -8,7 +7,7 @@ import { KIND_LABEL } from '@/lib/transactions'
 import { DetailList } from '@/components/detail-list'
 import { ReceiptItems } from '@/components/receipt-items'
 import { ResponsivePanel } from '@/components/responsive-panel'
-import { DeleteTransactionDialog, SignedAmount } from '@/components/transaction-item'
+import { deleteWithUndo, SignedAmount } from '@/components/transaction-item'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -24,7 +23,6 @@ function Details({ id }: { id: string }) {
   const { openAdd, closeDetail } = useApp()
   const { category, wallet } = useRefData()
   const { data: t, error } = useQuery(`transaction:${id}`, () => api.transactions.get(id))
-  const [confirming, setConfirming] = useState(false)
 
   const rows: [string, string][] = !t ? [] : [
     ['Type', KIND_LABEL[t.kind]],
@@ -42,7 +40,7 @@ function Details({ id }: { id: string }) {
       footer={t && (
         <>
           <Button variant="outline" onClick={() => openAdd({ edit: t })}><Pencil /> Edit</Button>
-          <Button variant="destructive" onClick={() => setConfirming(true)}><Trash2 /> Delete</Button>
+          <Button variant="destructive" onClick={() => { closeDetail(); deleteWithUndo(t) }}><Trash2 /> Delete</Button>
         </>
       )}
     >
@@ -93,7 +91,6 @@ function Details({ id }: { id: string }) {
         </div>
       )}
 
-      <DeleteTransactionDialog t={t} open={confirming} onOpenChange={setConfirming} onDeleted={closeDetail} />
     </ResponsivePanel>
   )
 }
