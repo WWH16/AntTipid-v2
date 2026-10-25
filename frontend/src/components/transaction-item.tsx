@@ -64,7 +64,15 @@ let closeOpenRow: (() => void) | null = null
  * only closes it (it doesn't also open another row).
  * Only the Activity history passes `swipe`; elsewhere (Home, sheets) a row just opens its details.
  */
-export function TransactionItem({ t, swipe = false }: { t: Transaction; swipe?: boolean }) {
+const SWIPE_HINT = 'anttipid-swipe-hint'
+/** Whether to show the swipe hint: only on touch screens (the only place swipe works), only once, and not with reduced motion. */
+export function shouldHintSwipe() {
+  try {
+    return !localStorage.getItem(SWIPE_HINT) && matchMedia('(pointer: coarse)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch { return false }
+}
+
+export function TransactionItem({ t, swipe = false, hint = false }: { t: Transaction; swipe?: boolean; hint?: boolean }) {
   const { openDetail, openAdd } = useApp()
   const { category, wallet } = useRefData()
   const [offset, setOffset] = useState(0)
@@ -74,6 +82,18 @@ export function TransactionItem({ t, swipe = false }: { t: Transaction; swipe?: 
   const row = useRef<HTMLDivElement>(null)
   const open = offset < 0
   const settled = open && !dragging
+
+  // The hint: the row slides open a little and back, once, so the actions behind it are discovered.
+  useEffect(() => {
+    // Checked again here: a new first row (just added) mounts with hint still on, after the nudge already ran.
+    if (!hint || !shouldHintSwipe()) return
+    const peek =setTimeout(() => setOffset(-56), 700)
+    const back = setTimeout(() => {
+      setOffset(0)
+      try { localStorage.setItem(SWIPE_HINT, '1') } catch { /* private mode: it shows again next visit */ }
+    }, 1500)
+    return () => { clearTimeout(peek); clearTimeout(back) }
+  }, [hint])
 
   // While open, any touch outside the row or any scroll closes it.
   useEffect(() => {

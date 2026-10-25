@@ -10,7 +10,7 @@ import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
 import { SimpleSelect } from '@/components/simple-select'
 import { EmptyState, ErrorState, LoadingItems } from '@/components/states'
-import { TransactionItem } from '@/components/transaction-item'
+import { shouldHintSwipe, TransactionItem } from '@/components/transaction-item'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
@@ -40,6 +40,8 @@ export function ActivityPage() {
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [moreFilters, setMoreFilters] = useState(false)
+  // Decided once per visit, so the first row nudges once and a reload of the list doesn't nudge it again.
+  const [hint] = useState(shouldHintSwipe)
 
   useEffect(() => {
     const id = setTimeout(() => setDebouncedSearch(search), 250)
@@ -152,7 +154,7 @@ export function ActivityPage() {
           : <EmptyState framed icon={ReceiptText} title={`Nothing recorded in ${monthLabel(month)}`} body="Transactions you add for this month are listed here." action={<Button onClick={() => openAdd({ date: dateInMonth(month) })}>Add transaction</Button>} />
       ) : (
         <Card aria-busy={stale} className={cn('transition-opacity', stale && 'opacity-60')}>
-          <DayList list={data} />
+          <DayList list={data} hint={hint} />
         </Card>
       )}
       </div>
@@ -161,7 +163,7 @@ export function ActivityPage() {
   )
 }
 
-const DayList = memo(function DayList({ list }: { list: Transaction[] }) {
+const DayList = memo(function DayList({ list, hint }: { list: Transaction[]; hint: boolean }) {
   return (
     <CardContent className="grid gap-2 md:gap-4">
       {[...Map.groupBy(list, (t) => t.date)].map(([day, items], i) => {
@@ -173,7 +175,7 @@ const DayList = memo(function DayList({ list }: { list: Transaction[] }) {
               <h2 className="font-medium">{dayLabel(day)}</h2>
               {spent > 0 && <span className="text-muted-foreground tabular-nums">{money(spent)} spent</span>}
             </div>
-            <ItemGroup>{items.map((t) => <TransactionItem key={t.id} t={t} swipe />)}</ItemGroup>
+            <ItemGroup>{items.map((t, j) => <TransactionItem key={t.id} t={t} swipe hint={hint && i === 0 && j === 0} />)}</ItemGroup>
           </section>
         )
       })}
