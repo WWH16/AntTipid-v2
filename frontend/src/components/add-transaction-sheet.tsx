@@ -6,6 +6,7 @@ import { Camera, Check, Loader2, ScanLine, Upload } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { MONTH_PAGES, monthLink, useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
+import { useQuery } from '@/api/use-query'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { CategoryIcon } from '@/components/category-icon'
@@ -22,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
-import { currentMonth, money, monthLabel, todayIso } from '@/lib/format'
+import { currentMonth, money, monthLabel, shiftMonth, todayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/transactions'
 import { cleanReceiptItems, itemProblem, itemsTotal, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
 import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
@@ -66,6 +67,10 @@ function AddFlow() {
   // Ignored while the question is up: a tap on its buttons lands outside the sheet, which asks the sheet to close.
   const close = () => { if (!discarding) (draft !== opened ? setDiscarding(true) : closeAdd()) }
   const [viewedMonth] = useMonth()
+  // This month and last, the same list (and cache key) Home loads, so opening Add from Home costs no request.
+  // It ranks the categories: most-used first.
+  const thisMonth = currentMonth()
+  const { data: recent } = useQuery(`recent:${thisMonth}`, () => api.transactions.list({ since: `${shiftMonth(thisMonth, -1)}-01` }))
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -153,7 +158,11 @@ function AddFlow() {
   if (mode === 'scan') return <ScanStep onClose={closeAdd} onBack={() => setMode('form')} onDone={applyReceipt} />
 
   const walletOptions = activeWallets.map((w) => ({ value: w.id, label: w.name }))
-  const shownCategories = categories.filter((c) => c.kind === (kind === 'income' ? 'income' : 'expense'))
+  const uses = Map.groupBy(recent ?? [], (t) => t.categoryId)
+  // Most-used first; sort is stable, so unused ones keep their usual order.
+  const shownCategories = categories
+    .filter((c) => c.kind === (kind === 'income' ? 'income' : 'expense'))
+    .sort((a, b) => (uses.get(b.id)?.length ?? 0) - (uses.get(a.id)?.length ?? 0))
 
   return (
     <ResponsivePanel
