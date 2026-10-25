@@ -57,7 +57,8 @@ export function dayLabel(iso: string) {
   if (iso === t) return 'Today'
   const y = new Date(parse(t).getTime() - 864e5).toISOString().slice(0, 10)
   if (iso === y) return 'Yesterday'
-  return parse(iso).toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short' })
+  // The year only when it isn't this one (a search across months can reach last year).
+  return parse(iso).toLocaleDateString('en-PH', { weekday: 'short', day: 'numeric', month: 'short', year: iso.slice(0, 4) === t.slice(0, 4) ? undefined : 'numeric' })
 }
 
 export const longDate = (iso: string) =>

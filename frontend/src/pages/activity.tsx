@@ -46,8 +46,10 @@ export function ActivityPage() {
     return () => clearTimeout(id)
   }, [search])
 
+  // A search looks through every month: people search for "Meralco" to find it, not knowing when it was.
+  const searching = !!debouncedSearch.trim()
   const filters: TransactionFilters = {
-    month,
+    month: searching ? undefined : month,
     kind: kind === 'all' ? undefined : kind,
     walletId: walletId === 'all' ? undefined : walletId,
     categoryId: categoryId === 'all' ? undefined : categoryId,
@@ -75,7 +77,7 @@ export function ActivityPage() {
       <PageHeader
         page="Activity"
         // The month is in the switcher right below, so the headline doesn't repeat it.
-        headline={!data ? 'Activity' : `${data.length} ${filtered ? (data.length === 1 ? 'match' : 'matches') : (data.length === 1 ? 'transaction' : 'transactions')}`}
+        headline={!data ? 'Activity' : `${data.length} ${filtered ? (data.length === 1 ? 'match' : 'matches') : (data.length === 1 ? 'transaction' : 'transactions')}${searching ? ' in all months' : ''}`}
         // Totals sit under the headline, not in the sticky bar: on phones they'd wrap to a second pinned row.
         description={
           <span className="flex flex-wrap gap-x-4 tabular-nums">
@@ -103,7 +105,7 @@ export function ActivityPage() {
             <InputGroupAddon><Search /></InputGroupAddon>
             <InputGroupInput
               type="search"
-              placeholder="Search by description or note"
+              placeholder="Search all months"
               aria-label="Search transactions"
               value={search}
               onChange={(e) => {
@@ -146,7 +148,7 @@ export function ActivityPage() {
       <div className="min-w-0 lg:order-1">
       {error ? <ErrorState error={error} /> : loading && !data ? <LoadingDays /> : !data?.length ? (
         filtered
-          ? <EmptyState framed icon={SearchX} title="No matches" body={`Nothing in ${monthLabel(month)} matches these filters.`} action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
+          ? <EmptyState framed icon={SearchX} title="No matches" body={searching ? 'Nothing in any month matches these filters.' : `Nothing in ${monthLabel(month)} matches these filters.`} action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
           : <EmptyState framed icon={ReceiptText} title={`Nothing recorded in ${monthLabel(month)}`} body="Transactions you add for this month are listed here." action={<Button onClick={() => openAdd({ date: dateInMonth(month) })}>Add transaction</Button>} />
       ) : (
         <Card aria-busy={stale} className={cn('transition-opacity', stale && 'opacity-60')}>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanMoneyInput, fieldError, formatMoneyInput } from './format.ts'
+import { cleanMoneyInput, dayLabel, fieldError, formatMoneyInput, todayIso } from './format.ts'
 import { cleanReceiptItems, itemProblem, itemsTotal, lineTotal, toDraftItems } from './receipt.ts'
 
 test('cleanMoneyInput strips commas, currency symbols, and extra decimal points', () => {
@@ -84,4 +84,10 @@ test('fieldError names the field to fix instead of the raw 422 list', () => {
   assert.equal(fieldError([{ loc: ['body', 'walletId'], msg: 'Input should be a valid UUID' }]),
     "Some details aren't valid. Check the form and try again.")
   assert.equal(fieldError('Pick a category.'), null)
+})
+
+test('dayLabel adds the year only for another year', () => {
+  const year = todayIso().slice(0, 4)
+  assert.ok(!dayLabel(`${year}-01-15`).includes(year))
+  assert.ok(dayLabel(`${Number(year) - 1}-01-15`).includes(String(Number(year) - 1)))
 })
