@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
@@ -47,17 +47,53 @@ export function DeleteTransactionDialog({ t, open, onOpenChange, onDeleted }: {
 
 const ACTIONS_WIDTH = 144 // two 72px action buttons revealed by a left swipe
 const SWIPE_ACTION = 'h-full flex-1 flex-col gap-1 rounded-none text-xs'
+// px per ms: a release faster than this opens or closes the row whatever its position, like a native list.
+const FLICK = 0.4
+// Closes the row whose actions are showing, so only one row is open at a time.
+let closeOpenRow: (() => void) | null = null
 
-/** One transaction as a shadcn Item; tap opens details, swipe left (touch) reveals Edit and Delete. */
-export function TransactionItem({ t }: { t: Transaction }) {
+/**
+ * One transaction as a shadcn Item; tap opens details, swipe left (touch) reveals Edit and Delete.
+ * The swipe follows native lists: one row open at a time; a flick opens or closes it; dragging past the
+ * actions stretches them with resistance; scrolling or touching anywhere else closes it, and that touch
+ * only closes it (it doesn't also open another row).
+ * Only the Activity history passes `swipe`; elsewhere (Home, sheets) a row just opens its details.
+ */
+export function TransactionItem({ t, swipe = false }: { t: Transaction; swipe?: boolean }) {
   const { openDetail, openAdd } = useApp()
   const { category, wallet } = useRefData()
   const [offset, setOffset] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [confirming, setConfirming] = useState(false)
-  const gesture = useRef<{ x: number; y: number; base: number; axis?: 'x' | 'y' } | null>(null)
+  const gesture = useRef<{ x: number; y: number; base: number; axis?: 'x' | 'y'; lastX: number; lastT: number; vx: number } | null>(null)
   const swiped = useRef(false)
+  const row = useRef<HTMLDivElement>(null)
   const open = offset < 0
+  const settled = open && !dragging
+
+  // While open (and not asking to confirm a delete, whose dialog sits outside the row), any touch outside
+  // the row or any scroll closes it.
+  useEffect(() => {
+    if (!settled || confirming) return
+    const close = () => setOffset(0)
+    if (closeOpenRow !== close) closeOpenRow?.()
+    closeOpenRow = close
+    const onDown = (e: Event) => {
+      if (row.current?.contains(e.target as Node)) return
+      close()
+      // The touch that closes a row does only that: swallow the click it would end in.
+      const swallow = (c: Event) => { c.stopPropagation(); c.preventDefault() }
+      document.addEventListener('click', swallow, { capture: true, once: true })
+      setTimeout(() => document.removeEventListener('click', swallow, { capture: true }), 500)
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    window.addEventListener('scroll', close, { capture: true, passive: true })
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true)
+      window.removeEventListener('scroll', close, { capture: true })
+      if (closeOpenRow === close) closeOpenRow = null
+    }
+  }, [settled, confirming])
 
   const description = t.kind === 'transfer'
     ? `${wallet(t.walletId)?.name ?? 'Wallet'} to ${wallet(t.toWalletId)?.name ?? 'wallet'}`
@@ -65,8 +101,8 @@ export function TransactionItem({ t }: { t: Transaction }) {
 
   // Touch only; vertical moves are left to page scrolling (touch-action: pan-y).
   function onPointerDown(e: PointerEvent) {
-    if (e.pointerType === 'mouse') return
-    gesture.current = { x: e.clientX, y: e.clientY, base: offset }
+    if (!swipe || e.pointerType === 'mouse') return
+    gesture.current ={ x: e.clientX, y: e.clientY, base: offset, lastX: e.clientX, lastT: e.timeStamp, vx: 0 }
     swiped.current = false
   }
   function onPointerMove(e: PointerEvent) {
@@ -84,18 +120,29 @@ export function TransactionItem({ t }: { t: Transaction }) {
         swiped.current = true
       }
     }
-    if (g.axis === 'x') setOffset(Math.max(-ACTIONS_WIDTH, Math.min(0, g.base + dx)))
+    if (g.axis !== 'x') return
+    if (e.timeStamp > g.lastT) g.vx = (e.clientX - g.lastX) / (e.timeStamp - g.lastT)
+    g.lastX = e.clientX
+    g.lastT = e.timeStamp
+    // Past the actions the row keeps moving at a quarter of the finger's pace; it never moves right of closed.
+    const x = Math.min(0, g.base + dx)
+    setOffset(x < -ACTIONS_WIDTH ? -ACTIONS_WIDTH + (x + ACTIONS_WIDTH) / 4 : x)
   }
-  function onPointerEnd() {
-    if (gesture.current?.axis === 'x') setOffset((o) => (o < -ACTIONS_WIDTH / 2 ? -ACTIONS_WIDTH : 0))
+  function onPointerEnd(e: PointerEvent) {
+    const g = gesture.current
+    if (g?.axis === 'x') {
+      // A finger that stopped before lifting isn't a flick, however fast it moved earlier.
+      const flick = e.timeStamp - g.lastT < 100 && Math.abs(g.vx) > FLICK
+      setOffset((o) => ((flick ? g.vx < 0 : o < -ACTIONS_WIDTH / 2) ? -ACTIONS_WIDTH : 0))
+    }
     gesture.current = null
     setDragging(false)
   }
 
   return (
-    <div role="listitem" className="relative overflow-hidden rounded-lg">
+    <div ref={row} role="listitem" className="relative overflow-hidden rounded-lg">
       {open && (
-        <div className="absolute inset-y-0 right-0 flex" style={{ width: ACTIONS_WIDTH }}>
+        <div className="absolute inset-y-0 right-0 flex" style={{ width: Math.max(ACTIONS_WIDTH, -offset) }}>
           <Button variant="secondary" className={SWIPE_ACTION} onClick={() => { setOffset(0); openAdd({ edit: t }) }}><Pencil /> Edit</Button>
           <Button variant="destructive" className={cn(SWIPE_ACTION, 'bg-destructive text-primary-foreground hover:bg-destructive/90')} onClick={() => setConfirming(true)}><Trash2 /> Delete</Button>
         </div>

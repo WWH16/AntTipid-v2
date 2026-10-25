@@ -171,7 +171,7 @@ const DayList = memo(function DayList({ list }: { list: Transaction[] }) {
               <h2 className="font-medium">{dayLabel(day)}</h2>
               {spent > 0 && <span className="text-muted-foreground tabular-nums">{money(spent)} spent</span>}
             </div>
-            <ItemGroup>{items.map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
+            <ItemGroup>{items.map((t) => <TransactionItem key={t.id} t={t} swipe />)}</ItemGroup>
           </section>
         )
       })}
