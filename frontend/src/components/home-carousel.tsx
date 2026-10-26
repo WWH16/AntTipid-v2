@@ -266,7 +266,7 @@ export function CategoriesSlide({ transactions }: { transactions?: Transaction[]
           <p className="text-sm text-muted-foreground">Nothing spent yet this month. Your top categories show here once you add expenses.</p>
         )}
       </CardContent>
-      {/* Empty: Reports would be just as empty, and Home's own Add expense button sits right below. */}
+      {/* Empty: Reports would be just as empty. */}
       {top.length > 0 && (
         <CardFooter className="text-sm">
           <Link to="/reports" className="font-medium underline underline-offset-4">

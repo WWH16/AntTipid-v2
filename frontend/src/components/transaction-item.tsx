@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
-import { api } from '@/api/endpoints'
-import { toast } from 'sonner'
-import { dropCachedTransaction, invalidate } from '@/api/use-query'
 import { CategoryMedia } from '@/components/category-icon'
 import { Button } from '@/components/ui/button'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { money } from '@/lib/format'
+import { deleteWithUndo, shouldHintSwipe, SWIPE_HINT } from '@/lib/transactions'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
 
@@ -19,35 +17,6 @@ export function SignedAmount({ t, className }: { t: Transaction; className?: str
       {sign}{money(t.amount)}
     </span>
   )
-}
-
-/**
- * Delete with Undo instead of a confirm step; shared by the swipe action and the details panel. The row leaves every
- * list at once, and the server delete runs only when the toast goes without Undo, so Undo just reloads: nothing to
- * re-create, and a receipt photo stays. Totals from the server (budgets, reports) catch up once the delete lands.
- * ponytail: a delete pending when the app is closed never runs, so the transaction stays; fine for a 6s window.
- */
-export function deleteWithUndo(t: Transaction) {
-  dropCachedTransaction(t.id)
-  let settled = false
-  const commit = async () => {
-    if (settled) return
-    settled = true
-    try {
-      await api.transactions.remove(t.id)
-    } catch {
-      toast.error(`Couldn't delete ${t.title}. Try again.`)
-    }
-    invalidate()
-  }
-  toast.success('Transaction deleted', {
-    description: t.title,
-    duration: 6000,
-    // Sonner runs onClick before onDismiss, so Undo settles first and the dismiss that follows does nothing.
-    action: { label: 'Undo', onClick: () => { settled = true; invalidate() } },
-    onAutoClose: commit,
-    onDismiss: commit,
-  })
 }
 
 const ACTIONS_WIDTH = 144 // two 72px action buttons revealed by a left swipe
@@ -64,14 +33,6 @@ let closeOpenRow: (() => void) | null = null
  * only closes it (it doesn't also open another row).
  * Only the Activity history passes `swipe`; elsewhere (Home, sheets) a row just opens its details.
  */
-const SWIPE_HINT = 'anttipid-swipe-hint'
-/** Whether to show the swipe hint: only on touch screens (the only place swipe works), only once, and not with reduced motion. */
-export function shouldHintSwipe() {
-  try {
-    return !localStorage.getItem(SWIPE_HINT) && matchMedia('(pointer: coarse)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches
-  } catch { return false }
-}
-
 export function TransactionItem({ t, swipe = false, hint = false }: { t: Transaction; swipe?: boolean; hint?: boolean }) {
   const { openDetail, openAdd } = useApp()
   const { category, wallet } = useRefData()

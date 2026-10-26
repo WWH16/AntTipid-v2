@@ -67,7 +67,11 @@ function AddFlow() {
   const [opened] = useState(draft)
   const [discarding, setDiscarding] = useState(false)
   // Ignored while the question is up: a tap on its buttons lands outside the sheet, which asks the sheet to close.
-  const close = () => { if (!discarding) (draft !== opened ? setDiscarding(true) : closeAdd()) }
+  const close = () => {
+    if (discarding) return
+    if (draft !== opened) setDiscarding(true)
+    else closeAdd()
+  }
   const [viewedMonth] = useMonth()
   // This month and last, the same list (and cache key) Home loads, so opening Add from Home costs no request.
   // It ranks the categories: most-used first.

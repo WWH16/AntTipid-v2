@@ -46,7 +46,7 @@ function fetchShared(key: string, load: () => Promise<unknown>) {
   if (hit?.version === version && hit.request) return hit.request
   const entry = { version, data: hit?.data, request: load() }
   entry.request.then(
-    (data) => { entry.data = data; save() },
+    (data) => { entry.data = withoutHidden(key, data); save() },
     // A failed load isn't kept: the next screen that asks tries again.
     () => { entry.version = -1 },
   )
@@ -82,12 +82,19 @@ export const upsertCached = <T extends { id: string }>(key: 'wallets' | 'categor
 export const dropCached = (key: 'wallets' | 'categories', id: string) =>
   setCached<{ id: string }[]>(key, (list) => list.filter((x) => x.id !== id))
 
-/** Take one transaction out of every loaded transaction list (Home, Activity, the report panels) at once. */
+// Transactions deleted on screen whose server delete waits on the Undo toast: kept out of every reload until then,
+// so another save (or a second delete) in that window doesn't bring them back.
+const hiddenTx = new Set<string>()
+const withoutHidden = (key: string, data: unknown) =>
+  hiddenTx.size && /^(recent|tx):/.test(key) && Array.isArray(data) ? data.filter((t: { id: string }) => !hiddenTx.has(t.id)) : data
+
+/** Take one transaction out of every loaded transaction list (Home, Activity, the report panels) at once, and out of
+ *  reloads until the returned function shows it again (Undo, or a delete that failed). */
 export function dropCachedTransaction(id: string) {
-  for (const [key, entry] of cache) {
-    if (/^(recent|tx):/.test(key) && Array.isArray(entry.data)) entry.data = entry.data.filter((t: { id: string }) => t.id !== id)
-  }
+  hiddenTx.add(id)
+  for (const [key, entry] of cache) entry.data = withoutHidden(key, entry.data)
   listeners.forEach((l) => l())
+  return () => { hiddenTx.delete(id) }
 }
 
 export function useQuery<T>(key: string, load: () => Promise<T>) {

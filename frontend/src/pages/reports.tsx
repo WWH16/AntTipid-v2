@@ -55,8 +55,9 @@ export function ReportsPage() {
   const [detail, setDetail] = useState<ReportDetail>(null)
 
   const { category } = useRefData()
-  // Finished months only: a month still going would always look cheaper than a whole usual one.
-  const usual = data && month < currentMonth() ? vsUsual(data.byCategory, data.usual) : null
+  // Finished months only: a month still going would always look cheaper than a whole usual one. A month with nothing
+  // recorded wasn't tracked, not cheap, so it gets no comparison either.
+  const usual = data?.byCategory.length && month < currentMonth() ? vsUsual(data.byCategory, data.usual) : null
   const usualName = usual && (category(usual.top.categoryId)?.name ?? 'Other')
   const thisMonth = data?.trend.at(-1)
   // Nothing this month, or nothing in all 6: totals, "tap a chart" and an axis-only chart have nothing behind them.
