@@ -34,7 +34,7 @@ Until then a feature says what it's waiting for ("Shows after 10 Food expenses, 
 
 - The monthly budget is the real limit; category budgets are shares of it. When they disagree, the monthly one wins.
 - Every budget change is kept per month (`budget_history`, from 2026-10-26). Reports reads a past month against the
-  budgets it had; budgets set before that count as set from always. The Budgets page and month picker still show
+  budgets it had; budgets set before that start from the month they were created. The Budgets page and month picker still show
   today's budgets for past months.
 - Statistics first. ML only replaces a statistic when it predicts better on real data, measured against it.
 

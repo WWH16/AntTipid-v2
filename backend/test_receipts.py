@@ -288,6 +288,12 @@ def test_routes_and_user_isolation():
             food_budget = next(b for b in b_list if b["categoryId"] == food_id)
             assert client.delete(f"/api/budgets/{food_budget['id']}", headers=ha).status_code == 204
             assert client.get("/api/reports/monthly", params={"month": "2026-10"}, headers=ha).json()["budgets"] == [{"categoryId": None, "limit": 10000}]
+            # Deleting an unused category with a budget takes its budget and its history with it.
+            gone = client.post("/api/categories", json={"name": "Hobbies", "kind": "expense", "icon": "other"}, headers=ha).json()
+            assert client.post("/api/budgets", json={"categoryId": gone["id"], "limit": 500, "warnAt": 80}, headers=ha).status_code == 204
+            assert client.delete(f"/api/categories/{gone['id']}", headers=ha).status_code == 204
+            with connect() as conn:
+                assert conn.execute("select count(*) as n from budget_history where category_id = %s", (gone["id"],)).fetchone()["n"] == 0
             assert len(rep_mon["trend"]) == 6 and rep_mon["trend"][-1] == {"month": "2026-10", "income": 5000, "spent": 250}
             # Month picker: only months with transactions, oldest first; spent counts expenses only
             rep_months = client.get("/api/reports/months", headers=ha).json()
