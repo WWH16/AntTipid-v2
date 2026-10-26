@@ -83,6 +83,10 @@ class TransactionIn(CamelModel):
     note: NoteStr = ""
     source: Literal["manual", "receipt"] = "manual"
     items: ItemList | None = None
+    # The user's call when the add form warned the amount is unusual (DSS feature 9); also_earlier: count earlier
+    # similar one-offs as normal too.
+    anomaly_decision: Literal["one_off", "normal"] | None = None
+    anomaly_also_earlier: bool = False
 
 
 class TransactionPatch(CamelModel):
@@ -98,6 +102,8 @@ class TransactionPatch(CamelModel):
     note: NoteStr | None = None
     source: Literal["manual", "receipt"] | None = None
     items: ItemList | None = None
+    anomaly_decision: Literal["one_off", "normal"] | None = None
+    anomaly_also_earlier: bool | None = None
 
 
 class Transaction(CamelModel):
@@ -168,6 +174,39 @@ class MonthlyReport(CamelModel):
     daily: list[DayPoint]
     # The budgets this month had (from budget_history), so a finished month is read against them, not today's.
     budgets: list[BudgetLimit]
+
+
+class Anomaly(CamelModel):
+    """An unusual purchase this month (DSS feature 9), with the range its category usually stays in."""
+    transaction_id: str
+    category_id: str
+    amount: float
+    decision: Literal["one_off"] | None  # None: not decided yet, waiting for review
+    method: Literal["kmeans", "simple"] | None
+    usual_low: float | None  # the usual range as it was when judged
+    usual_high: float | None
+
+
+class SimilarOneOff(CamelModel):
+    transaction_id: str
+    date: Date
+    amount: float
+
+
+class AnomalyCheck(CamelModel):
+    """The same check for an amount not saved yet, so the add form can warn before saving."""
+    unusual: bool
+    method: Literal["kmeans", "simple", "none"]
+    usual_low: float | None
+    usual_high: float | None
+    similar: list[SimilarOneOff]  # earlier one-offs like it, newest first
+    duplicate: bool  # the same amount, category and day is already saved
+
+
+class AnomalyDecisionIn(CamelModel):
+    decision: Literal["one_off", "normal"] | None  # None: back to not decided
+    also_earlier: bool = False
+
 
 
 class MonthTotal(CamelModel):

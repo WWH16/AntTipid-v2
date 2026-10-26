@@ -1,5 +1,5 @@
 import { money, todayIso } from './format.ts'
-import type { BudgetStatus, MonthlyReport, MonthSummary } from '@/types'
+import type { Anomaly, AnomalyCheck, BudgetStatus, MonthlyReport, MonthSummary } from '@/types'
 
 export type BudgetState = 'ok' | 'near' | 'used' | 'over'
 
@@ -107,9 +107,57 @@ export const everyday = <B extends Pick<BudgetStatus, 'spent' | 'limit'>>(b: B, 
 export const needsLook = (b: Pick<BudgetStatus, 'spent' | 'limit' | 'warnAt'>, onceAMonth = false) =>
   onceAMonth ? budgetState(b) === 'over' : budgetState(b) !== 'ok'
 
-/** Says which categories the pace leaves out, next to it. Null when none. */
-export const leavesOut = (names: string[]) =>
-  names.length ? `Leaves out ${new Intl.ListFormat('en').format(names)}, paid once a month.` : null
+/** Unusual purchases (DSS feature 9) join the once-a-month part: counted as spent once, never projected forward. */
+export function withUnusual(f: ReturnType<typeof fixedPart>, unusual: Pick<Anomaly, 'amount'>[]) {
+  const total = unusual.reduce((s, a) => s + a.amount, 0)
+  return { spent: f.spent + total, reserved: f.reserved + total }
+}
+
+/** Why a saved purchase was flagged, with the usual range as it was when it was judged (it never changes later). */
+export const unusualLine = (a: Pick<Anomaly, 'amount' | 'usualLow' | 'usualHigh'>, categoryName: string) =>
+  a.usualLow !== null && a.usualHigh !== null
+    ? `When it was saved, you usually spent ${money(a.usualLow, { whole: true })} to ${money(a.usualHigh, { whole: true })} on ${categoryName}. This one is ${money(a.amount, { whole: true })}.`
+    : `This one is ${money(a.amount, { whole: true })}, far above your usual ${categoryName}.`
+
+const ORDINAL = ['', '1st', '2nd', '3rd']
+const ordinal = (n: number) => ORDINAL[n] ?? `${n}th`
+
+/**
+ * What the add form's verdict card says before saving (DSS feature 9): why it's unusual, what came before (an earlier
+ * one-off like it; from the third on, a suggestion to make it a habit), and a likely same-day duplicate. Null: nothing.
+ */
+export function verdictCopy(c: AnomalyCheck, amount: number, categoryName: string) {
+  const reason = c.unusual && c.usualLow !== null && c.usualHigh !== null
+    ? `${money(amount, { whole: true })} is far above your usual ${categoryName} (${money(c.usualLow, { whole: true })} to ${money(c.usualHigh, { whole: true })}).`
+    : null
+  const duplicate = c.duplicate ? `You already added ${money(amount, { whole: true })} for ${categoryName} on this day. Is this a duplicate?` : null
+  if (!reason && !duplicate) return null
+  const suggestHabit = !!reason && c.similar.length >= 2
+  const last = c.similar[0]
+  const context = !reason || !last ? null
+    : suggestHabit ? `This is your ${ordinal(c.similar.length + 1)} like this since ${shortDate(c.similar.at(-1)!.date)}. Make it part of your habits?`
+    : `You had a one-off like this on ${shortDate(last.date)} (${money(last.amount, { whole: true })}).`
+  return { reason, context, suggestHabit, duplicate }
+}
+
+/** The verdict card's number line, in % of its width on a log scale: the usual band, and where this amount falls. */
+export function numberLine(low: number, high: number, amount: number) {
+  const lo = Math.log(Math.min(low, amount) / 1.25)
+  const hi = Math.log(Math.max(high, amount) * 1.25)
+  const at = (x: number) => ((Math.log(x) - lo) / (hi - lo)) * 100
+  return { bandLeft: at(low), bandWidth: at(high) - at(low), marker: at(amount) }
+}
+
+/** Says what the pace leaves out, next to it: once-a-month categories and unusual purchases. Null when nothing. */
+export function leavesOut(names: string[], unusual: Pick<Anomaly, 'amount'>[] = []) {
+  const parts = []
+  if (names.length) parts.push(`${new Intl.ListFormat('en').format(names)} (paid once a month)`)
+  if (unusual.length) {
+    const total = money(unusual.reduce((s, a) => s + a.amount, 0), { whole: true })
+    parts.push(`${unusual.length} unusual ${unusual.length === 1 ? 'purchase' : 'purchases'} (${total})`)
+  }
+  return parts.length ? `Leaves out ${parts.join(' and ')}.` : null
+}
 
 /** A once-a-month category's card line in its own month, in place of a pace: paid, or what's set aside for it. */
 export const paidLine = (b: Pick<BudgetStatus, 'spent' | 'limit'>) =>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-means metrics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&family=Noto+Sans+TC:wght@400;500;600&family=Noto+Serif+TC:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f5;   /* white-smoke */
+      --color-ink:     #2d3142;   /* jet-black */
+      --color-muted:   #4f5d75;   /* blue-slate */
+      --color-accent:  #bf4520;   /* burnt-tangerine */
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 2rem;
+    }
+
+    .frame { max-width: 1200px; width: 100%; }
+    /* The SVG holds its readable width (min-width == the viewBox width, so the
+       type ramp is never silently scaled down). This wrapper lets a narrow
+       screen scroll the diagram instead of the whole page. */
+    .diagram-container { width: 100%; overflow-x: auto; }
+
+    .eyebrow {
+      font-family: var(--font-mono);
+      font-size: 0.66rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+      color: var(--color-ink);
+      margin-bottom: 1.5rem;
+    }
+
+    svg { width: 100%; min-width: 960px; display: block; }
+    /* Paper has no scrollbar, so the local scroller would clip instead of
+       scroll. Let the diagram scale down to the sheet: smaller but whole
+       beats sharp but cut off. Must come after the svg rule above - a media
+       query adds no specificity, so a later plain rule would win. */
+    @media print {
+      .diagram-container { overflow-x: visible; }
+      svg { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Swimlane · AntTipid · feature 9</p>
+    <h1>K-means in the app, and how it is measured</h1>
+
+    <!-- Replace kmeans-metrics with a unique slug for this diagram before export. -->
+    <div class="diagram-container">
+      <svg viewBox="0 0 960 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="kmeans-metrics-title kmeans-metrics-desc">
+        <title id="kmeans-metrics-title">K-means in the app, and how it is measured</title>
+        <desc id="kmeans-metrics-desc">The app picks k by silhouette, fits K-means with CBLOF habits and flags purchases well above their habit; offline, the same clusters are scored by inertia, silhouette, Davies-Bouldin and Calinski-Harabasz, and planted purchases score the flags by precision, recall and F1 against the 3x median rule.</desc>
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+
+          <!-- OPTIONAL: dot-pattern background. Uncomment the <pattern> and the second <rect> below if you want the dotted paper look. -->
+          <!--
+          <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.9" fill="rgba(45,49,66,0.10)"/>
+          </pattern>
+          -->
+        </defs>
+
+        <rect width="100%" height="100%" fill="#f5f5f5"/>
+        <!-- <rect width="100%" height="100%" fill="url(#dots)" opacity="0.55"/> -->
+
+        <line x1="40" y1="236" x2="920" y2="236" stroke="rgba(45,49,66,0.12)" stroke-width="1"/>
+        <text x="40" y="60" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.14em">IN THE APP · EVERY REQUEST, PER CATEGORY</text>
+        <text x="40" y="260" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.14em">IN THE PAPER · OFFLINE</text>
+        <line x1="192" y1="116" x2="220" y2="116" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="374" y1="116" x2="402" y2="116" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="556" y1="116" x2="584" y2="116" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="738" y1="116" x2="766" y2="116" stroke="#4f5d75" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="480" y1="148" x2="480" y2="274" stroke="#4f5d75" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <rect x="490" y="196" width="76" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="528.0" y="205" fill="#5a6580" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SAME CLUSTERS</text>
+        <line x1="662" y1="280" x2="662" y2="150" stroke="#4f5d75" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <rect x="672" y="196" width="47" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="695.5" y="205" fill="#5a6580" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">PLANTED</text>
+        <line x1="844" y1="148" x2="844" y2="278" stroke="#4f5d75" stroke-width="1" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+        <rect x="854" y="196" width="37" height="12" rx="2" fill="#f5f5f5"/>
+        <text x="872.5" y="205" fill="#5a6580" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">FLAGS</text>
+        <rect x="40" y="84" width="152" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="40" y="84" width="152" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="116.0" y="104.0" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" text-anchor="middle" font-weight="600">Expenses</text>
+        <text x="116.0" y="120.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">1 category · 6 months</text>
+        <text x="116.0" y="134.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">under 10: simple rule</text>
+        <rect x="222" y="84" width="152" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="222" y="84" width="152" height="64" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/>
+        <text x="298.0" y="104.0" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" text-anchor="middle" font-weight="600">Pick k</text>
+        <text x="298.0" y="120.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">silhouette, k = 2 to n÷3</text>
+        <text x="298.0" y="134.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">best < 0.75 → k = 1</text>
+        <rect x="404" y="84" width="152" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="404" y="84" width="152" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="480.0" y="104.0" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" text-anchor="middle" font-weight="600">Fit K-means</text>
+        <text x="480.0" y="120.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">k-means++ · 5 restarts</text>
+        <text x="480.0" y="134.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">habits: CBLOF 90% / 5×</text>
+        <rect x="586" y="84" width="152" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="586" y="84" width="152" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="662.0" y="104.0" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" text-anchor="middle" font-weight="600">Judge vs habit</text>
+        <text x="662.0" y="120.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">modified z > 3.5</text>
+        <text x="662.0" y="134.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">≥ 1.5× · only bigger</text>
+        <rect x="768" y="84" width="152" height="64" rx="6" fill="#f5f5f5"/>
+        <rect x="768" y="84" width="152" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="844.0" y="104.0" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" text-anchor="middle" font-weight="600">Unusual or normal</text>
+        <text x="844.0" y="120.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">tag · pace · It's normal</text>
+        <text x="844.0" y="134.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">dismissals remembered</text>
+        <rect x="222" y="276" width="334" height="92" rx="6" fill="#f5f5f5"/>
+        <rect x="222" y="276" width="334" height="92" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="389.0" y="296.0" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" text-anchor="middle" font-weight="600">Clustering metrics</text>
+        <text x="389.0" y="312.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">inertia: elbow chart per category</text>
+        <text x="389.0" y="326.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">silhouette: what the app uses to pick k</text>
+        <text x="389.0" y="340.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Davies–Bouldin (lower) · Calinski–H. (higher)</text>
+        <text x="389.0" y="354.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">gap statistic: the k = 1 check</text>
+        <rect x="586" y="280" width="152" height="84" rx="6" fill="#f5f5f5"/>
+        <rect x="586" y="280" width="152" height="84" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="662.0" y="303.0" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" text-anchor="middle" font-weight="600">Planted purchases</text>
+        <text x="662.0" y="319.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">1.5×, 2×, 4×, 8× the top</text>
+        <text x="662.0" y="333.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">one per run</text>
+        <text x="662.0" y="347.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">real amounts = normal</text>
+        <rect x="768" y="280" width="152" height="84" rx="6" fill="#f5f5f5"/>
+        <rect x="768" y="280" width="152" height="84" rx="6" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/>
+        <text x="844.0" y="303.0" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif" text-anchor="middle" font-weight="600">Detection metrics</text>
+        <text x="844.0" y="319.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">precision · recall · F1</text>
+        <text x="844.0" y="333.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">K-means 1.00 · 0.71 · 0.83</text>
+        <text x="844.0" y="347.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">3× median .18 · .88 · .30</text>
+        <line x1="40" y1="400" x2="920" y2="400" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+        <text x="40" y="416" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.18em">LEGEND</text>
+        <rect x="40" y="427" width="20" height="12" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+        <text x="66" y="436" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif" text-anchor="start">Step</text>
+        <rect x="110" y="427" width="20" height="12" rx="2" fill="rgba(191,69,32,0.08)" stroke="#bf4520" stroke-width="1"/>
+        <text x="136" y="436" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif" text-anchor="start">Where a metric decides: silhouette picks k live; precision / recall / F1 judge the method</text>
+        <line x1="560" y1="433" x2="590" y2="433" stroke="#4f5d75" stroke-width="1" stroke-dasharray="5,4"/>
+        <text x="598" y="436" fill="#4f5d75" font-size="9" font-family="'Geist', sans-serif" text-anchor="start">Offline link (paper only, never in the app)</text>
+
+      </svg>
+    </div>
+  </div>
+</body>
+</html>

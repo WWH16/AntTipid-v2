@@ -16,7 +16,7 @@ The core loop: **data** (transactions) â†’ **model** (run-out date, anomalies) â
 | 5 | Saved vs budget: how a finished month ended against the budgets it had | Rules (budget history) | Reports | Done (`e5dfcdc`), tested 2026-10-26 |
 | 8 | ML forecast (optional): predicts the run-out date, compared against 3's pace method | ML | Paper / Budgets | Optional: only if the subject requires a prediction model (9 already covers ML) |
 | 6 | Paid once a month: a switch on categories like rent and electricity, left out of the pace | Rules | Settings, Budgets, Home | Done (`bc590f3`) |
-| 9 | Anomaly detection with K-means: flags unusual purchases and leaves them out of the pace | ML (clustering) | Activity, Budgets | Next |
+| 9 | Anomaly detection with K-means: flags unusual purchases and leaves them out of the pace | ML (clustering) | Activity, Budgets, Home | Done, waiting for commit |
 
 **Order:** 9 next (K-means then suggests the switch from 6: "Rent looks like a monthly bill. Leave it out of the pace?").
 8 only if the subject requires a prediction model.
@@ -27,7 +27,7 @@ The core loop: **data** (transactions) â†’ **model** (run-out date, anomalies) â
 |---|---|
 | 3 Run-out date | Day 5 or later (a count of expenses was dropped: a one-off big buy skews the pace either way; features 6 and 9 handle that) |
 | 5 Saved vs budget | A finished month with spending, and a budget set |
-| 9 Anomaly detection | Enough past expenses to form clusters (to settle when we start; around 30+) |
+| 9 Anomaly detection | 10 expenses in a category within 6 months (3 for the simple rule) |
 
 Until then a feature says what it's waiting for ("Shows after 10 Food expenses, 6 so far") instead of guessing.
 
@@ -92,9 +92,36 @@ One word per idea in everything the app says:
 - _To break down when we start._
 
 ### 9. Anomaly detection with K-means
-- _To break down when we start._ Idea: cluster each user's expenses (amount, category, day of week); an expense far
-  from its nearest cluster centre is unusual. Flag it on Activity and leave it out of the pace. A cluster of one big
-  amount repeating each month is a regular bill: suggest feature 6's switch for that category.
-  Wording: "Rent looks like a monthly bill. Leave it out of the pace?" How the user answers it (buttons, where it
-  shows, what happens on yes/no) is decided when 9 is built. Compare against a plain
-  statistical rule (over 3Ã— the category's median) in the paper.
+Per user and per spending category: learn the usual amounts from the last 6 months, flag a purchase far from them.
+Once-a-month categories (feature 6) are skipped; they're already out of the pace.
+
+| Setting | Decision |
+|---|---|
+| History | Last 6 months, this month included |
+| Minimum | 10 expenses in the category for K-means; 3 to 9 use a simple rule (over 3x the highest other amount: too few to tell a second habit from an outlier, and 3x the median flagged every meal among snacks); under 3 aren't checked |
+| Feature | log(amount), standardized |
+| k | Silhouette over k = 2 to min(4, n / 3); best under 0.75 means k = 1 (one habit; in 1-D a single habit still scores 0.55 to 0.72 when split, measured). Checked in the paper against the gap statistic (Tibshirani et al., 2001), the textbook test for k = 1: same k on 4 of 5 sample categories; Transport's exact fixed fares differ (4 vs 1) with no false flags either way |
+| Algorithm | Plain Python K-means (Lloyd's), k-means++ start, 5 restarts, lowest inertia kept; seeded per user and category |
+| Flag | Habits as in CBLOF (He et al., 2003): the biggest clusters covering 90% of purchases, or until the next is 5x smaller. Each purchase is judged against its nearest habit: modified z-score over 3.5 (median and MAD, Iglewicz & Hoaglin) and at least 1.5x the habit's centre. Only above: a small purchase never counts |
+| Checked | This month's expenses |
+| Speed | 1-D: sorted values and prefix sums make silhouette O(n log n); 2,000 expenses must score in under 100 ms |
+| Result (sample user) | K-means precision 1.00, recall 0.71, F1 0.83; 3x median 0.18 / 0.88 / 0.30. Every 4x and 8x caught, most 2x, few 1.5x (borderline by design). `backend/paper_anomalies.py`, `docs/kmeans-evaluation.html` |
+
+- [x] `backend/anomalies.py`: K-means, k-means++, silhouette, flag rules, median fallback (test-first)
+- [x] The decision loop (model recommends, user decides, decision recorded, only "normal" teaches): `anomaly_checks`
+  keeps each purchase's verdict from when it was saved, judged on the history before it, with the user's decision
+  (one-off or normal) and the usual range at the time. A later purchase never rewrites an earlier flag.
+- [x] Add form: a verdict card (reason, number line of the usual band and this amount, the last one-off like it) and the
+  decision as the save buttons: Save as one-off (default) or It's normal for me; from the 3rd one-off like it, "normal"
+  becomes the default ("Make it part of your habits?"). "Normal" asks once about earlier one-offs like it.
+  A same-day same-amount entry says "Is this a duplicate?"
+- [x] Activity: "One-off" (decided) or "Unusual" (waiting for review); details: the verdict as it was, and both choices
+  with Undo. Home's Needs attention lists purchases to review.
+- [x] Edge cases: saved before the check answered or older data: judged once, point-in-time, then reviewed; editing the
+  amount, category or date judges it again; once-a-month categories never; income and transfers never.
+- Cold start: a new habit (the first meals after only snacks) is flagged until the user calls it normal; repeats make
+  "normal" the default, so a genuine new habit is one tap.
+- [x] Pace: a flagged purchase counts once, not projected (same as feature 6), with a note
+- [x] Paper script: K-means vs the 3x median rule (the baseline) on real data plus planted outliers; elbow and silhouette charts
+- On hold: the monthly-bill suggestion ("Rent looks like a monthly bill. Leave it out of the pace?"). Idea: K-means
+  finds a group of similar amounts, a date check confirms it repeats monthly; a category under 10 uses the date check alone.

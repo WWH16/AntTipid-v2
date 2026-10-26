@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { budgetState, everyday, fixedPart, monthBudgets, outsideBudgets, pace, paceLine } from './budget.ts'
+import { budgetState, everyday, fixedPart, leavesOut, monthBudgets, numberLine, verdictCopy, outsideBudgets, pace, paceLine, unusualLine, withUnusual } from './budget.ts'
 
 const budget = (categoryId: string | null, limit: number, spent: number) => ({ id: String(categoryId), categoryId, limit, spent, warnAt: 80 })
 
@@ -80,4 +80,45 @@ test('fixedPart: rent paid once a month no longer reads as spending fast', () =>
   assert.equal(paceLine(everyday(budget(null, 20000, 3000), unpaid), month, undefined, today), 'On track. You should reach month-end with ₱5,800 to spare.')
   // No budget of its own: only what's been paid comes out.
   assert.deepEqual(fixedPart([{ categoryId: 'bills', total: 1200 }], [monthly]), { spent: 1200, reserved: 1200 })
+})
+
+test('unusual purchases: the reason, counted once in the pace, and said so', () => {
+  const dinner = { transactionId: 'd', categoryId: 'food', amount: 4500, method: 'kmeans' as const, usualLow: 85, usualHigh: 450 }
+  assert.equal(unusualLine(dinner, 'Food & dining'), 'When it was saved, you usually spent ₱85 to ₱450 on Food & dining. This one is ₱4,500.')
+  // Added to the once-a-month part: spent and set aside, so the pace runs on everything else.
+  assert.deepEqual(withUnusual({ spent: 8000, reserved: 8000 }, [dinner]), { spent: 12500, reserved: 12500 })
+  // The ₱4,500 dinner on the 15th made ₱11,000 look like spending fast; left out, ₱6,500 lasts.
+  const monthly = budget(null, 20000, 11000)
+  const f = withUnusual(fixedPart([], [monthly]), [dinner])
+  assert.equal(paceLine(everyday(monthly, f), '2026-10', undefined, '2026-10-15'), 'On track. You should reach month-end with ₱2,067 to spare.')
+  assert.equal(leavesOut(['Rent'], [dinner]), 'Leaves out Rent (paid once a month) and 1 unusual purchase (₱4,500).')
+  assert.equal(leavesOut([], [dinner, { ...dinner, amount: 1500 }]), 'Leaves out 2 unusual purchases (₱6,000).')
+  assert.equal(leavesOut([], []), null)
+})
+
+test('verdictCopy: the reason, what came before, and when to suggest a habit', () => {
+  const check = { unusual: true, method: 'kmeans' as const, usualLow: 87, usualHigh: 447, similar: [], duplicate: false }
+  const first = verdictCopy(check, 4500, 'Food & dining')!
+  assert.equal(first.reason, '₱4,500 is far above your usual Food & dining (₱87 to ₱447).')
+  assert.equal(first.context, null)
+  assert.equal(first.suggestHabit, false)
+  const one = [{ transactionId: 'a', date: '2026-10-18', amount: 4500 }]
+  assert.equal(verdictCopy({ ...check, similar: one }, 4400, 'Food & dining')!.context, 'You had a one-off like this on Oct 18 (₱4,500).')
+  // A third like it is a pattern: suggest making it a habit (the form's default flips to "normal").
+  const two = [...one, { transactionId: 'b', date: '2026-08-20', amount: 4300 }]
+  const third = verdictCopy({ ...check, similar: two }, 4600, 'Food & dining')!
+  assert.equal(third.context, 'This is your 3rd like this since Aug 20. Make it part of your habits?')
+  assert.equal(third.suggestHabit, true)
+  // A same-day duplicate is said even when the amount is usual.
+  const dup = verdictCopy({ ...check, unusual: false, duplicate: true }, 150, 'Food & dining')!
+  assert.equal(dup.reason, null)
+  assert.equal(dup.duplicate, 'You already added ₱150 for Food & dining on this day. Is this a duplicate?')
+  assert.equal(verdictCopy({ ...check, unusual: false }, 150, 'Food & dining'), null)
+})
+
+test('numberLine: the usual band and where this amount falls, on a log scale', () => {
+  const far = numberLine(87, 447, 4500)
+  assert.ok(far.bandLeft >= 0 && far.bandLeft + far.bandWidth < far.marker && far.marker <= 100)
+  const inside = numberLine(87, 447, 200)
+  assert.ok(inside.marker > inside.bandLeft && inside.marker < inside.bandLeft + inside.bandWidth)
 })

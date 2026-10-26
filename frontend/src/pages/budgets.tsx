@@ -7,7 +7,7 @@ import { setCached, useQuery } from '@/api/use-query'
 import { BudgetBadge, BudgetItem } from '@/components/budget'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, everyday, fixedPart, leavesOut, needsLook, outsideBudgets, paceLine, paidLine } from '@/lib/budget'
+import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, everyday, fixedPart, leavesOut, needsLook, outsideBudgets, paceLine, paidLine, withUnusual } from '@/lib/budget'
 import { MoneyInput } from '@/components/money-input'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
@@ -23,6 +23,7 @@ import { Progress } from '@/components/ui/progress'
 import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
 import { currentMonth, money, monthLabel } from '@/lib/format'
+import { useAnomalies } from '@/lib/transactions'
 import type { BudgetStatus } from '@/types'
 
 type Editing = { budget?: BudgetStatus; categoryId?: string | null } | null
@@ -33,6 +34,7 @@ export function BudgetsPage() {
   const { categories, category } = useRefData()
   const { data, error, loading } = useQuery(`budgets:${month}`, () => api.budgets.list(month))
   const { data: summary } = useQuery(`summary:${month}`, () => api.reports.summary(month))
+  const { data: unusual } = useAnomalies(month)
   const [editing, setEditing] = useState<Editing>(null)
 
   const overall = data?.find((b) => b.categoryId === null)
@@ -43,9 +45,12 @@ export function BudgetsPage() {
   const unbudgeted = categories.filter((c) => c.kind === 'expense' && !data?.some((b) => b.categoryId === c.id))
   const outside = data && outsideBudgets(data)
   // The pace runs on everyday spending: once-a-month payments (rent, tuition) are left out, their budgets set aside.
-  const paced = overall && summary && everyday(overall, fixedPart(summary.fixed, data ?? []))
+  // Unusual purchases (feature 9) count once too, in the monthly pace and in their own category's.
+  const paced = overall && summary && unusual && everyday(overall, withUnusual(fixedPart(summary.fixed, data ?? []), unusual))
   const overallPace = paced && paceLine(paced, month)
-  const fixedNote = summary && leavesOut(summary.fixed.map((f) => category(f.categoryId)?.name ?? 'Other'))
+  const fixedNote = summary && unusual && leavesOut(summary.fixed.map((f) => category(f.categoryId)?.name ?? 'Other'), unusual)
+  const categoryPace = (b: BudgetStatus) =>
+    paceLine(everyday(b, withUnusual({ spent: 0, reserved: 0 }, (unusual ?? []).filter((a) => a.categoryId === b.categoryId))), month, paced)
 
   return (
     <>
@@ -99,7 +104,7 @@ export function BudgetsPage() {
             <CardContent className="grid gap-4">
               {byCategory.length ? (
                 <ItemGroup>
-                  {byCategory.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} pace={category(b.categoryId)?.onceAMonth ? (month === currentMonth() ? paidLine(b) : null) : paceLine(b, month, paced)} onSelect={() => setEditing({ budget: b })} />)}
+                  {byCategory.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} pace={category(b.categoryId)?.onceAMonth ? (month === currentMonth() ? paidLine(b) : null) : categoryPace(b)} onSelect={() => setEditing({ budget: b })} />)}
                 </ItemGroup>
               ) : !unbudgeted.length && (
                 <EmptyState icon={Tags} title="No spending categories" body="Add one in Settings, then give it a limit here." />

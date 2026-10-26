@@ -1,6 +1,6 @@
 import { toast } from 'sonner'
 import { api } from '@/api/endpoints'
-import { dropCachedTransaction, invalidate } from '@/api/use-query'
+import { dropCachedTransaction, invalidate, useQuery } from '@/api/use-query'
 import type { Transaction, TransactionKind } from '@/types'
 
 /** Total amount of one kind (expense, income, transfer) in a list. */
@@ -46,3 +46,6 @@ export function shouldHintSwipe() {
     return !localStorage.getItem(SWIPE_HINT) && matchMedia('(pointer: coarse)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches
   } catch { return false }
 }
+
+/** A month's unusual purchases (DSS feature 9); one request per month, shared by every row and screen that shows them. */
+export const useAnomalies = (month: string) => useQuery(`anomalies:${month}`, () => api.anomalies.list(month))

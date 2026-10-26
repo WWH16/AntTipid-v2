@@ -2,7 +2,7 @@
 //   1. Add   2. type the amount (focused on open)   3. pick a category   then Save expense.
 // Wallet defaults to the last one used and the date to today.
 import { lazy, startTransition, Suspense, useEffect, useRef, useState } from 'react'
-import { Camera, Check, Loader2, ScanLine, Upload } from 'lucide-react'
+import { Camera, Check, Copy, Loader2, ScanLine, TriangleAlert, Upload } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { MONTH_PAGES, monthLink, useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
@@ -13,6 +13,7 @@ import { CategoryIcon } from '@/components/category-icon'
 import { MoneyInput } from '@/components/money-input'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { SimpleSelect } from '@/components/simple-select'
+import { AskEarlier } from '@/components/transaction-sheet'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Input } from '@/components/ui/input'
@@ -22,11 +23,12 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAction } from '@/hooks/use-action'
+import { numberLine, verdictCopy } from '@/lib/budget'
 import { done } from '@/lib/done'
 import { currentMonth, money, monthLabel, shiftMonth, todayIso, yesterdayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/transactions'
 import { cleanReceiptItems, itemProblem, itemsTotal, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
-import type { NewTransaction, ReceiptScan, TransactionKind } from '@/types'
+import type { AnomalyCheck, AnomalyDecision, NewTransaction, ReceiptScan, TransactionKind } from '@/types'
 
 // Only a first-time user with no wallet sees this, so the add flow doesn't wait on the Settings file.
 const WalletForm = lazy(() => import('@/components/wallet-form').then((m) => ({ default: m.WalletForm })))
@@ -97,7 +99,17 @@ function AddFlow() {
   const subtotal = itemsTotal(items)
   const itemsOff = kind === 'expense' && subtotal > 0 && Math.abs(subtotal - value) >= 0.01
 
-  const save = () => run(async () => {
+  // DSS feature 9: before saving, is this amount unusual for its category? Then the user decides, here.
+  const check = useAnomalyCheck(kind === 'expense' && categoryId && value > 0 ? { categoryId, amount: value, date, exclude: editing?.id } : null)
+  const verdict = check && verdictCopy(check, value, category(categoryId)?.name ?? 'this category')
+  const unusual = !!verdict?.reason
+  // From the third one-off like it, a pattern: "normal" becomes the default. Otherwise one-off, the safe default.
+  const primary: AnomalyDecision = verdict?.suggestHabit ? 'normal' : 'one_off'
+  // Asked for one verdict only: a changed amount or category drops the question.
+  const [askedFor, setAskedFor] = useState<AnomalyCheck | null>(null)
+  const decide = (d: AnomalyDecision) => (d === 'normal' && check?.similar.length ? setAskedFor(check) : save(d))
+
+  const save = (decision?: AnomalyDecision, alsoEarlier = false) => run(async () => {
     const body: NewTransaction = {
       kind,
       amount: Math.round(value * 100) / 100,
@@ -110,6 +122,8 @@ function AddFlow() {
       source: kind === 'expense' && (receipt || editing?.source === 'receipt') ? 'receipt' : 'manual',
       // Items stay their own list, never folded into the note: the note is the user's free text.
       items: kind === 'expense' ? cleanReceiptItems(items, Boolean(editing?.items?.length)) : undefined,
+      anomalyDecision: unusual ? decision : undefined,
+      anomalyAlsoEarlier: alsoEarlier,
     }
     const saved = editing ? await api.transactions.update(editing.id, body) : await api.transactions.create(body)
     if (receiptPhoto && body.source === 'receipt') await api.transactions.uploadReceipt(saved.id, receiptPhoto)
@@ -118,7 +132,10 @@ function AddFlow() {
     // Dated in another month than the one on screen: it won't show up here, so say where it went and offer to go there.
     const savedMonth = body.date.slice(0, 7)
     const elsewhere = savedMonth !== viewedMonth && savedMonth <= currentMonth()
-    done(editing ? 'Changes saved' : `${KIND_LABEL[kind]} saved`, elsewhere ? {
+    const heading = unusual && decision === 'one_off' ? 'Saved as a one-off'
+      : unusual && decision === 'normal' ? 'Saved as normal spending'
+      : editing ? 'Changes saved' : `${KIND_LABEL[kind]} saved`
+    done(heading, elsewhere ? {
       description: `${money(body.amount)}, ${body.title}, in ${monthLabel(savedMonth)}`,
       action: {
         label: `Show ${monthLabel(savedMonth, 'short')}`,
@@ -182,13 +199,19 @@ function AddFlow() {
       footer={
         <>
           {missing && <p className="text-sm text-muted-foreground" aria-live="polite">{missing}.</p>}
+          {/* An unusual amount: saving is the decision. The primary is what Enter does. */}
           <BusyButton type="submit" form="add-form" busy={saving} disabled={!!missing}>
-            {editing ? 'Save changes' : `Save ${KIND_LABEL[kind].toLowerCase()}`}
+            {unusual ? DECISION_LABEL[primary] : editing ? 'Save changes' : `Save ${KIND_LABEL[kind].toLowerCase()}`}
           </BusyButton>
+          {unusual && !missing && (
+            <Button type="button" variant="outline" disabled={saving} onClick={() => decide(primary === 'one_off' ? 'normal' : 'one_off')}>
+              {DECISION_LABEL[primary === 'one_off' ? 'normal' : 'one_off']}
+            </Button>
+          )}
         </>
       }
     >
-      <form id="add-form" className="grid gap-6 pb-4" onSubmit={(e) => { e.preventDefault(); if (!missing) save() }}>
+      <form id="add-form" className="grid gap-6 pb-4" onSubmit={(e) => { e.preventDefault(); if (missing) return; if (unusual) decide(primary); else save() }}>
         <Tabs value={kind} onValueChange={(v) => { setKind(v as TransactionKind); setCategoryId('') }}>
           <TabsList className="w-full">
             {(Object.keys(KIND_LABEL) as TransactionKind[]).map((k) => <TabsTrigger key={k} value={k}>{KIND_LABEL[k]}</TabsTrigger>)}
@@ -233,6 +256,15 @@ function AddFlow() {
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
+            {verdict && check && (
+              <VerdictCard
+                verdict={verdict}
+                check={check}
+                amount={value}
+                askEarlier={askedFor === check}
+                onAnswer={(alsoEarlier) => { setAskedFor(null); save('normal', alsoEarlier) }}
+              />
+            )}
           </div>
         )}
 
@@ -505,5 +537,77 @@ function ScanPhase({ status, seconds, children }: { status: 'done' | 'active' | 
       <span>{children}{status === 'active' && <span className="sr-only"> (in progress)</span>}</span>
       {seconds !== undefined && <span aria-hidden className="ml-auto tabular-nums text-muted-foreground">{seconds}s</span>}
     </li>
+  )
+}
+
+const DECISION_LABEL: Record<AnomalyDecision, string> = { one_off: 'Save as one-off', normal: "It's normal for me" }
+
+/**
+ * The same check the history uses (DSS feature 9), on what's being typed: waits for typing to pause, and gives nothing
+ * until it has, so a verdict never belongs to an old amount. `q` null: not an expense with a category and amount yet.
+ */
+function useAnomalyCheck(q: { categoryId: string; amount: number; date: string; exclude?: string } | null) {
+  const key = q && JSON.stringify(q)
+  const [settled, setSettled] = useState(key)
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(key), 400)
+    return () => clearTimeout(id)
+  }, [key])
+  const { data } = useQuery(`anomaly-check:${settled}`, () => (settled ? api.anomalies.check(JSON.parse(settled)) : Promise.resolve(null)))
+  return settled === key ? data ?? null : null
+}
+
+/**
+ * The verdict before saving: why it's unusual, the evidence on a number line (the usual band, and this amount), what
+ * came before, and what each choice does; or a likely duplicate. After "It's normal for me" with earlier one-offs like
+ * it, asks once whether they're normal too. Inline, not a dialog: it informs a save already under way.
+ */
+function VerdictCard({ verdict, check, amount, askEarlier, onAnswer }: {
+  verdict: NonNullable<ReturnType<typeof verdictCopy>>
+  check: AnomalyCheck
+  amount: number
+  askEarlier: boolean
+  onAnswer: (alsoEarlier: boolean) => void
+}) {
+  if (!verdict.reason) {
+    return (
+      <p role="status" className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">
+        <Copy aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        {verdict.duplicate}
+      </p>
+    )
+  }
+  const line = check.usualLow !== null && check.usualHigh !== null ? numberLine(check.usualLow, check.usualHigh, amount) : null
+  return (
+    <div role="status" className="grid gap-3 rounded-lg bg-destructive/5 p-3 text-sm">
+      <p className="flex items-start gap-2 font-medium text-destructive">
+        <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+        {verdict.reason}
+      </p>
+      {line && (
+        <div aria-hidden className="grid gap-1.5">
+          <div className="relative h-2 rounded-full bg-muted">
+            <div className="absolute inset-y-0 rounded-full bg-primary/35" style={{ left: `${line.bandLeft}%`, width: `${line.bandWidth}%` }} />
+            <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-destructive ring-2 ring-card" style={{ left: `${line.marker}%` }} />
+          </div>
+          <div className="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums">
+            <span>Usual {money(check.usualLow!, { whole: true })} to {money(check.usualHigh!, { whole: true })}</span>
+            <span>This {money(amount, { whole: true })}</span>
+          </div>
+        </div>
+      )}
+      {verdict.context && <p>{verdict.context}</p>}
+      {verdict.duplicate && <p>{verdict.duplicate}</p>}
+      {askEarlier ? (
+        <AskEarlier earlier={check.similar} onAnswer={onAnswer} />
+      ) : (
+        <p className="text-muted-foreground">
+          A one-off is left out of your daily pace. Normal spending teaches AntTipid your habits.{' '}
+          <button type="button" className="font-medium text-foreground underline underline-offset-4" onClick={() => document.getElementById('amount')?.focus()}>
+            Fix the amount
+          </button>
+        </p>
+      )}
+    </div>
   )
 }

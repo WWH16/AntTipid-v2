@@ -336,6 +336,96 @@ def test_routes_and_user_isolation():
             conn.execute("delete from auth.users where id in (%s, %s)", (user_a, user_b))
 
 
+def test_anomalies_route():
+    """Feature 9 over the API: verdicts frozen at save, judged on the history before each purchase; the user decides
+    one-off or normal, and only "normal" teaches the habits."""
+    if not os.environ.get("DATABASE_URL"):
+        print("Skipping live DB anomaly test (set DATABASE_URL in backend/.env to run it)")
+        return
+    user_a, user_b = str(uuid.uuid4()), str(uuid.uuid4())
+    with connect() as conn:
+        conn.execute(
+            "insert into auth.users (id, email, aud, role, created_at, updated_at) values "
+            "(%s, %s, 'authenticated', 'authenticated', now(), now()), (%s, %s, 'authenticated', 'authenticated', now(), now())",
+            (user_a, f"a-{user_a[:8]}@example.com", user_b, f"b-{user_b[:8]}@example.com"),
+        )
+    try:
+        with patch.dict(os.environ, {"SUPABASE_URL": TEST_URL, "SUPABASE_JWT_SECRET": TEST_SECRET}):
+            client = TestClient(app)
+            ha = {"Authorization": f"Bearer {_make_token(user_a)}"}
+            hb = {"Authorization": f"Bearer {_make_token(user_b)}"}
+            cats = {c["name"]: c["id"] for c in client.get("/api/categories", headers=ha).json()}
+            food, bills = cats["Food & dining"], cats["Bills & utilities"]
+            w = client.post("/api/wallets", json={"name": "Cash", "type": "cash", "balance": 0}, headers=ha).json()["id"]
+
+            def spend(amount, day, cat=food, decision=None):
+                return client.post("/api/transactions", headers=ha, json={
+                    "kind": "expense", "amount": amount, "title": "x", "date": day,
+                    "walletId": w, "categoryId": cat, "note": "", "source": "manual", "anomalyDecision": decision,
+                }).json()["id"]
+
+            def flagged(month="2026-10"):
+                return {a["transactionId"]: a for a in client.get("/api/anomalies", params={"month": month}, headers=ha).json()}
+
+            def decide(txn, decision, also_earlier=False, headers=ha):
+                return client.put(f"/api/anomalies/{txn}/decision", headers=headers, json={"decision": decision, "alsoEarlier": also_earlier})
+
+            check = lambda amount, day="2026-10-25", **extra: client.get("/api/anomalies/check", headers=ha, params={  # noqa: E731
+                "categoryId": food, "amount": amount, "date": day, **extra}).json()
+
+            # August to October: snacks and meals. The first meals come after only snacks, so they're flagged at save
+            # (a habit nobody has taught yet); the user calls them normal, as the add form asks, and they teach the habit.
+            for i, amount in enumerate([85, 95, 100, 105, 110, 115, 120, 380, 400, 420, 450]):
+                spend(amount, f"2026-{8 + i % 3:02d}-{10 + i:02d}", decision="normal")
+            # October adds a ₱4,500 dinner, saved without a decision: waiting for review.
+            dinner = spend(4500, "2026-10-20")
+            spend(130, "2026-10-21")
+            assert list(flagged().values()) == [{
+                "transactionId": dinner, "categoryId": food, "amount": 4500, "decision": None,
+                "method": "kmeans", "usualLow": 85, "usualHigh": 450,
+            }]
+            # The loophole: a second big one is judged on the history before it, which leaves the first out (not a
+            # habit), so both stay flagged.
+            dinner2 = spend(4400, "2026-10-22")
+            assert set(flagged()) == {dinner, dinner2}
+            assert flagged("2026-09") == {}
+
+            # Before saving: unusual, no one-off like it yet, and a same-day same-amount entry is a likely duplicate.
+            first = check(4500, exclude=dinner)
+            assert first["unusual"] is True and first["usualLow"] == 85 and first["usualHigh"] == 450 and first["similar"] == []
+            assert check(130)["unusual"] is False and check(130)["duplicate"] is False
+            assert check(4400, day="2026-10-22")["duplicate"] is True
+
+            # The user decides: one-off. Only the owner can.
+            assert decide(dinner, "one_off", headers=hb).status_code == 404
+            assert decide(dinner, "one_off").json() == []
+            assert flagged()[dinner]["decision"] == "one_off"
+            assert check(4500)["similar"] == [{"transactionId": dinner, "date": "2026-10-20", "amount": 4500}]
+            # Deciding in the add form, at save.
+            dinner3 = spend(4600, "2026-10-24", decision="one_off")
+            assert flagged()[dinner3]["decision"] == "one_off"
+
+            # "Normal" asks about earlier similar one-offs (the Oct 20 one; Oct 24 is later), and counts them too on yes.
+            assert decide(dinner2, "normal").json() == [{"transactionId": dinner, "date": "2026-10-20", "amount": 4500}]
+            decide(dinner2, "normal", also_earlier=True)
+            assert set(flagged()) == {dinner3}
+            # Taught: ₱4,500 dinners are now a habit, so a new one isn't unusual.
+            assert check(4550)["unusual"] is False
+
+            # Editing the amount re-checks it; a normal amount clears the flag.
+            assert client.patch(f"/api/transactions/{dinner3}", json={"amount": 150}, headers=ha).status_code == 200
+            assert flagged() == {}
+
+            # A once-a-month category is left alone: its big payment is expected.
+            assert client.patch(f"/api/categories/{food}", json={"onceAMonth": True}, headers=ha).status_code == 200
+            spend(9000, "2026-10-25")
+            assert flagged() == {} and check(9000)["unusual"] is False
+            assert bills
+    finally:
+        with connect() as conn:
+            conn.execute("delete from auth.users where id in (%s, %s)", (user_a, user_b))
+
+
 def test_live_supabase_end_to_end():
     """Full live flow against Supabase Auth (JWKS), Postgres (port 6543 pooler), and Storage (`receipts` bucket)."""
     url = os.environ.get("SUPABASE_URL", "").rstrip("/")

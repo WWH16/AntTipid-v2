@@ -6,7 +6,8 @@ import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { BudgetItem } from '@/components/budget'
-import { fixedPart, leavesOut, needsLook } from '@/lib/budget'
+import { fixedPart, leavesOut, needsLook, withUnusual } from '@/lib/budget'
+import { useAnomalies } from '@/lib/transactions'
 import { PageHeader } from '@/components/page-header'
 import { SafeToSpendCard } from '@/components/safe-to-spend-card'
 import { BrandMark } from '@/components/brand-icons'
@@ -19,19 +20,23 @@ import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { currentMonth, longDate, money, shiftMonth, todayIso } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import type { BudgetStatus, MonthSummary } from '@/types'
+import type { Anomaly, BudgetStatus, MonthSummary } from '@/types'
 
 export function HomePage() {
   const month = currentMonth()
   const { openAdd, user } = useApp()
   const summary = useQuery(`summary:${month}`, () => api.reports.summary(month))
   const budgets = useQuery(`budgets:${month}`, () => api.budgets.list(month))
+  const unusual = useAnomalies(month)
   // Last month and this one: the carousel compares against last month, and the newest six fill Recent activity.
   // ponytail: someone idle for two months sees an empty list and the setup's expense step again; add a limit query if that matters.
   const recent = useQuery(`recent:${month}`, () => api.transactions.list({ since: `${shiftMonth(month, -1)}-01` }))
   const { wallets, category, loading: refLoading } = useRefData()
 
   const attention = (budgets.data ?? []).filter((b) => b.categoryId && needsLook(b, category(b.categoryId)?.onceAMonth))
+  // Unusual purchases nobody decided on (saved before the check answered, or before verdicts were kept).
+  const toReview = (unusual.data ?? []).filter((a) => a.decision === null)
+    .flatMap((a) => recent.data?.find((t) => t.id === a.transactionId) ?? [])
   const activeWallets = wallets.filter((w) => !w.archived)
   const total = activeWallets.reduce((s, w) => s + w.balance, 0)
 
@@ -49,7 +54,7 @@ export function HomePage() {
   // With neither a budget nor an expense, there's no carousel: the setup card says what to do first.
   const hasSpending = recent.data ? recent.data.some((t) => t.kind === 'expense') : true
   const slides = [
-    ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} budgets={budgets.data} /> }]),
+    ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} budgets={budgets.data} unusual={unusual.loading ? undefined : unusual.data ?? []} /> }]),
     ...(hasSpending ? [
       { title: 'Spending', content: <SpendingSlide transactions={recent.data} /> },
       { title: 'Where it went', content: <CategoriesSlide transactions={recent.data} /> },
@@ -117,18 +122,23 @@ export function HomePage() {
           <BrandMark mark="ant" className="pointer-events-none absolute right-6 bottom-full hidden w-16 lg:block" />
           {/* Only when a budget is near or over its limit: nothing to look at means no card at all
               (and no loading placeholder, so a card never flashes in and back out). */}
-          {attention.length > 0 && (
+          {(attention.length > 0 || toReview.length > 0) && (
             <Card className="order-2 lg:order-none">
               <CardHeader>
                 <CardTitle role="heading" aria-level={2}>Needs attention</CardTitle>
-                <CardDescription>Budgets near or over their limit</CardDescription>
-                <CardAction>
-                  <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/budgets" />}>All budgets</Button>
-                </CardAction>
+                <CardDescription>
+                  {[attention.length && 'Budgets near or over their limit', toReview.length && `${toReview.length} unusual ${toReview.length === 1 ? 'purchase' : 'purchases'} to review`].filter(Boolean).join(' · ')}
+                </CardDescription>
+                {attention.length > 0 && (
+                  <CardAction>
+                    <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/budgets" />}>All budgets</Button>
+                  </CardAction>
+                )}
               </CardHeader>
               <CardContent>
                 <ItemGroup>
                   {attention.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} />)}
+                  {toReview.map((t) => <TransactionItem key={t.id} t={t} />)}
                 </ItemGroup>
               </CardContent>
             </Card>
@@ -161,10 +171,11 @@ export function HomePage() {
 }
 
 /** What's left to spend, plus budget used vs. month gone, so spending faster than the month is visible. */
-function SafeToSpend({ s, budgets }: { s?: MonthSummary; budgets?: BudgetStatus[] }) {
+function SafeToSpend({ s, budgets, unusual }: { s?: MonthSummary; budgets?: BudgetStatus[]; unusual?: Anomaly[] }) {
   const { category } = useRefData()
-  // With once-a-month categories, wait for the budgets too, so the pace doesn't change under the user's eyes.
-  if (!s || (s.fixed.length && !budgets)) return <LoadingHero />
+  // Wait for what the pace leaves out (budgets for once-a-month categories, unusual purchases), so it doesn't change
+  // under the user's eyes.
+  if (!s || (s.fixed.length && !budgets) || !unusual) return <LoadingHero />
 
   if (!s.budget) {
     return (
@@ -180,8 +191,9 @@ function SafeToSpend({ s, budgets }: { s?: MonthSummary; budgets?: BudgetStatus[
     )
   }
 
-  const fixed = budgets && fixedPart(s.fixed, budgets)
-  return <SafeToSpendCard s={s} fixed={fixed} note={fixed && leavesOut(s.fixed.map((f) => category(f.categoryId)?.name ?? 'Other'))} />
+  // Once-a-month payments and unusual purchases count once; the pace runs on the rest.
+  const fixed = withUnusual(fixedPart(s.fixed, budgets ?? []), unusual)
+  return <SafeToSpendCard s={s} fixed={fixed} note={leavesOut(s.fixed.map((f) => category(f.categoryId)?.name ?? 'Other'), unusual)} />
 }
 
 const SETUP_HIDDEN = 'anttipid-setup-hidden'

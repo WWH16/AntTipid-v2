@@ -39,7 +39,12 @@ export interface Transaction {
   receiptUrl?: string // read-only: signed link to the receipt photo, only on GET /transactions/{id}; expires in 10 minutes
 }
 
-export type NewTransaction = Omit<Transaction, 'id' | 'receiptUrl'>
+export type NewTransaction = Omit<Transaction, 'id' | 'receiptUrl'> & {
+  /** The user's call when the add form said the amount is unusual (DSS feature 9). */
+  anomalyDecision?: AnomalyDecision
+  /** With "normal": count earlier similar one-offs as normal too. */
+  anomalyAlsoEarlier?: boolean
+}
 
 export interface TransactionFilters {
   month?: string // YYYY-MM
@@ -109,4 +114,36 @@ export interface ReceiptScan {
 export interface User {
   name: string
   email: string
+}
+
+export type AnomalyDecision = 'one_off' | 'normal'
+
+/** An unusual purchase this month (DSS feature 9): a one-off, or not decided yet (waiting for review). */
+export interface Anomaly {
+  transactionId: string
+  categoryId: string
+  amount: number
+  decision: 'one_off' | null
+  method: 'kmeans' | 'simple' | null
+  /** The usual range as it was when the purchase was judged. */
+  usualLow: number | null
+  usualHigh: number | null
+}
+
+export interface SimilarOneOff {
+  transactionId: string
+  date: string
+  amount: number
+}
+
+/** The same check for an amount not saved yet, so the add form can warn before saving. */
+export interface AnomalyCheck {
+  unusual: boolean
+  method: 'kmeans' | 'simple' | 'none'
+  usualLow: number | null
+  usualHigh: number | null
+  /** Earlier one-offs like it, newest first. */
+  similar: SimilarOneOff[]
+  /** The same amount, category and day is already saved. */
+  duplicate: boolean
 }

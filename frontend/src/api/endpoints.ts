@@ -1,7 +1,7 @@
 // Every call the app makes: Supabase Auth for sign-in, the FastAPI backend for everything else.
 import { authMessage, supabase, toUser } from '@/lib/supabase'
 import type {
-  Budget, BudgetStatus, Category, MonthHistory, MonthSummary, MonthlyReport, NewTransaction,
+  Anomaly, AnomalyCheck, AnomalyDecision, Budget, SimilarOneOff, BudgetStatus, Category, MonthHistory, MonthSummary, MonthlyReport, NewTransaction,
   ReceiptScan, Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
 import { download, http, json } from './client'
@@ -94,6 +94,16 @@ export const api = {
     summary: (month: string) => http<MonthSummary>('/reports/summary', { query: { month } }),
     monthly: (month: string) => http<MonthlyReport>('/reports/monthly', { query: { month } }),
     months: () => http<MonthHistory>('/reports/months'),
+  },
+  // Unusual purchases (DSS feature 9): this month's flags, the check before saving, and the user's decisions.
+  anomalies: {
+    list: (month: string) => http<Anomaly[]>('/anomalies', { query: { month } }),
+    // Before saving: would this amount be unusual? `exclude` is the transaction being edited.
+    check: (q: { categoryId: string; amount: number; date: string; exclude?: string }) => http<AnomalyCheck>('/anomalies/check', { query: q }),
+    // The user's call on a flagged purchase (null: back to not decided). After "normal", the earlier similar one-offs
+    // come back to ask about once; alsoEarlier counts them as normal too.
+    decide: (id: string, decision: AnomalyDecision | null, alsoEarlier = false) =>
+      http<SimilarOneOff[]>(`/anomalies/${id}/decision`, json('PUT', { decision, alsoEarlier })),
   },
   receipts: {
     // Expects a photo already shrunk with shrinkPhoto (the scan panel reuses it for the preview and the upload).

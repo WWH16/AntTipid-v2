@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFi
 from psycopg import errors
 
 import storage
+from anomalies import record
 from auth import AuthUser, User
 from db import user_tx
 from models import (
@@ -309,6 +310,8 @@ def create_transaction(body: TransactionIn, user: User):
             {**values, "uid": user.id},
         ).fetchone()
         _write_items(conn, user, r["id"], t.items)
+        # Judged now, against the history before it, and kept (DSS feature 9).
+        record(conn, user.id, r["id"], body.anomaly_decision, body.anomaly_also_earlier)
         return _txn(_get_txn(conn, user, r["id"]))
 
 
@@ -334,6 +337,11 @@ def update_transaction(txn_id: UUID, body: TransactionPatch, user: User):
         )
         if "items" in body.model_fields_set or t.items != current.items:
             _write_items(conn, user, txn_id, t.items)
+        # What the verdict rests on changed: judge it again. Otherwise only a new decision is kept.
+        if any(getattr(t, f) != getattr(current, f) for f in ("kind", "amount", "category_id", "date")):
+            record(conn, user.id, txn_id, t.anomaly_decision, bool(t.anomaly_also_earlier))
+        elif "anomaly_decision" in body.model_fields_set:
+            conn.execute("update anomaly_checks set decision = %s where transaction_id = %s and unusual", (t.anomaly_decision, txn_id))
         return _txn(_get_txn(conn, user, txn_id))
 
 

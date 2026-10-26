@@ -1,15 +1,18 @@
 """Budgets and the monthly numbers behind Home, Budgets and Reports."""
 
+from datetime import date as Date
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from psycopg import errors
 
+from anomalies import judge, mark_normal, record, similar_one_offs
 from auth import AuthUser, User
 from db import user_tx
 from ledger import category_kind
 from models import (
-    BudgetIn, BudgetLimit, BudgetStatus, CategoryTotal, DayPoint, Month, MonthHistory, MonthlyReport, MonthSummary, MonthTotal, TrendPoint,
+    Anomaly, AnomalyCheck, AnomalyDecisionIn, BudgetIn, BudgetLimit, BudgetStatus, CategoryTotal, DayPoint, Month, MonthHistory, MonthlyReport, MonthSummary, MonthTotal, SimilarOneOff, TrendPoint,
 )
 from months import days_in, days_shown, month_range, shift_month
 
@@ -225,3 +228,97 @@ def month_history(user: User):
         budget=float(budget["limit_amount"]) if budget else 0,
         months=[MonthTotal(month=r["month"], spent=float(r["spent"])) for r in rows],
     )
+
+
+# ---------------------------------------------------------------------------------------------- unusual purchases
+
+
+@router.get("/anomalies", response_model=list[Anomaly])
+def anomalies(month: Month, user: User):
+    """This month's unusual purchases (DSS feature 9) that aren't called normal: one-offs and ones waiting for review.
+    Verdicts are kept from when each was saved; a purchase saved before verdicts were kept is judged once now, on the
+    history before it, in the order they were saved."""
+    start, end = month_range(month)
+    with user_tx(user) as conn:
+        unchecked = conn.execute(
+            """
+            select t.id from transactions t
+            join categories c on c.id = t.category_id and not c.once_a_month
+            left join anomaly_checks a on a.transaction_id = t.id
+            where t.user_id = %s and t.kind = 'expense' and t.date >= %s and t.date < %s and a.transaction_id is null
+            order by t.date, t.created_at
+            """,
+            (user.id, start, end),
+        ).fetchall()
+        for r in unchecked:
+            record(conn, user.id, r["id"])
+        rows = conn.execute(
+            """
+            select t.id, t.category_id, t.amount, a.decision, a.method, a.usual_low, a.usual_high
+            from transactions t
+            join categories c on c.id = t.category_id and not c.once_a_month
+            join anomaly_checks a on a.transaction_id = t.id and a.unusual and a.decision is distinct from 'normal'
+            where t.user_id = %s and t.date >= %s and t.date < %s
+            order by t.date, t.created_at
+            """,
+            (user.id, start, end),
+        ).fetchall()
+    num = lambda v: float(v) if v is not None else None  # noqa: E731
+    return [
+        Anomaly(transaction_id=str(r["id"]), category_id=str(r["category_id"]), amount=float(r["amount"]), decision=r["decision"],
+                method=r["method"], usual_low=num(r["usual_low"]), usual_high=num(r["usual_high"]))
+        for r in rows
+    ]
+
+
+@router.get("/anomalies/check", response_model=AnomalyCheck)
+def check_anomaly(
+    user: User,
+    category_id: Annotated[UUID, Query(alias="categoryId")],
+    amount: Annotated[float, Query(gt=0, lt=1e12)],
+    date: Date,
+    exclude: UUID | None = None,
+):
+    """Would this expense be unusual? Run by the add form before saving, on the amount being typed; `exclude` is the
+    transaction being edited. Also the earlier one-offs like it, and whether it looks like a duplicate."""
+    with user_tx(user) as conn:
+        v = judge(conn, user.id, category_id, amount, date, exclude=exclude)
+        similar = similar_one_offs(conn, user.id, category_id, amount, date, exclude=exclude)
+        duplicate = conn.execute(
+            """
+            select exists (select 1 from transactions where user_id = %s and kind = 'expense' and category_id = %s
+                           and date = %s and amount = %s and id is distinct from %s::uuid) as dup
+            """,
+            (user.id, category_id, date, amount, exclude),
+        ).fetchone()["dup"]
+    unusual = bool(v and "new" in v.flagged)
+    return AnomalyCheck(
+        unusual=unusual, method=v.method if v else "none",
+        usual_low=v.usual[0] if v and v.usual else None, usual_high=v.usual[1] if v and v.usual else None,
+        similar=[SimilarOneOff(**r) for r in similar], duplicate=duplicate,
+    )
+
+
+@router.put("/anomalies/{transaction_id}/decision", response_model=list[SimilarOneOff])
+def decide_anomaly(transaction_id: UUID, body: AnomalyDecisionIn, user: User):
+    """The user's call on a flagged purchase: one-off, normal, or back to not decided. After "normal", the earlier
+    similar one-offs still one-offs come back, to ask about once; also_earlier counts them as normal too."""
+    with user_tx(user) as conn:
+        t = conn.execute(
+            """
+            select t.category_id, t.amount, t.date from transactions t
+            join anomaly_checks a on a.transaction_id = t.id and a.unusual
+            where t.id = %s and t.user_id = %s
+            """,
+            (transaction_id, user.id),
+        ).fetchone()
+        if not t:
+            raise HTTPException(404, "No unusual purchase with that id")
+        conn.execute("update anomaly_checks set decision = %s where transaction_id = %s", (body.decision, transaction_id))
+        earlier = []
+        if body.decision == "normal":
+            earlier = similar_one_offs(conn, user.id, t["category_id"], float(t["amount"]), t["date"], exclude=transaction_id)
+            if body.also_earlier:
+                mark_normal(conn, earlier)
+                earlier = []
+    return [SimilarOneOff(**e) for e in earlier]

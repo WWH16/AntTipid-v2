@@ -1,18 +1,24 @@
 // Details for one transaction, opened by tapping any row. Edit reopens the add panel prefilled; Delete offers Undo.
-import { Pencil, Repeat, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { Pencil, Repeat, ScanSearch, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
-import { useQuery } from '@/api/use-query'
-import { deleteWithUndo, KIND_LABEL } from '@/lib/transactions'
+import { invalidate, useQuery } from '@/api/use-query'
+import { deleteWithUndo, KIND_LABEL, useAnomalies } from '@/lib/transactions'
 import { DetailList } from '@/components/detail-list'
 import { ReceiptItems } from '@/components/receipt-items'
+import { BusyButton } from '@/components/busy-button'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { SignedAmount } from '@/components/transaction-item'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import { longDate } from '@/lib/format'
+import { useAction } from '@/hooks/use-action'
+import { unusualLine } from '@/lib/budget'
+import { longDate, money } from '@/lib/format'
+import type { AnomalyDecision, SimilarOneOff, Transaction } from '@/types'
 
 export function TransactionSheet() {
   const { detailId } = useApp()
@@ -62,6 +68,7 @@ function Details({ id }: { id: string }) {
             <SignedAmount t={t} className="text-2xl font-semibold" />
             {t.source === 'receipt' && <Badge variant="secondary">Scanned receipt</Badge>}
           </div>
+          <UnusualNote t={t} />
           <Separator />
           <DetailList rows={rows} />
           {!!t.items?.length && (
@@ -94,5 +101,72 @@ function Details({ id }: { id: string }) {
       )}
 
     </ResponsivePanel>
+  )
+}
+
+/**
+ * A flagged purchase (DSS feature 9): the verdict as it was when saved (it never changes later), and the user's
+ * decision, changeable any time with Undo. "It's normal for me" with earlier one-offs like it asks once about them too.
+ */
+function UnusualNote({ t }: { t: Transaction }) {
+  const { category } = useRefData()
+  const { data } = useAnomalies(t.date.slice(0, 7))
+  const [run, busy] = useAction()
+  const [earlier, setEarlier] = useState<SimilarOneOff[]>([])
+  const a = data?.find((x) => x.transactionId === t.id)
+  if (!a) return null
+  const name = category(a.categoryId)?.name ?? 'this category'
+
+  const decide = (decision: AnomalyDecision, alsoEarlier = false) => run(async () => {
+    const before = a.decision
+    const left = await api.anomalies.decide(t.id, decision, alsoEarlier)
+    // "Normal" with earlier one-offs like it: ask once. The lists refresh after the answer, or this note (no longer
+    // flagged) would close before it's asked.
+    if (decision === 'normal' && !alsoEarlier && left.length) setEarlier(left)
+    else { setEarlier([]); invalidate() }
+    toast.success(decision === 'normal' ? 'Marked as normal spending' : 'Saved as a one-off', {
+      description: t.title,
+      duration: 6000, // the same Undo window as delete
+      action: { label: 'Undo', onClick: () => { api.anomalies.decide(t.id, before).then(invalidate, (e: Error) => toast.error(e.message)) } },
+    })
+  })
+
+  return (
+    <div className="grid gap-3 rounded-lg bg-destructive/5 p-3 text-sm">
+      <div className="flex items-start gap-2.5">
+        <ScanSearch aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
+        <div className="grid gap-1">
+          <p className="font-medium">{a.decision === 'one_off' ? `A one-off for ${name}` : `Unusual for ${name}: needs your review`}</p>
+          <p className="text-muted-foreground">
+            {unusualLine(a, name)} {a.decision === 'one_off' ? 'It stays out of your daily pace and doesn\'t teach your habits.' : 'Until you decide, it stays out of your daily pace.'}
+          </p>
+        </div>
+      </div>
+      {earlier.length > 0 ? (
+        <AskEarlier earlier={earlier} busy={busy} onAnswer={(also) => { if (also) decide('normal', true); else { setEarlier([]); invalidate() } }} />
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {a.decision !== 'one_off' && <BusyButton variant="outline" size="sm" busy={busy} onClick={() => decide('one_off')}>It's a one-off</BusyButton>}
+          <BusyButton variant="outline" size="sm" busy={busy} onClick={() => decide('normal')}>It's normal for me</BusyButton>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** After "It's normal for me" with earlier one-offs like it (DSS feature 9): count them as normal too? Asked once. */
+export function AskEarlier({ earlier, busy = false, onAnswer }: { earlier: SimilarOneOff[]; busy?: boolean; onAnswer: (alsoEarlier: boolean) => void }) {
+  return (
+    <div className="grid gap-2 border-t border-destructive/15 pt-3">
+      <p className="font-medium">
+        {earlier.length === 1
+          ? `Also count your ${money(earlier[0].amount, { whole: true })} one-off on ${longDate(earlier[0].date)} as normal?`
+          : `Also count your ${earlier.length} earlier one-offs like this as normal?`}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <BusyButton type="button" size="sm" busy={busy} onClick={() => onAnswer(true)}>Yes, count {earlier.length === 1 ? 'it' : 'them'} too</BusyButton>
+        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => onAnswer(false)}>Only this one</Button>
+      </div>
+    </div>
   )
 }

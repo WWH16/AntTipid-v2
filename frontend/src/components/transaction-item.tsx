@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useApp, useRefData } from '@/app-state'
 import { CategoryMedia } from '@/components/category-icon'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item'
 import { money } from '@/lib/format'
-import { deleteWithUndo, shouldHintSwipe, SWIPE_HINT } from '@/lib/transactions'
+import { deleteWithUndo, shouldHintSwipe, SWIPE_HINT, useAnomalies } from '@/lib/transactions'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
 
@@ -36,6 +37,8 @@ let closeOpenRow: (() => void) | null = null
 export function TransactionItem({ t, swipe = false, hint = false }: { t: Transaction; swipe?: boolean; hint?: boolean }) {
   const { openDetail, openAdd } = useApp()
   const { category, wallet } = useRefData()
+  const { data: unusual } = useAnomalies(t.date.slice(0, 7))
+  const flag = unusual?.find((a) => a.transactionId === t.id)
   const [offset, setOffset] = useState(0)
   const [dragging, setDragging] = useState(false)
   const gesture = useRef<{ x: number; y: number; base: number; axis?: 'x' | 'y'; lastX: number; lastT: number; vx: number } | null>(null)
@@ -155,7 +158,11 @@ export function TransactionItem({ t, swipe = false, hint = false }: { t: Transac
           <ItemTitle className="block truncate leading-tight">{t.title}</ItemTitle>
           <ItemDescription className="line-clamp-1 leading-tight">{description}</ItemDescription>
         </ItemContent>
-        <ItemActions><SignedAmount t={t} /></ItemActions>
+        {/* Under the amount, so the title keeps its width on phones. */}
+        <ItemActions className="flex-col items-end gap-0.5">
+          <SignedAmount t={t} />
+          {flag && (flag.decision === 'one_off' ? <Badge variant="secondary">One-off</Badge> : <Badge variant="destructive">Unusual</Badge>)}
+        </ItemActions>
       </Item>
     </div>
   )
