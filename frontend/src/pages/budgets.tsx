@@ -85,7 +85,12 @@ export function BudgetsPage() {
           <Card>
             <CardHeader>
               <CardTitle role="heading" aria-level={2}>By category</CardTitle>
-              <CardDescription>Over and near-limit budgets first. Select one to change it.</CardDescription>
+              {/* No category budgets yet: nothing to sort or select, so say how to start, monthly budget first. */}
+              <CardDescription>
+                {byCategory.length ? 'Over and near-limit budgets first. Select one to change it.'
+                  : overall ? 'Give a category its own limit. It comes out of your monthly budget.'
+                  : 'Set your monthly budget first. Category budgets are shares of it.'}
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               {byCategory.length ? (
@@ -108,7 +113,7 @@ export function BudgetsPage() {
               ))}
               {unbudgeted.length > 0 && (
                 <div className="grid gap-2">
-                  <p className="text-sm text-muted-foreground">Categories without a budget</p>
+                  {byCategory.length > 0 && <p className="text-sm text-muted-foreground">Categories without a budget</p>}
                   <div className="flex flex-wrap gap-2">
                     {unbudgeted.map((c) => (
                       <Button key={c.id} variant="outline" size="sm" onClick={() => setEditing({ categoryId: c.id })}>
