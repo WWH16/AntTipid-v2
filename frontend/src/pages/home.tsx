@@ -45,6 +45,16 @@ export function HomePage() {
   const showSetup = setup && !(setup.hasWallet && setup.hasBudget && setup.hasExpense)
   // While setup is showing, its budget step stands in for the "Set a monthly budget" slide.
   const noLeftSlide = !!showSetup && !setup.hasBudget
+  // The spending slides wait for a first expense (they'd be all ₱0 and empty bars); while that list loads they show.
+  // With neither a budget nor an expense, there's no carousel: the setup card says what to do first.
+  const hasSpending = recent.data ? recent.data.some((t) => t.kind === 'expense') : true
+  const slides = [
+    ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} /> }]),
+    ...(hasSpending ? [
+      { title: 'Spending', content: <SpendingSlide transactions={recent.data} /> },
+      { title: 'Where it went', content: <CategoriesSlide transactions={recent.data} /> },
+    ] : []),
+  ]
 
   return (
     <>
@@ -68,15 +78,13 @@ export function HomePage() {
             />
           )}
           <div className="order-1 grid grid-cols-1 gap-3 lg:order-none">
-            <Carousel
-              key={String(noLeftSlide)} // starts again on "Left to spend" the moment setup finishes
-              label="Your month so far"
-              slides={[
-                ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} /> }]),
-                { title: 'Spending', content: <SpendingSlide transactions={recent.data} /> },
-                { title: 'Where it went', content: <CategoriesSlide transactions={recent.data} /> },
-              ]}
-            />
+            {slides.length > 0 && (
+              <Carousel
+                key={String(noLeftSlide)} // starts again on "Left to spend" the moment setup finishes
+                label="Your month so far"
+                slides={slides}
+              />
+            )}
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" onClick={() => openAdd({ kind: 'expense' })}><PenLine /> Add expense</Button>
               <Button variant="outline" onClick={() => openAdd({ kind: 'expense', scan: true })}><ScanLine /> Scan receipt</Button>

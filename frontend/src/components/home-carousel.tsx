@@ -52,7 +52,8 @@ export function Carousel({ label, slides }: { label: string; slides: { title: st
           </div>
         ))}
       </div>
-      <div className="flex justify-center">
+      {/* One slide: nothing to page through, so no dots. */}
+      <div className={cn('flex justify-center', slides.length < 2 && 'hidden')}>
         {slides.map((s, i) => (
           <button
             key={s.title}
