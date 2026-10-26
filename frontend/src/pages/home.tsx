@@ -85,10 +85,13 @@ export function HomePage() {
                 slides={slides}
               />
             )}
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={() => openAdd({ kind: 'expense' })}><PenLine /> Add expense</Button>
-              <Button variant="outline" onClick={() => openAdd({ kind: 'expense', scan: true })}><ScanLine /> Scan receipt</Button>
-            </div>
+            {/* While setup shows, its steps lead (and its own Add expense step); the + button still adds. */}
+            {!showSetup && (
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => openAdd({ kind: 'expense' })}><PenLine /> Add expense</Button>
+                <Button variant="outline" onClick={() => openAdd({ kind: 'expense', scan: true })}><ScanLine /> Scan receipt</Button>
+              </div>
+            )}
           </div>
 
           <Card className="order-3 lg:order-none">
@@ -131,7 +134,9 @@ export function HomePage() {
             </Card>
           )}
 
-          <Card className="order-4 lg:order-none">
+          {/* No wallets during setup: on phones the setup card's first step just said the same thing, so it waits. On wide
+              screens it stays, beside the setup card, so the right column isn't left empty. */}
+          <Card className={cn('order-4 lg:order-none', showSetup && !setup.hasWallet && 'max-lg:hidden')}>
             <CardHeader>
               <CardTitle role="heading" aria-level={2}>Wallets</CardTitle>
               <CardDescription className="tabular-nums">{refLoading ? 'Loading balances' : `${money(total)} across ${activeWallets.length} ${activeWallets.length === 1 ? 'wallet' : 'wallets'}`}</CardDescription>
