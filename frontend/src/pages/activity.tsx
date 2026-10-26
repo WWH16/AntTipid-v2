@@ -74,24 +74,28 @@ export function ActivityPage() {
     if (listShown && hash.startsWith('#day-')) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
   }, [hash, listShown])
 
+  // Nothing this month and no filter on: totals, export and the filters have nothing to work on, and the empty state
+  // below already says the month is empty. Search stays: it looks through every month.
+  const empty = data?.length === 0 && !filtered
+
   return (
     <>
       <PageHeader
         page="Activity"
         // The month is in the switcher right below, so the headline doesn't repeat it.
-        headline={!data ? 'Activity' : `${data.length} ${filtered ? (data.length === 1 ? 'match' : 'matches') : (data.length === 1 ? 'transaction' : 'transactions')}${searching ? ' in all months' : ''}`}
+        headline={!data || empty ? 'Activity' : `${data.length} ${filtered ? (data.length === 1 ? 'match' : 'matches') : (data.length === 1 ? 'transaction' : 'transactions')}${searching ? ' in all months' : ''}`}
         // Totals sit under the headline, not in the sticky bar: on phones they'd wrap to a second pinned row.
-        description={
+        description={empty ? undefined : (
           <span className="flex flex-wrap gap-x-4 tabular-nums">
             <span>Spent <span className="font-semibold text-foreground">{money(sumOf(data, 'expense'))}</span></span>
             <span>Earned <span className="font-semibold text-foreground">{money(sumOf(data, 'income'))}</span></span>
           </span>
-        }
-        action={
+        )}
+        action={!empty && (
           <Button onClick={() => exportCsv(filters)} disabled={!data?.length}>
             <Download /> <span className="sr-only sm:not-sr-only">Export CSV</span>
           </Button>
-        }
+        )}
       />
 
       <MonthSwitcher month={month} onChange={setMonth} />
@@ -120,7 +124,7 @@ export function ActivityPage() {
           <Button
             variant={walletId !== 'all' || categoryId !== 'all' ? 'secondary' : 'outline'}
             size="icon"
-            className="md:hidden"
+            className={cn('md:hidden', empty && 'hidden')}
             aria-expanded={moreFilters}
             aria-controls="more-filters"
             aria-label="Filter by wallet and category"
@@ -130,7 +134,7 @@ export function ActivityPage() {
           </Button>
         </div>
 
-        <div className="flex flex-col gap-2 md:flex-row md:items-center lg:flex-col lg:items-stretch">
+        <div className={cn('flex flex-col gap-2 md:flex-row md:items-center lg:flex-col lg:items-stretch', empty && 'hidden')}>
           <Tabs value={kind} onValueChange={(v) => setKind(v as typeof kind)}>
             <TabsList className="w-full md:w-auto lg:w-full">
               <TabsTrigger value="all">All</TabsTrigger>
