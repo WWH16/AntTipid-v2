@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { currentMonth, dateInMonth, dayIso, dayLabel, money, monthLabel } from '@/lib/format'
 import { outsideBudgets, vsUsual } from '@/lib/budget'
 import { monthTotals } from '@/lib/report'
+import { cn } from '@/lib/utils'
 
 const PaceChart = lazy(() => import('@/components/report-charts').then((m) => ({ default: m.PaceChart })))
 const TrendChart = lazy(() => import('@/components/report-charts').then((m) => ({ default: m.TrendChart })))
@@ -58,6 +59,9 @@ export function ReportsPage() {
   const usual = data && month < currentMonth() ? vsUsual(data.byCategory, data.usual) : null
   const usualName = usual && (category(usual.top.categoryId)?.name ?? 'Other')
   const thisMonth = data?.trend.at(-1)
+  // Nothing this month, or nothing in all 6: totals, "tap a chart" and an axis-only chart have nothing behind them.
+  const monthEmpty = !!thisMonth && !thisMonth.income && !thisMonth.spent
+  const historyEmpty = !!data && data.trend.every((m) => !m.income && !m.spent)
   const top = data?.byCategory[0]
   const spentTotal = data?.byCategory.reduce((s, c) => s + c.total, 0) ?? 0
 
@@ -89,13 +93,13 @@ export function ReportsPage() {
       <PageHeader
         page="Reports"
         headline={!data ? 'Reports' : top ? `${category(top.categoryId)?.name ?? 'Other'} took ${Math.round((top.total / spentTotal) * 100)}% of your spending` : 'No spending recorded'}
-        description="Tap any chart for details."
+        description={monthEmpty ? undefined : 'Tap any chart for details.'}
       />
       <MonthSwitcher month={month} onChange={setMonth} />
 
       {error ? <ErrorState error={error} /> : loading && !data ? <LoadingReport /> : data && (
         <>
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className={cn('grid grid-cols-3 gap-2 sm:gap-4', monthEmpty && 'hidden')}>
             {monthTotals(thisMonth?.income ?? 0, thisMonth?.spent ?? 0).map(([label, value, tone]) => (
               <Card key={label}>
                 <CardHeader>
@@ -151,7 +155,7 @@ export function ReportsPage() {
             <Card>
               <CardHeader>
                 <CardTitle role="heading" aria-level={2}>Where your money went</CardTitle>
-                <CardDescription>Spending by category in {monthLabel(month)}. Select one for details.</CardDescription>
+                {data.byCategory.length > 0 && <CardDescription>Spending by category in {monthLabel(month)}. Select one for details.</CardDescription>}
               </CardHeader>
               <CardContent className="grid gap-4">
                 {usual && Math.round(usual.saved) !== 0 && (
@@ -177,12 +181,16 @@ export function ReportsPage() {
             <Card>
               <CardHeader>
                 <CardTitle id="trend-title" role="heading" aria-level={2}>Income and spending</CardTitle>
-                <CardDescription>Last 6 months. Tap a month for its breakdown.</CardDescription>
-                <CardAction>
-                  <Button variant="ghost" size="sm" aria-describedby="trend-title" onClick={() => setAsTable((v) => !v)}>{asTable ? 'Show chart' : 'Show as table'}</Button>
-                </CardAction>
+                <CardDescription>
+                  {historyEmpty ? 'Your income and spending over the last 6 months show here once you add some.' : 'Last 6 months. Tap a month for its breakdown.'}
+                </CardDescription>
+                {!historyEmpty && (
+                  <CardAction>
+                    <Button variant="ghost" size="sm" aria-describedby="trend-title" onClick={() => setAsTable((v) => !v)}>{asTable ? 'Show chart' : 'Show as table'}</Button>
+                  </CardAction>
+                )}
               </CardHeader>
-              <CardContent>
+              <CardContent className={cn(historyEmpty && 'hidden')}>
                 {asTable ? (
                   <Table>
                     <TableHeader>
