@@ -262,14 +262,17 @@ export function CategoriesSlide({ transactions }: { transactions?: Transaction[]
             })}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">Nothing spent yet this month.</p>
+          <p className="text-sm text-muted-foreground">Nothing spent yet this month. Your top categories show here once you add expenses.</p>
         )}
       </CardContent>
-      <CardFooter className="text-sm">
-        <Link to="/reports" className="font-medium underline underline-offset-4">
-          {top.length > 3 ? `See all ${top.length} categories in Reports` : 'See the breakdown in Reports'}
-        </Link>
-      </CardFooter>
+      {/* Empty: Reports would be just as empty, and Home's own Add expense button sits right below. */}
+      {top.length > 0 && (
+        <CardFooter className="text-sm">
+          <Link to="/reports" className="font-medium underline underline-offset-4">
+            {top.length > 3 ? `See all ${top.length} categories in Reports` : 'See the breakdown in Reports'}
+          </Link>
+        </CardFooter>
+      )}
     </HeroCard>
   )
 }
