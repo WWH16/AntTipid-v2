@@ -92,39 +92,51 @@ def delete_wallet(wallet_id: UUID, user: User):
 
 
 def _category(r: dict) -> Category:
-    return Category(id=str(r["id"]), name=r["name"], kind=r["kind"], icon=r["icon"])
+    return Category(id=str(r["id"]), name=r["name"], kind=r["kind"], icon=r["icon"], once_a_month=r["once_a_month"])
+
+
+ONCE_A_MONTH_INCOME = "Only spending categories can be paid once a month."
 
 
 @router.get("/categories", response_model=list[Category])
 def list_categories(user: User):
     with user_tx(user) as conn:
         rows = conn.execute(
-            "select id, name, kind, icon from categories where user_id = %s order by created_at, name", (user.id,)
+            "select id, name, kind, icon, once_a_month from categories where user_id = %s order by created_at, name", (user.id,)
         )
         return [_category(r) for r in rows]
 
 
 @router.post("/categories", response_model=Category, status_code=201)
 def create_category(body: CategoryIn, user: User):
-    with user_tx(user) as conn:
-        r = conn.execute(
-            "insert into categories (user_id, name, kind, icon) values (%s, %s, %s, %s) returning id, name, kind, icon",
-            (user.id, body.name, body.kind, body.icon),
-        ).fetchone()
-        return _category(r)
+    try:
+        with user_tx(user) as conn:
+            r = conn.execute(
+                "insert into categories (user_id, name, kind, icon, once_a_month) values (%s, %s, %s, %s, %s)"
+                " returning id, name, kind, icon, once_a_month",
+                (user.id, body.name, body.kind, body.icon, body.once_a_month),
+            ).fetchone()
+            return _category(r)
+    except errors.CheckViolation:
+        raise HTTPException(422, ONCE_A_MONTH_INCOME)
 
 
 @router.patch("/categories/{category_id}", response_model=Category)
 def update_category(category_id: UUID, body: CategoryPatch, user: User):
     patch = body.model_dump(exclude_unset=True, exclude_none=True)
-    with user_tx(user) as conn:
-        if patch:
-            sets = ", ".join(f"{col} = %({col})s" for col in patch)
-            conn.execute(f"update categories set {sets} where id = %(id)s and user_id = %(uid)s", {**patch, "id": category_id, "uid": user.id})
-        r = conn.execute("select id, name, kind, icon from categories where id = %s and user_id = %s", (category_id, user.id)).fetchone()
-        if not r:
-            raise HTTPException(404, "Category not found")
-        return _category(r)
+    try:
+        with user_tx(user) as conn:
+            if patch:
+                sets = ", ".join(f"{col} = %({col})s" for col in patch)
+                conn.execute(f"update categories set {sets} where id = %(id)s and user_id = %(uid)s", {**patch, "id": category_id, "uid": user.id})
+            r = conn.execute(
+                "select id, name, kind, icon, once_a_month from categories where id = %s and user_id = %s", (category_id, user.id)
+            ).fetchone()
+            if not r:
+                raise HTTPException(404, "Category not found")
+            return _category(r)
+    except errors.CheckViolation:
+        raise HTTPException(422, ONCE_A_MONTH_INCOME)
 
 
 @router.delete("/categories/{category_id}", status_code=204)

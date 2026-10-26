@@ -13,12 +13,13 @@ The core loop: **data** (transactions) → **model** (run-out date, anomalies) �
 | 1 | Budget limit rule: category budgets can't add up past the monthly budget | Rules | Budget form + API | Done (`737714e`) |
 | 2 | Outside-budget spending flag: spending in categories without a budget, flagged past the unassigned room | Statistics | Budgets, Reports | Done (`737714e`) |
 | 3 | Run-out date + safe daily amount | Statistics (pace) | Budgets, Home | Done (`94851e1`) |
-| 5 | Saved vs budget: how a finished month ended against the budgets it had | Rules (budget history) | Reports | Done, waiting for test |
-| 8 | ML forecast (optional): predicts the run-out date, compared against 3's pace method | ML | Paper / Budgets | Optional |
-| 6 | Paid once a month: a switch on categories like rent and tuition, left out of the pace | Rules | Settings, Budgets | Before 9 |
+| 5 | Saved vs budget: how a finished month ended against the budgets it had | Rules (budget history) | Reports | Done (`e5dfcdc`), tested 2026-10-26 |
+| 8 | ML forecast (optional): predicts the run-out date, compared against 3's pace method | ML | Paper / Budgets | Optional: only if the subject requires a prediction model (9 already covers ML) |
+| 6 | Paid once a month: a switch on categories like rent and tuition, left out of the pace | Rules | Settings, Budgets, Home | Done, waiting for commit |
 | 9 | Anomaly detection with K-means: flags unusual purchases and leaves them out of the pace | ML (clustering) | Activity, Budgets | Last |
 
-**Order:** 3 → 5 → 8 if the subject requires ML → 6 → 9 (K-means then suggests the switch from 6: "Rent looks like a monthly bill. Leave it out of the pace?").
+**Order:** 6 → 9 (K-means then suggests the switch from 6: "Rent looks like a monthly bill. Leave it out of the pace?").
+8 only if the subject requires a prediction model.
 
 ## When each one starts showing
 
@@ -72,15 +73,20 @@ One word per idea in everything the app says:
 - Replaced "saved vs your usual month" (median of 3 months) on 2026-10-26: the budget is the user's own plan.
 
 ### 6. Paid once a month
-- [ ] "Paid once a month" toggle on a category (rent, tuition, bills)
-- [ ] The pace leaves those categories out: the monthly line uses everything else; their own card shows paid / not yet paid, no forecast
-- [ ] A check that a once-a-month payment no longer makes the month look like it runs out
+- [x] "Paid once a month" switch on a spending category, in Settings (`categories.once_a_month`, migration `20261026020000`)
+- [x] The pace leaves those categories out: the monthly line runs on everything else, with their category budget set aside
+  until paid (only what's paid, without a budget); Home's card and Budgets say "Leaves out Rent, paid once a month."
+- [x] Their own card shows "Paid ₱8,000 this month." or "Not paid yet. ₱8,000 is set aside for it.", no forecast
+- [x] A bill paid in full isn't flagged as needing a look; only going over is
+- [x] Checks (`frontend/src/lib/budget.test.ts`, `backend/test_receipts.py`)
 
 ### Polish (feature 3, no effect on decisions)
 - [ ] "With ₱0 to spare": say "You'll just make it to month-end" when the leftover rounds to ₱0
 - [ ] Page left open past midnight: recompute the pace when the app comes back into view
 - [ ] A scanned receipt with a misread future date: clamp it to today
 - [ ] A check for the last day of the month
+- [ ] Running out on the last day reads "0 days before month-end": say "on Oct 31, the last day" instead
+- [ ] Reports totals: "Overspent" means spent more than earned, and reads like over budget (with no income it equals Spent)
 
 ### 8. ML forecast
 - _To break down when we start._

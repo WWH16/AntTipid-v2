@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { budgetState, monthBudgets, outsideBudgets, pace, paceLine } from './budget.ts'
+import { budgetState, everyday, fixedPart, monthBudgets, outsideBudgets, pace, paceLine } from './budget.ts'
 
 const budget = (categoryId: string | null, limit: number, spent: number) => ({ id: String(categoryId), categoryId, limit, spent, warnAt: 80 })
 
@@ -61,4 +61,23 @@ test('monthBudgets: each budget the month had, with what was spent against it', 
   ])
   // Feeds the outside-budget flag: ₱1,750 of ₱6,550 outside, with ₱4,000 unassigned room.
   assert.deepEqual(outsideBudgets(monthBudgets(report)), { spent: 1750, room: 4000, total: 6550 })
+})
+
+test('fixedPart: rent paid once a month no longer reads as spending fast', () => {
+  const month = '2026-10'
+  const today = '2026-10-15'
+  const monthly = budget(null, 20000, 11000)
+  const rent = budget('rent', 8000, 8000)
+  // Rent (₱8,000, paid on the 3rd) counted as pace: ₱11,000 in 15 days looks like it runs out on the 28th.
+  assert.match(paceLine(monthly, month, undefined, today)!, /^Spending fast\. At this pace it runs out Oct 28/)
+  // Left out: ₱3,000 everyday spending against the ₱12,000 not set aside for rent is ₱200 a day, ₱5,800 to spare.
+  const paid = fixedPart([{ categoryId: 'rent', total: 8000 }], [monthly, rent])
+  assert.deepEqual(paid, { spent: 8000, reserved: 8000 })
+  assert.equal(paceLine(everyday(monthly, paid), month, undefined, today), 'On track. You should reach month-end with ₱5,800 to spare.')
+  // Not paid yet: its ₱8,000 budget is still set aside, so the room is the same, not ₱8,000 bigger.
+  const unpaid = fixedPart([{ categoryId: 'rent', total: 0 }], [budget(null, 20000, 3000), budget('rent', 8000, 0)])
+  assert.deepEqual(unpaid, { spent: 0, reserved: 8000 })
+  assert.equal(paceLine(everyday(budget(null, 20000, 3000), unpaid), month, undefined, today), 'On track. You should reach month-end with ₱5,800 to spare.')
+  // No budget of its own: only what's been paid comes out.
+  assert.deepEqual(fixedPart([{ categoryId: 'bills', total: 1200 }], [monthly]), { spent: 1200, reserved: 1200 })
 })

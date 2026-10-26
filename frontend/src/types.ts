@@ -18,6 +18,8 @@ export interface Category {
   name: string
   kind: CategoryKind
   icon: string // key into components/category-icon.tsx
+  /** Paid in one go each month (rent, tuition): left out of the spending pace. Spending categories only. */
+  onceAMonth: boolean
 }
 
 export type TransactionKind = 'expense' | 'income' | 'transfer'
@@ -67,6 +69,8 @@ export interface MonthSummary {
   budget: number // overall monthly budget; 0 when none is set
   daysInMonth: number
   dayOfMonth: number
+  /** Spent this month in each once-a-month category (0 when not paid yet). */
+  fixed: { categoryId: string; total: number }[]
 }
 
 /** Every month with transactions, oldest first, for the month picker. */

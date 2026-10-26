@@ -7,7 +7,7 @@ import { setCached, useQuery } from '@/api/use-query'
 import { BudgetBadge, BudgetItem } from '@/components/budget'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, outsideBudgets, paceLine } from '@/lib/budget'
+import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, everyday, fixedPart, leavesOut, needsLook, outsideBudgets, paceLine, paidLine } from '@/lib/budget'
 import { MoneyInput } from '@/components/money-input'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { useAction } from '@/hooks/use-action'
 import { done } from '@/lib/done'
-import { money, monthLabel } from '@/lib/format'
+import { currentMonth, money, monthLabel } from '@/lib/format'
 import type { BudgetStatus } from '@/types'
 
 type Editing = { budget?: BudgetStatus; categoryId?: string | null } | null
@@ -32,16 +32,20 @@ export function BudgetsPage() {
   const [month, setMonth] = useMonth()
   const { categories, category } = useRefData()
   const { data, error, loading } = useQuery(`budgets:${month}`, () => api.budgets.list(month))
+  const { data: summary } = useQuery(`summary:${month}`, () => api.reports.summary(month))
   const [editing, setEditing] = useState<Editing>(null)
 
   const overall = data?.find((b) => b.categoryId === null)
   const byCategory = (data ?? [])
     .filter((b) => b.categoryId !== null)
     .sort((a, b) => SEVERITY[budgetState(a)] - SEVERITY[budgetState(b)] || b.spent / b.limit - a.spent / a.limit)
-  const needing = byCategory.filter((b) => budgetState(b) !== 'ok').map((b) => category(b.categoryId)?.name ?? 'Other')
+  const needing = byCategory.filter((b) => needsLook(b, category(b.categoryId)?.onceAMonth)).map((b) => category(b.categoryId)?.name ?? 'Other')
   const unbudgeted = categories.filter((c) => c.kind === 'expense' && !data?.some((b) => b.categoryId === c.id))
   const outside = data && outsideBudgets(data)
-  const overallPace = overall && paceLine(overall, month)
+  // The pace runs on everyday spending: once-a-month payments (rent, tuition) are left out, their budgets set aside.
+  const paced = overall && summary && everyday(overall, fixedPart(summary.fixed, data ?? []))
+  const overallPace = paced && paceLine(paced, month)
+  const fixedNote = summary && leavesOut(summary.fixed.map((f) => category(f.categoryId)?.name ?? 'Other'))
 
   return (
     <>
@@ -71,7 +75,7 @@ export function BudgetsPage() {
               </CardHeader>
               <CardContent>
                 <Progress value={budgetPercent(overall)} className={OVER_BAR[budgetState(overall)]} aria-label="Budget used" />
-                {overallPace && <p className="mt-3 text-sm text-muted-foreground">{overallPace}</p>}
+                {overallPace && <p className="mt-3 text-sm text-muted-foreground">{overallPace}{fixedNote && ` ${fixedNote}`}</p>}
               </CardContent>
               <CardFooter className="justify-between gap-2 text-sm">
                 <span className="text-muted-foreground tabular-nums">{money(overall.spent, { whole: true })} of {money(overall.limit, { whole: true })}</span>
@@ -95,7 +99,7 @@ export function BudgetsPage() {
             <CardContent className="grid gap-4">
               {byCategory.length ? (
                 <ItemGroup>
-                  {byCategory.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} pace={paceLine(b, month, overall)} onSelect={() => setEditing({ budget: b })} />)}
+                  {byCategory.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} pace={category(b.categoryId)?.onceAMonth ? (month === currentMonth() ? paidLine(b) : null) : paceLine(b, month, paced)} onSelect={() => setEditing({ budget: b })} />)}
                 </ItemGroup>
               ) : !unbudgeted.length && (
                 <EmptyState icon={Tags} title="No spending categories" body="Add one in Settings, then give it a limit here." />

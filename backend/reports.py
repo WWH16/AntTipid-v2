@@ -135,9 +135,19 @@ def summary(month: Month, user: User):
     with user_tx(user) as conn:
         totals = conn.execute(TOTALS, {"uid": user.id, "start": start, "end": end}).fetchone()
         budget = next((b for b in _budgets_in(conn, user, start) if b["category_id"] is None), None)
+        fixed = conn.execute(
+            """
+            select c.id as category_id, coalesce(sum(t.amount), 0) as total from categories c
+            left join transactions t on t.category_id = c.id and t.kind = 'expense' and t.date >= %(start)s and t.date < %(end)s
+            where c.user_id = %(uid)s and c.once_a_month
+            group by c.id
+            """,
+            {"uid": user.id, "start": start, "end": end},
+        ).fetchall()
     return MonthSummary(
         month=month, income=float(totals["income"]), spent=float(totals["spent"]),
         budget=float(budget["limit_amount"]) if budget else 0, days_in_month=days_in(month), day_of_month=days_shown(month),
+        fixed=[CategoryTotal(category_id=str(r["category_id"]), total=float(r["total"])) for r in fixed],
     )
 
 

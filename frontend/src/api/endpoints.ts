@@ -66,7 +66,7 @@ export const api = {
   categories: {
     list: () => http<Category[]>('/categories'),
     create: (c: Omit<Category, 'id'>) => http<Category>('/categories', json('POST', c)),
-    update: (id: string, patch: Partial<Pick<Category, 'name' | 'icon'>>) => http<Category>(`/categories/${id}`, json('PATCH', patch)),
+    update: (id: string, patch: Partial<Pick<Category, 'name' | 'icon' | 'onceAMonth'>>) => http<Category>(`/categories/${id}`, json('PATCH', patch)),
     remove: (id: string) => http<null>(`/categories/${id}`, { method: 'DELETE' }),
   },
   transactions: {

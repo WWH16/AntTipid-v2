@@ -1,5 +1,5 @@
 import { money, todayIso } from './format.ts'
-import type { BudgetStatus, MonthlyReport } from '@/types'
+import type { BudgetStatus, MonthlyReport, MonthSummary } from '@/types'
 
 export type BudgetState = 'ok' | 'near' | 'used' | 'over'
 
@@ -83,6 +83,37 @@ export function paceLine(b: Pick<BudgetStatus, 'spent' | 'limit'>, month: string
   if (p.lasts) return `On track. You should reach month-end with ${money(p.spare, { whole: true })} to spare.`
   return `Spending fast. At this pace it runs out ${shortDate(p.runsOut)}, ${p.early} ${p.early === 1 ? 'day' : 'days'} before month-end. Keep to ${money(p.perDay, { whole: true })} a day to last the month.`
 }
+
+/**
+ * The once-a-month part of a month (DSS feature 6): what's been paid in those categories, and how much of the monthly
+ * budget they take. That's a category's own budget until the payment is bigger, so a bill not paid yet keeps its room;
+ * one without a budget takes only what's been paid.
+ */
+export function fixedPart(fixed: MonthSummary['fixed'], budgets: Pick<BudgetStatus, 'categoryId' | 'limit'>[]) {
+  let spent = 0
+  let reserved = 0
+  for (const f of fixed) {
+    spent += f.total
+    reserved += Math.max(f.total, budgets.find((b) => b.categoryId === f.categoryId)?.limit ?? 0)
+  }
+  return { spent, reserved }
+}
+
+/** The monthly budget with the once-a-month part taken out: everyday spending against the room left for it. */
+export const everyday = <B extends Pick<BudgetStatus, 'spent' | 'limit'>>(b: B, f: ReturnType<typeof fixedPart>): B =>
+  ({ ...b, spent: b.spent - f.spent, limit: b.limit - f.reserved })
+
+/** Whether a budget needs a look: near, used up or over. A once-a-month one only when over: a bill paid in full is fine. */
+export const needsLook = (b: Pick<BudgetStatus, 'spent' | 'limit' | 'warnAt'>, onceAMonth = false) =>
+  onceAMonth ? budgetState(b) === 'over' : budgetState(b) !== 'ok'
+
+/** Says which categories the pace leaves out, next to it. Null when none. */
+export const leavesOut = (names: string[]) =>
+  names.length ? `Leaves out ${new Intl.ListFormat('en').format(names)}, paid once a month.` : null
+
+/** A once-a-month category's card line in its own month, in place of a pace: paid, or what's set aside for it. */
+export const paidLine = (b: Pick<BudgetStatus, 'spent' | 'limit'>) =>
+  b.spent > 0 ? `Paid ${money(b.spent, { whole: true })} this month.` : `Not paid yet. ${money(b.limit, { whole: true })} is set aside for it.`
 
 /** Progress bar tone per state, matching the badge: red when over, default otherwise. */
 export const OVER_BAR: Record<BudgetState, string> = { ok: '', near: '', used: '', over: '[&_[data-slot=progress-indicator]]:bg-destructive!' }

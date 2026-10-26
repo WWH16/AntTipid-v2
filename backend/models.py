@@ -56,17 +56,20 @@ class Category(CamelModel):
     name: str
     kind: CategoryKind
     icon: str
+    once_a_month: bool  # paid in one go each month (rent, tuition): left out of the spending pace
 
 
 class CategoryIn(CamelModel):
     name: ShortName
     kind: CategoryKind
     icon: IconKey = "other"
+    once_a_month: bool = False
 
 
 class CategoryPatch(CamelModel):
     name: ShortName | None = None
     icon: IconKey | None = None
+    once_a_month: bool | None = None
 
 
 class TransactionIn(CamelModel):
@@ -126,6 +129,11 @@ class BudgetStatus(CamelModel):
     spent: float
 
 
+class CategoryTotal(CamelModel):
+    category_id: str
+    total: float
+
+
 class BudgetLimit(CamelModel):
     category_id: str | None  # None is the overall monthly budget
     limit: float
@@ -138,11 +146,8 @@ class MonthSummary(CamelModel):
     budget: float  # the month's overall monthly budget (from budget_history); 0 when none
     days_in_month: int
     day_of_month: int
-
-
-class CategoryTotal(CamelModel):
-    category_id: str
-    total: float
+    # Spent this month in each once-a-month category (0 when not paid yet), for the pace to leave out.
+    fixed: list[CategoryTotal]
 
 
 class TrendPoint(CamelModel):

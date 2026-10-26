@@ -6,7 +6,7 @@ import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { BudgetItem } from '@/components/budget'
-import { budgetState } from '@/lib/budget'
+import { fixedPart, leavesOut, needsLook } from '@/lib/budget'
 import { PageHeader } from '@/components/page-header'
 import { SafeToSpendCard } from '@/components/safe-to-spend-card'
 import { BrandMark } from '@/components/brand-icons'
@@ -31,7 +31,7 @@ export function HomePage() {
   const recent = useQuery(`recent:${month}`, () => api.transactions.list({ since: `${shiftMonth(month, -1)}-01` }))
   const { wallets, category, loading: refLoading } = useRefData()
 
-  const attention = (budgets.data ?? []).filter((b) => b.categoryId && budgetState(b) !== 'ok')
+  const attention = (budgets.data ?? []).filter((b) => b.categoryId && needsLook(b, category(b.categoryId)?.onceAMonth))
   const activeWallets = wallets.filter((w) => !w.archived)
   const total = activeWallets.reduce((s, w) => s + w.balance, 0)
 
@@ -49,7 +49,7 @@ export function HomePage() {
   // With neither a budget nor an expense, there's no carousel: the setup card says what to do first.
   const hasSpending = recent.data ? recent.data.some((t) => t.kind === 'expense') : true
   const slides = [
-    ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} /> }]),
+    ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} budgets={budgets.data} /> }]),
     ...(hasSpending ? [
       { title: 'Spending', content: <SpendingSlide transactions={recent.data} /> },
       { title: 'Where it went', content: <CategoriesSlide transactions={recent.data} /> },
@@ -161,8 +161,10 @@ export function HomePage() {
 }
 
 /** What's left to spend, plus budget used vs. month gone, so spending faster than the month is visible. */
-function SafeToSpend({ s }: { s?: MonthSummary }) {
-  if (!s) return <LoadingHero />
+function SafeToSpend({ s, budgets }: { s?: MonthSummary; budgets?: BudgetStatus[] }) {
+  const { category } = useRefData()
+  // With once-a-month categories, wait for the budgets too, so the pace doesn't change under the user's eyes.
+  if (!s || (s.fixed.length && !budgets)) return <LoadingHero />
 
   if (!s.budget) {
     return (
@@ -178,7 +180,8 @@ function SafeToSpend({ s }: { s?: MonthSummary }) {
     )
   }
 
-  return <SafeToSpendCard s={s} />
+  const fixed = budgets && fixedPart(s.fixed, budgets)
+  return <SafeToSpendCard s={s} fixed={fixed} note={fixed && leavesOut(s.fixed.map((f) => category(f.categoryId)?.name ?? 'Other'))} />
 }
 
 const SETUP_HIDDEN = 'anttipid-setup-hidden'

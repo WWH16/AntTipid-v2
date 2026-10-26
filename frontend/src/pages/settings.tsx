@@ -329,14 +329,15 @@ function AccountForm({ onClose }: { onClose: () => void }) {
 function CategoryForm({ category, kind, onClose }: { category?: Category; kind: CategoryKind; onClose: () => void }) {
   const [name, setName] = useState(category?.name ?? '')
   const [icon, setIcon] = useState(category?.icon ?? 'other')
+  const [onceAMonth, setOnceAMonth] = useState(category?.onceAMonth ?? false)
   const [run, busy] = useAction()
   const title = category ? 'Edit category' : kind === 'expense' ? 'Add spending category' : 'Add income category'
 
   const save = () => run(async () => {
     const trimmed = name.trim()
     upsertCached('categories', category
-      ? await api.categories.update(category.id, { name: trimmed, icon })
-      : await api.categories.create({ name: trimmed, kind, icon }))
+      ? await api.categories.update(category.id, { name: trimmed, icon, onceAMonth })
+      : await api.categories.create({ name: trimmed, kind, icon, onceAMonth }))
     onClose()
     done(category ? 'Changes saved' : 'Category added', { description: trimmed })
   })
@@ -361,6 +362,16 @@ function CategoryForm({ category, kind, onClose }: { category?: Category; kind: 
             ))}
           </ToggleGroup>
         </div>
+        {kind === 'expense' && (
+          // Native checkbox: a two-state setting with a label, nothing a custom switch adds.
+          <label className="flex items-start gap-3 rounded-lg border p-3 text-sm">
+            <input type="checkbox" className="mt-0.5 size-4 shrink-0" checked={onceAMonth} onChange={(e) => setOnceAMonth(e.target.checked)} />
+            <span className="grid gap-0.5">
+              <span className="font-medium">Paid once a month</span>
+              <span className="text-muted-foreground">One payment a month, like rent, electricity or your internet plan. It won't make your spending look fast.</span>
+            </span>
+          </label>
+        )}
       </form>
     </ResponsivePanel>
   )

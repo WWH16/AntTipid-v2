@@ -269,6 +269,13 @@ def test_routes_and_user_isolation():
 
             rep_sum = client.get("/api/reports/summary", params={"month": "2026-10"}, headers=ha).json()
             assert rep_sum["income"] == 5000 and rep_sum["spent"] == 250 and rep_sum["budget"] == 10000
+            assert rep_sum["fixed"] == []  # no category is paid once a month yet
+            # Paid once a month: Food switched on shows its spending in the summary; income categories can't be.
+            assert client.patch(f"/api/categories/{food_id}", json={"onceAMonth": True}, headers=ha).json()["onceAMonth"] is True
+            assert client.patch(f"/api/categories/{salary_id}", json={"onceAMonth": True}, headers=ha).status_code == 422
+            fixed = client.get("/api/reports/summary", params={"month": "2026-10"}, headers=ha).json()["fixed"]
+            assert fixed == [{"categoryId": food_id, "total": 250}]
+            assert client.patch(f"/api/categories/{food_id}", json={"onceAMonth": False}, headers=ha).json()["onceAMonth"] is False
             rep_mon = client.get("/api/reports/monthly", params={"month": "2026-10"}, headers=ha).json()
             assert rep_mon["byCategory"] == [{"categoryId": food_id, "total": 250}]
             assert sorted(rep_mon["budgets"], key=lambda b: b["categoryId"] or "") == [

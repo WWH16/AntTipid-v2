@@ -60,7 +60,7 @@ const FAQ = [
 const stagger = (i: number) => ({ '--i': i }) as CSSProperties
 
 // Preview sample month: ₱5,760 spent, ₱18,500 earned. Category budgets show all three states.
-const cat = (name: string): Category => ({ id: name.toLowerCase(), name, icon: name.toLowerCase(), kind: 'expense' })
+const cat = (name: string): Category => ({ id: name.toLowerCase(), name, icon: name.toLowerCase(), kind: 'expense', onceAMonth: false })
 
 const SAMPLE_BUDGETS: { b: BudgetStatus; category: Category }[] = [
   { b: { id: 't', categoryId: 'transport', limit: 1200, warnAt: 80, spent: 1240 }, category: cat('Transport') },
