@@ -92,7 +92,7 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
   }
   const shifted = (days: number, months = 0) => new Date(today.getFullYear(), today.getMonth() + months, today.getDate() + days)
 
-  // One bar per day (week view) or per week (month view). Periods still ahead are null and drawn faint.
+  // One bar per day (week view) or per week (month view). Periods still ahead are null; they and periods with nothing spent are drawn faint.
   // from/to: the dates a bar covers, for its breakdown panel.
   let bars: { label: string; tick: string; spent: number | null; from: string; to: string }[]
   let previous = 0
@@ -159,7 +159,7 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
                 {/* Each bar's amount sits just above it, compact (₱1.2K) to fit seven across a phone. */}
                 <span
                   aria-hidden
-                  className={cn('relative w-full rounded-sm', d.spent === null ? 'bg-primary-foreground/10' : 'bg-sidebar-primary')}
+                  className={cn('relative w-full rounded-sm', d.spent ? 'bg-sidebar-primary' : 'bg-primary-foreground/10')}
                   style={{ height: `${Math.max(6, ((d.spent ?? 0) / max) * 100)}%` }}
                 >
                   {!!d.spent && (
@@ -178,9 +178,12 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
         {opened && <SpendingDetail {...opened} transactions={transactions} onClose={() => setOpened(null)} />}
       </CardContent>
       <CardFooter className="flex-col items-start gap-1 text-sm">
-        <p className="font-medium tabular-nums">
-          {diff <= 0 ? `${money(-diff, { whole: true })} less` : `${money(diff, { whole: true })} more`} than the same days {lastPeriod} ({money(previous, { whole: true })}).
-        </p>
+        {/* Nothing spent the same days last period (a new user, say): nothing to compare against. Equal: no "₱0 less". */}
+        {previous > 0 && (
+          <p className="font-medium tabular-nums">
+            {Math.round(diff) === 0 ? 'Same as' : `${money(Math.abs(diff), { whole: true })} ${diff < 0 ? 'less' : 'more'} than`} the same days {lastPeriod} ({money(previous, { whole: true })}).
+          </p>
+        )}
         <p className="text-muted-foreground">
           {/* The bars are buttons; say so, in the words Reports uses for its own chart. */}
           {biggest.spent

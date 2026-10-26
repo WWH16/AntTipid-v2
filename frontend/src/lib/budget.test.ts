@@ -57,13 +57,3 @@ test('vsUsual: a finished month against the usual one, and what moved it most', 
   assert.deepEqual(vsUsual([{ categoryId: 'food', total: 9000 }], usual.slice(0, 1)), { saved: -3000, top: { categoryId: 'food', diff: -3000 } })
   assert.equal(vsUsual(month, []), null)
 })
-
-test('vsUsual: a finished month against the usual one, and what moved it most', () => {
-  const usual = [{ categoryId: 'food', total: 6000 }, { categoryId: 'shop', total: 2500 }, { categoryId: 'trans', total: 1500 }]
-  // Food ₱1,200 under, Shopping ₱800 under, Transport ₱250 over: ₱1,750 saved, mostly Food.
-  const month = [{ categoryId: 'food', total: 4800 }, { categoryId: 'shop', total: 1700 }, { categoryId: 'trans', total: 1750 }]
-  assert.deepEqual(vsUsual(month, usual), { saved: 1750, top: { categoryId: 'food', diff: 1200 } })
-  // Spent more overall: the category that went over most.
-  assert.deepEqual(vsUsual([{ categoryId: 'food', total: 9000 }], usual.slice(0, 1)), { saved: -3000, top: { categoryId: 'food', diff: -3000 } })
-  assert.equal(vsUsual(month, []), null)
-})
