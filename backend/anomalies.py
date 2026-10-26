@@ -20,6 +20,7 @@ import math
 import random
 import zlib
 from bisect import bisect_left
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from statistics import median
 
@@ -217,11 +218,12 @@ def _history(conn, user_id, category_id, start, end) -> tuple[bool, list[dict]]:
 
 def _judge_rows(rows, user_id, category_id, amount: float, day, before=None, exclude=None) -> Verdict:
     """Judge against the rows saved before it: in the 6 months up to `day`, earlier days, or the same day saved before
-    `before` (None: all of that day so far); not itself; not an unusual one the user hasn't called normal."""
-    start = _window_start(day)
+    `before` (None: not saved yet, so everything saved until now); not itself; not an unusual one the user hasn't called
+    normal."""
+    start, before = _window_start(day), before or datetime.now(timezone.utc)
     items = [
         (str(r["id"]), r["amount"]) for r in rows
-        if start <= r["date"] and (r["date"] < day or (r["date"] == day and (before is None or r["created_at"] < before)))
+        if start <= r["date"] and (r["date"] < day or (r["date"] == day and r["created_at"] < before))
         and r["id"] != exclude and not (r["unusual"] and r["decision"] != "normal")
     ]
     # Seeded per user and category, so a verdict never flips between runs, and the form agrees with the history.
