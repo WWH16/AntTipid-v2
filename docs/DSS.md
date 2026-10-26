@@ -104,7 +104,7 @@ Once-a-month categories (feature 6) are skipped; they're already out of the pace
 | Algorithm | Plain Python K-means (Lloyd's), k-means++ start, 5 restarts, lowest inertia kept; seeded per user and category |
 | Flag | Habits as in CBLOF (He et al., 2003): the biggest clusters covering 90% of purchases, or until the next is 5x smaller. Each purchase is judged against its nearest habit: modified z-score over 3.5 (median and MAD, Iglewicz & Hoaglin) and at least 1.5x the habit's centre. Only above: a small purchase never counts |
 | Checked | This month's expenses |
-| Speed | 1-D: sorted values and prefix sums make silhouette O(n log n); 2,000 expenses must score in under 100 ms |
+| Speed | 1-D: sorted values and prefix sums make silhouette O(n log n); 2,000 expenses must score in under 100 ms. Older purchases are judged in one batch: one history query per category, judging in memory, one write (75 purchases: 23 s before, about 1.4 s after, identical verdicts, tested) |
 | Result (sample user) | K-means precision 1.00, recall 0.71, F1 0.83; 3x median 0.18 / 0.88 / 0.30. Every 4x and 8x caught, most 2x, few 1.5x (borderline by design). `backend/paper_anomalies.py`, `docs/kmeans-evaluation.html` |
 
 - [x] `backend/anomalies.py`: K-means, k-means++, silhouette, flag rules, median fallback (test-first)

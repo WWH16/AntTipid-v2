@@ -197,66 +197,128 @@ def _window_start(day):
     return month_range(shift_month(day.strftime("%Y-%m"), -(WINDOW_MONTHS - 1)))[0]
 
 
+# The category's spending over a span, with each purchase's kept verdict, and whether the category is once-a-month:
+# one query that every judgement reads in memory (one round trip, not one per purchase).
+HISTORY = """
+select c.once_a_month, t.id, t.amount::float as amount, t.date, t.created_at,
+       coalesce(a.unusual, false) as unusual, a.decision
+from categories c
+left join transactions t on t.category_id = c.id and t.user_id = %(uid)s and t.kind = 'expense'
+  and t.date >= %(from)s and t.date <= %(to)s
+left join anomaly_checks a on a.transaction_id = t.id
+where c.id = %(cat)s
+"""
+
+
+def _history(conn, user_id, category_id, start, end) -> tuple[bool, list[dict]]:
+    rows = conn.execute(HISTORY, {"uid": user_id, "cat": category_id, "from": start, "to": end}).fetchall()
+    return bool(rows and rows[0]["once_a_month"]), [r for r in rows if r["id"]]
+
+
+def _judge_rows(rows, user_id, category_id, amount: float, day, before=None, exclude=None) -> Verdict:
+    """Judge against the rows saved before it: in the 6 months up to `day`, earlier days, or the same day saved before
+    `before` (None: all of that day so far); not itself; not an unusual one the user hasn't called normal."""
+    start = _window_start(day)
+    items = [
+        (str(r["id"]), r["amount"]) for r in rows
+        if start <= r["date"] and (r["date"] < day or (r["date"] == day and (before is None or r["created_at"] < before)))
+        and r["id"] != exclude and not (r["unusual"] and r["decision"] != "normal")
+    ]
+    # Seeded per user and category, so a verdict never flips between runs, and the form agrees with the history.
+    return check_category(items + [("new", amount)], {"new"}, zlib.crc32(f"{user_id}:{category_id}".encode()))
+
+
 def judge(conn, user_id, category_id, amount: float, day, before=None, exclude=None) -> Verdict | None:
     """Would `amount` on `day` be unusual, against the category's 6 months before it? `before` is when it was saved
     (same-day purchases saved earlier count; default: everything saved so far), `exclude` the purchase itself.
     None for a once-a-month category: its big payment is expected."""
-    if conn.execute("select once_a_month from categories where id = %s", (category_id,)).fetchone()["once_a_month"]:
-        return None
-    rows = conn.execute(
-        """
-        select t.id, t.amount from transactions t
-        left join anomaly_checks a on a.transaction_id = t.id
-        where t.user_id = %(uid)s and t.kind = 'expense' and t.category_id = %(cat)s
-          and t.date >= %(from)s and (t.date < %(day)s or (t.date = %(day)s and t.created_at < coalesce(%(before)s::timestamptz, now())))
-          and t.id is distinct from %(exclude)s::uuid
-          and not (coalesce(a.unusual, false) and a.decision is distinct from 'normal')
-        """,
-        {"uid": user_id, "cat": category_id, "from": _window_start(day), "day": day, "before": before, "exclude": exclude},
-    ).fetchall()
-    items = [(str(r["id"]), float(r["amount"])) for r in rows] + [("new", amount)]
-    # Seeded per user and category, so a verdict never flips between runs, and the form agrees with the history.
-    return check_category(items, {"new"}, zlib.crc32(f"{user_id}:{category_id}".encode()))
+    once, rows = _history(conn, user_id, category_id, _window_start(day), day)
+    return None if once else _judge_rows(rows, user_id, category_id, amount, day, before, exclude)
+
+
+VERDICT_UPSERT = """
+insert into anomaly_checks (transaction_id, user_id, unusual, decision, method, usual_low, usual_high)
+values (%s, %s, %s, %s, %s, %s, %s)
+on conflict (transaction_id) do update set unusual = excluded.unusual, decision = excluded.decision, method = excluded.method,
+  usual_low = excluded.usual_low, usual_high = excluded.usual_high, checked_at = now()
+"""
+
+
+def _row(txn_id, user_id, v: Verdict, decision: str | None) -> tuple:
+    unusual = "new" in v.flagged
+    return (txn_id, user_id, unusual, decision if unusual else None, v.method, *(v.usual or (None, None)))
 
 
 def record(conn, user_id, txn_id, decision: str | None = None, also_earlier: bool = False) -> None:
     """Judge a saved purchase and keep the verdict (with `decision` when it's unusual). Not a spending purchase, or in
-    a once-a-month category: nothing is kept."""
+    a once-a-month category: nothing is kept. Three round trips: the purchase, its history, the verdict."""
     t = conn.execute(
-        "select id, kind, category_id, amount, date, created_at from transactions where id = %s and user_id = %s", (txn_id, user_id)
+        "select id, kind, category_id, amount::float as amount, date, created_at from transactions where id = %s and user_id = %s",
+        (txn_id, user_id),
     ).fetchone()
-    conn.execute("delete from anomaly_checks where transaction_id = %s", (txn_id,))
-    if not t or t["kind"] != "expense" or not t["category_id"]:
+    v = t and t["kind"] == "expense" and t["category_id"] and judge(
+        conn, user_id, t["category_id"], t["amount"], t["date"], before=t["created_at"], exclude=t["id"])
+    if not v:
+        conn.execute("delete from anomaly_checks where transaction_id = %s", (txn_id,))
         return
-    v = judge(conn, user_id, t["category_id"], float(t["amount"]), t["date"], before=t["created_at"], exclude=t["id"])
-    if v is None:
-        return
-    unusual = "new" in v.flagged
-    conn.execute(
-        """
-        insert into anomaly_checks (transaction_id, user_id, unusual, decision, method, usual_low, usual_high)
-        values (%s, %s, %s, %s, %s, %s, %s)
-        """,
-        (txn_id, user_id, unusual, decision if unusual else None, v.method, *(v.usual or (None, None))),
-    )
-    if unusual and decision == "normal" and also_earlier:
-        mark_normal(conn, similar_one_offs(conn, user_id, t["category_id"], float(t["amount"]), t["date"], exclude=t["id"]))
+    row = _row(txn_id, user_id, v, decision)
+    conn.execute(VERDICT_UPSERT, row)
+    if row[2] and decision == "normal" and also_earlier:
+        mark_normal(conn, similar_one_offs(conn, user_id, t["category_id"], t["amount"], t["date"], exclude=t["id"])[0])
+
+
+def record_unchecked(conn, user_id, txn_ids: list) -> None:
+    """Judge older purchases that have no verdict yet, in one go: one history query per category, every judgement in
+    memory in the order they were saved (each one's verdict counting for the next, as one by one), one batched write.
+    The same verdicts `record` would give each in turn."""
+    targets = conn.execute(
+        "select id, category_id, amount::float as amount, date, created_at from transactions where id = any(%s) and user_id = %s"
+        " order by date, created_at",
+        (list(txn_ids), user_id),
+    ).fetchall()
+    out = []
+    for category_id in dict.fromkeys(t["category_id"] for t in targets):
+        mine = [t for t in targets if t["category_id"] == category_id]
+        once, rows = _history(conn, user_id, category_id, _window_start(mine[0]["date"]), mine[-1]["date"])
+        if once:
+            continue
+        by_id = {r["id"]: r for r in rows}
+        for t in mine:
+            v = _judge_rows(rows, user_id, category_id, t["amount"], t["date"], before=t["created_at"], exclude=t["id"])
+            out.append(_row(t["id"], user_id, v, None))
+            by_id[t["id"]]["unusual"], by_id[t["id"]]["decision"] = out[-1][2], None  # counts for the ones after it
+    if out:
+        # One statement for all of them (executemany would still send one per row).
+        conn.execute(
+            """
+            insert into anomaly_checks (transaction_id, user_id, unusual, decision, method, usual_low, usual_high)
+            select * from unnest(%s::uuid[], %s::uuid[], %s::bool[], %s::text[], %s::text[], %s::numeric[], %s::numeric[])
+            on conflict (transaction_id) do nothing
+            """,
+            [list(col) for col in zip(*out)],
+        )
 
 
 def mark_normal(conn, one_offs: list[dict]) -> None:
     conn.execute("update anomaly_checks set decision = 'normal' where transaction_id = any(%s)", ([o["transaction_id"] for o in one_offs],))
 
 
-def similar_one_offs(conn, user_id, category_id, amount: float, day, exclude=None) -> list[dict]:
-    """Earlier one-offs like this one (same category, within 1.5x, in the 6 months up to `day`), newest first."""
-    return conn.execute(
+def similar_one_offs(conn, user_id, category_id, amount: float, day, exclude=None) -> tuple[list[dict], bool]:
+    """Earlier one-offs like this one (same category, within 1.5x, in the 6 months up to `day`), newest first; and
+    whether the same amount is already saved on that day (a likely duplicate). One round trip for both."""
+    r = conn.execute(
         """
-        select t.id::text as transaction_id, t.date, t.amount::float as amount from transactions t
-        join anomaly_checks a on a.transaction_id = t.id and a.unusual and a.decision = 'one_off'
-        where t.user_id = %(uid)s and t.category_id = %(cat)s and t.date >= %(from)s and t.date <= %(day)s
-          and t.amount between %(lo)s and %(hi)s and t.id is distinct from %(exclude)s::uuid
-        order by t.date desc, t.created_at desc
+        select
+          coalesce((select json_agg(json_build_object('transaction_id', t.id, 'date', t.date, 'amount', t.amount::float)
+                                    order by t.date desc, t.created_at desc)
+                    from transactions t
+                    join anomaly_checks a on a.transaction_id = t.id and a.unusual and a.decision = 'one_off'
+                    where t.user_id = %(uid)s and t.category_id = %(cat)s and t.date >= %(from)s and t.date <= %(day)s
+                      and t.amount between %(lo)s and %(hi)s and t.id is distinct from %(exclude)s::uuid), '[]') as similar,
+          exists (select 1 from transactions where user_id = %(uid)s and kind = 'expense' and category_id = %(cat)s
+                  and date = %(day)s and amount = %(amount)s and id is distinct from %(exclude)s::uuid) as duplicate
         """,
-        {"uid": user_id, "cat": category_id, "from": _window_start(day), "day": day,
+        {"uid": user_id, "cat": category_id, "from": _window_start(day), "day": day, "amount": amount,
          "lo": amount / SIMILAR, "hi": amount * SIMILAR, "exclude": exclude},
-    ).fetchall()
+    ).fetchone()
+    return r["similar"], r["duplicate"]

@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from psycopg import errors
 
-from anomalies import judge, mark_normal, record, similar_one_offs
+from anomalies import judge, mark_normal, record_unchecked, similar_one_offs
 from auth import AuthUser, User
 from db import user_tx
 from ledger import category_kind
@@ -250,8 +250,7 @@ def anomalies(month: Month, user: User):
             """,
             (user.id, start, end),
         ).fetchall()
-        for r in unchecked:
-            record(conn, user.id, r["id"])
+        record_unchecked(conn, user.id, [r["id"] for r in unchecked])
         rows = conn.execute(
             """
             select t.id, t.category_id, t.amount, a.decision, a.method, a.usual_low, a.usual_high
@@ -283,14 +282,7 @@ def check_anomaly(
     transaction being edited. Also the earlier one-offs like it, and whether it looks like a duplicate."""
     with user_tx(user) as conn:
         v = judge(conn, user.id, category_id, amount, date, exclude=exclude)
-        similar = similar_one_offs(conn, user.id, category_id, amount, date, exclude=exclude)
-        duplicate = conn.execute(
-            """
-            select exists (select 1 from transactions where user_id = %s and kind = 'expense' and category_id = %s
-                           and date = %s and amount = %s and id is distinct from %s::uuid) as dup
-            """,
-            (user.id, category_id, date, amount, exclude),
-        ).fetchone()["dup"]
+        similar, duplicate = similar_one_offs(conn, user.id, category_id, amount, date, exclude=exclude)
     unusual = bool(v and "new" in v.flagged)
     return AnomalyCheck(
         unusual=unusual, method=v.method if v else "none",
@@ -317,7 +309,7 @@ def decide_anomaly(transaction_id: UUID, body: AnomalyDecisionIn, user: User):
         conn.execute("update anomaly_checks set decision = %s where transaction_id = %s", (body.decision, transaction_id))
         earlier = []
         if body.decision == "normal":
-            earlier = similar_one_offs(conn, user.id, t["category_id"], float(t["amount"]), t["date"], exclude=transaction_id)
+            earlier = similar_one_offs(conn, user.id, t["category_id"], float(t["amount"]), t["date"], exclude=transaction_id)[0]
             if body.also_earlier:
                 mark_normal(conn, earlier)
                 earlier = []

@@ -5,7 +5,9 @@ Run with:
   .venv/Scripts/python -m pytest
 """
 
+import math
 import os
+import random
 import time
 import uuid
 from datetime import date
@@ -424,6 +426,45 @@ def test_anomalies_route():
     finally:
         with connect() as conn:
             conn.execute("delete from auth.users where id in (%s, %s)", (user_a, user_b))
+
+
+def test_batch_judging_matches_one_by_one():
+    """Older purchases judged in one batch get exactly the verdicts they'd get judged one by one, in the order saved."""
+    if not os.environ.get("DATABASE_URL"):
+        print("Skipping live DB batch-judging test (set DATABASE_URL in backend/.env to run it)")
+        return
+    from anomalies import record, record_unchecked
+    uid = str(uuid.uuid4())
+    rng = random.Random(8)
+    with connect() as conn:
+        conn.execute("insert into auth.users (id, email, aud, role, created_at, updated_at) values (%s, %s, 'authenticated', 'authenticated', now(), now())",
+                     (uid, f"batch-{uid[:8]}@example.com"))
+    try:
+        with connect() as conn:
+            food = conn.execute("select id from categories where user_id = %s and name = 'Food & dining'", (uid,)).fetchone()["id"]
+            wallet = conn.execute("insert into wallets (user_id, name, type) values (%s, 'Cash', 'cash') returning id", (uid,)).fetchone()["id"]
+            # Snacks, meals, a few big ones, and several purchases on the same day: older data with no verdicts yet.
+            amounts = [round(rng.lognormvariate(math.log(110), .25), 2) for _ in range(30)] + [420, 4500, 4400, 6000, 95, 105]
+            ids = []
+            for i, a in enumerate(amounts):
+                day = date(2026, 8 + i % 3, 1 + (i * 7) % 27)
+                ids.append(conn.execute(
+                    "insert into transactions (user_id, kind, amount, title, date, wallet_id, category_id, created_at)"
+                    " values (%s, 'expense', %s, 'x', %s, %s, %s, now() + %s * interval '1 second') returning id",
+                    (uid, a, day, wallet, food, i),
+                ).fetchone()["id"])
+            order = [r["id"] for r in conn.execute("select id from transactions where user_id = %s order by date, created_at", (uid,))]
+            verdicts = "select transaction_id, unusual, method, usual_low, usual_high from anomaly_checks where user_id = %s order by transaction_id"
+            for t in order:
+                record(conn, uid, t)
+            one_by_one = conn.execute(verdicts, (uid,)).fetchall()
+            conn.execute("delete from anomaly_checks where user_id = %s", (uid,))
+            record_unchecked(conn, uid, order)
+            assert conn.execute(verdicts, (uid,)).fetchall() == one_by_one
+            assert sum(v["unusual"] for v in one_by_one) >= 3  # the big ones, so the comparison covers flags too
+    finally:
+        with connect() as conn:
+            conn.execute("delete from auth.users where id = %s", (uid,))
 
 
 def test_live_supabase_end_to_end():
