@@ -15,10 +15,10 @@ The core loop: **data** (transactions) → **model** (run-out date, anomalies) �
 | 3 | Run-out date + safe daily amount | Statistics (pace) | Budgets, Home | Done (`94851e1`) |
 | 5 | Saved vs budget: how a finished month ended against the budgets it had | Rules (budget history) | Reports | Done (`e5dfcdc`), tested 2026-10-26 |
 | 8 | ML forecast (optional): predicts the run-out date, compared against 3's pace method | ML | Paper / Budgets | Optional: only if the subject requires a prediction model (9 already covers ML) |
-| 6 | Paid once a month: a switch on categories like rent and tuition, left out of the pace | Rules | Settings, Budgets, Home | Done, waiting for commit |
-| 9 | Anomaly detection with K-means: flags unusual purchases and leaves them out of the pace | ML (clustering) | Activity, Budgets | Last |
+| 6 | Paid once a month: a switch on categories like rent and electricity, left out of the pace | Rules | Settings, Budgets, Home | Done (`bc590f3`) |
+| 9 | Anomaly detection with K-means: flags unusual purchases and leaves them out of the pace | ML (clustering) | Activity, Budgets | Next |
 
-**Order:** 6 → 9 (K-means then suggests the switch from 6: "Rent looks like a monthly bill. Leave it out of the pace?").
+**Order:** 9 next (K-means then suggests the switch from 6: "Rent looks like a monthly bill. Leave it out of the pace?").
 8 only if the subject requires a prediction model.
 
 ## When each one starts showing
