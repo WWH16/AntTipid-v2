@@ -271,7 +271,23 @@ def test_routes_and_user_isolation():
             assert rep_sum["income"] == 5000 and rep_sum["spent"] == 250 and rep_sum["budget"] == 10000
             rep_mon = client.get("/api/reports/monthly", params={"month": "2026-10"}, headers=ha).json()
             assert rep_mon["byCategory"] == [{"categoryId": food_id, "total": 250}]
-            assert rep_mon["usual"] == []  # no earlier months yet, so no usual month to compare with
+            assert sorted(rep_mon["budgets"], key=lambda b: b["categoryId"] or "") == [
+                {"categoryId": None, "limit": 10000}, {"categoryId": food_id, "limit": 2000},
+            ]
+            # Budget history: a past month reads the budgets it had, not today's. August had a 6,000 monthly budget
+            # and no Food one; September has no row of its own, so it keeps August's.
+            with connect() as conn:
+                conn.execute(
+                    "insert into budget_history (user_id, category_id, month, limit_amount) values (%s, null, '2026-08-01', 6000)",
+                    (user_a,),
+                )
+            for m in ("2026-08", "2026-09"):
+                assert client.get("/api/reports/monthly", params={"month": m}, headers=ha).json()["budgets"] == [{"categoryId": None, "limit": 6000}]
+                assert client.get("/api/reports/summary", params={"month": m}, headers=ha).json()["budget"] == 6000
+            # A budget removed this month is gone from this month on.
+            food_budget = next(b for b in b_list if b["categoryId"] == food_id)
+            assert client.delete(f"/api/budgets/{food_budget['id']}", headers=ha).status_code == 204
+            assert client.get("/api/reports/monthly", params={"month": "2026-10"}, headers=ha).json()["budgets"] == [{"categoryId": None, "limit": 10000}]
             assert len(rep_mon["trend"]) == 6 and rep_mon["trend"][-1] == {"month": "2026-10", "income": 5000, "spent": 250}
             # Month picker: only months with transactions, oldest first; spent counts expenses only
             rep_months = client.get("/api/reports/months", headers=ha).json()

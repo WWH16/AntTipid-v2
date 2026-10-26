@@ -13,7 +13,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { currentMonth, dateInMonth, dayIso, dayLabel, money, monthLabel } from '@/lib/format'
-import { outsideBudgets, vsUsual } from '@/lib/budget'
+import { budgetRemaining, monthBudgets, outsideBudgets } from '@/lib/budget'
 import { monthTotals } from '@/lib/report'
 import { cn } from '@/lib/utils'
 
@@ -48,17 +48,18 @@ export function ReportsPage() {
   const { openAdd } = useApp()
   const { data, error, loading } = useQuery(`report:${month}`, () => api.reports.monthly(month))
   const { data: summary } = useQuery(`summary:${month}`, () => api.reports.summary(month))
-  const { data: budgets } = useQuery(`budgets:${month}`, () => api.budgets.list(month))
-  const outside = budgets && outsideBudgets(budgets)
   const [asTable, setAsTable] = useState(false)
   const [paceAsTable, setPaceAsTable] = useState(false)
   const [detail, setDetail] = useState<ReportDetail>(null)
 
   const { category } = useRefData()
-  // Finished months only: a month still going would always look cheaper than a whole usual one. A month with nothing
-  // recorded wasn't tracked, not cheap, so it gets no comparison either.
-  const usual = data?.byCategory.length && month < currentMonth() ? vsUsual(data.byCategory, data.usual) : null
-  const usualName = usual && (category(usual.top.categoryId)?.name ?? 'Other')
+  const budgets = data && monthBudgets(data)
+  const outside = budgets && outsideBudgets(budgets)
+  // How a finished month ended against its budgets. Not for a month still going (it would always look under), or
+  // one with nothing recorded (it wasn't tracked, not saved).
+  const ended = data?.byCategory.length && month < currentMonth() ? budgets : undefined
+  const monthly = ended?.find((b) => b.categoryId === null)
+  const categoryEnds = ended?.filter((b) => b.categoryId !== null)
   const thisMonth = data?.trend.at(-1)
   // Nothing this month, or nothing in all 6: totals, "tap a chart" and an axis-only chart have nothing behind them.
   const monthEmpty = !!thisMonth && !thisMonth.income && !thisMonth.spent
@@ -159,12 +160,19 @@ export function ReportsPage() {
                 {data.byCategory.length > 0 && <CardDescription>Spending by category in {monthLabel(month)}. Select one for details.</CardDescription>}
               </CardHeader>
               <CardContent className="grid gap-4">
-                {usual && Math.round(usual.saved) !== 0 && (
-                  <p className="text-sm font-medium tabular-nums">
-                    {usual.saved > 0
-                      ? `You spent ${money(usual.saved, { whole: true })} less than your usual month. Most of it came from ${usualName} (${money(usual.top.diff, { whole: true })} less).`
-                      : `You spent ${money(-usual.saved, { whole: true })} more than your usual month, mostly on ${usualName} (${money(-usual.top.diff, { whole: true })} more).`}
-                  </p>
+                {monthly && <p className="text-sm font-medium tabular-nums">{endLine(monthly)}</p>}
+                {!!categoryEnds?.length && (
+                  <div className="grid gap-1.5 text-sm">
+                    <h3 className="text-muted-foreground">Category budgets</h3>
+                    <ul className="grid gap-1 tabular-nums">
+                      {categoryEnds.map((b) => (
+                        <li key={b.categoryId} className="flex justify-between gap-4">
+                          <span className="truncate">{category(b.categoryId)?.name ?? 'Other'}</span>
+                          <span className={cn('shrink-0', b.spent > b.limit && 'text-destructive')}>{budgetRemaining(b)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 {outside && outside.spent > 0 && (
                   <p className="text-sm text-muted-foreground tabular-nums">
@@ -227,4 +235,14 @@ export function ReportsPage() {
       )}
     </>
   )
+}
+
+/** How a finished month ended against its monthly budget. */
+function endLine(b: { limit: number; spent: number }) {
+  const left = Math.round(b.limit - b.spent)
+  const limit = money(b.limit, { whole: true })
+  // "Under", not "saved": the Saved total above is income minus spending, a different number.
+  if (left > 0) return `You stayed ${money(left, { whole: true })} under your ${limit} monthly budget.`
+  if (left < 0) return `You went ${money(-left, { whole: true })} over your ${limit} monthly budget.`
+  return `You used your whole ${limit} monthly budget.`
 }

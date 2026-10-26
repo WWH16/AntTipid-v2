@@ -1,6 +1,5 @@
 """Budgets and the monthly numbers behind Home, Budgets and Reports."""
 
-from statistics import median
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
@@ -10,7 +9,7 @@ from auth import AuthUser, User
 from db import user_tx
 from ledger import category_kind
 from models import (
-    BudgetIn, BudgetStatus, CategoryTotal, DayPoint, Month, MonthHistory, MonthlyReport, MonthSummary, MonthTotal, TrendPoint,
+    BudgetIn, BudgetLimit, BudgetStatus, CategoryTotal, DayPoint, Month, MonthHistory, MonthlyReport, MonthSummary, MonthTotal, TrendPoint,
 )
 from months import days_in, days_shown, month_range, shift_month
 
@@ -108,6 +107,21 @@ def delete_budget(budget_id: UUID, user: User):
 
 # ---------------------------------------------------------------------------------------------- reports
 
+def _budgets_in(conn, user: AuthUser, start) -> list[dict]:
+    """The budgets a month had (the month starting at `start`): each one's latest limit from budget_history up to
+    then, leaving out ones removed by then. The current month reads the same as the budgets table."""
+    return [
+        r for r in conn.execute(
+            """
+            select distinct on (category_id) category_id, limit_amount from budget_history
+            where user_id = %s and month <= %s order by category_id, month desc
+            """,
+            (user.id, start),
+        )
+        if r["limit_amount"] is not None
+    ]
+
+
 TOTALS = """
 select coalesce(sum(amount) filter (where kind = 'income'), 0) as income,
        coalesce(sum(amount) filter (where kind = 'expense'), 0) as spent
@@ -120,9 +134,7 @@ def summary(month: Month, user: User):
     start, end = month_range(month)
     with user_tx(user) as conn:
         totals = conn.execute(TOTALS, {"uid": user.id, "start": start, "end": end}).fetchone()
-        budget = conn.execute(
-            "select limit_amount from budgets where user_id = %s and category_id is null", (user.id,)
-        ).fetchone()
+        budget = next((b for b in _budgets_in(conn, user, start) if b["category_id"] is None), None)
     return MonthSummary(
         month=month, income=float(totals["income"]), spent=float(totals["spent"]),
         budget=float(budget["limit_amount"]) if budget else 0, days_in_month=days_in(month), day_of_month=days_shown(month),
@@ -156,18 +168,7 @@ def monthly(month: Month, user: User):
                 {"uid": user.id, "start": trend_start, "end": end},
             )
         }
-        # The 3 full months before this one, per category; the median of the months it had spending in.
-        usual_start, _ = month_range(shift_month(month, -3))
-        past: dict[str, list[float]] = {}
-        for r in conn.execute(
-            """
-            select category_id, sum(amount) as total from transactions
-            where user_id = %(uid)s and kind = 'expense' and date >= %(start)s and date < %(end)s
-            group by category_id, to_char(date, 'YYYY-MM')
-            """,
-            {"uid": user.id, "start": usual_start, "end": start},
-        ):
-            past.setdefault(str(r["category_id"]), []).append(float(r["total"]))
+        budgets = _budgets_in(conn, user, start)
         daily = {
             r["day"]: float(r["spent"])
             for r in conn.execute(
@@ -188,7 +189,10 @@ def monthly(month: Month, user: User):
             for t in [trend.get(m, {"income": 0, "spent": 0})]
         ],
         daily=[DayPoint(day=d, spent=daily.get(d, 0)) for d in range(1, days_shown(month) + 1)],
-        usual=[CategoryTotal(category_id=c, total=median(t)) for c, t in past.items() if len(t) >= 2],
+        budgets=[
+            BudgetLimit(category_id=str(b["category_id"]) if b["category_id"] else None, limit=float(b["limit_amount"]))
+            for b in budgets
+        ],
     )
 
 

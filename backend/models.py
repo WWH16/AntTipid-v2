@@ -126,11 +126,16 @@ class BudgetStatus(CamelModel):
     spent: float
 
 
+class BudgetLimit(CamelModel):
+    category_id: str | None  # None is the overall monthly budget
+    limit: float
+
+
 class MonthSummary(CamelModel):
     month: str
     income: float
     spent: float
-    budget: float
+    budget: float  # the month's overall monthly budget (from budget_history); 0 when none
     days_in_month: int
     day_of_month: int
 
@@ -156,8 +161,8 @@ class MonthlyReport(CamelModel):
     by_category: list[CategoryTotal]
     trend: list[TrendPoint]
     daily: list[DayPoint]
-    # Each category's usual month: the median of the 3 months before this one, for categories with spending in 2+ of them.
-    usual: list[CategoryTotal]
+    # The budgets this month had (from budget_history), so a finished month is read against them, not today's.
+    budgets: list[BudgetLimit]
 
 
 class MonthTotal(CamelModel):

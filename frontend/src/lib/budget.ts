@@ -1,5 +1,5 @@
 import { money, todayIso } from './format.ts'
-import type { BudgetStatus } from '@/types'
+import type { BudgetStatus, MonthlyReport } from '@/types'
 
 export type BudgetState = 'ok' | 'near' | 'used' | 'over'
 
@@ -24,9 +24,8 @@ export function budgetRemaining(b: Pick<BudgetStatus, 'spent' | 'limit'>) {
  * Spending in categories without a budget of their own, and the room the monthly budget leaves for it: whatever
  * isn't assigned to a category. Spending past that room is what pushes the month over while every category
  * budget can still be on track. Null without a monthly budget or any category budget, since then nothing is outside.
- * Budgets aren't kept per month, so a past month is read against today's budgets.
  */
-export function outsideBudgets(budgets: BudgetStatus[]) {
+export function outsideBudgets(budgets: Pick<BudgetStatus, 'categoryId' | 'spent' | 'limit'>[]) {
   const monthly = budgets.find((b) => b.categoryId === null)
   const parts = budgets.filter((b) => b.categoryId !== null)
   if (!monthly || !parts.length) return null
@@ -89,13 +88,13 @@ export function paceLine(b: Pick<BudgetStatus, 'spent' | 'limit'>, month: string
 export const OVER_BAR: Record<BudgetState, string> = { ok: '', near: '', used: '', over: '[&_[data-slot=progress-indicator]]:bg-destructive!' }
 
 /**
- * A finished month against the usual one, over the categories that have a usual month: how much less (positive) or
- * more (negative) was spent, and the category that moved it most in that direction.
+ * The budgets a month had (from the report, so a finished month gets the ones it ended with, not today's), each with
+ * what was spent against it: all spending for the monthly budget, its category's for a category budget.
  */
-export function vsUsual(byCategory: { categoryId: string; total: number }[], usual: { categoryId: string; total: number }[]) {
-  if (!usual.length) return null
-  const diffs = usual.map((u) => ({ categoryId: u.categoryId, diff: u.total - (byCategory.find((c) => c.categoryId === u.categoryId)?.total ?? 0) }))
-  const saved = diffs.reduce((s, d) => s + d.diff, 0)
-  const top = diffs.reduce((a, b) => (saved >= 0 ? b.diff > a.diff : b.diff < a.diff) ? b : a)
-  return { saved, top }
+export function monthBudgets(report: Pick<MonthlyReport, 'byCategory' | 'budgets'>) {
+  const total = report.byCategory.reduce((s, c) => s + c.total, 0)
+  return report.budgets.map((b) => ({
+    ...b,
+    spent: b.categoryId === null ? total : (report.byCategory.find((c) => c.categoryId === b.categoryId)?.total ?? 0),
+  }))
 }
