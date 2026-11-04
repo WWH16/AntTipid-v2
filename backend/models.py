@@ -1,6 +1,6 @@
 """Request and response shapes. Mirrors frontend/src/types.ts; JSON is camelCase, Python is snake_case."""
 
-from datetime import date as Date
+from datetime import date as Date, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -217,3 +217,13 @@ class MonthTotal(CamelModel):
 class MonthHistory(CamelModel):
     budget: float  # overall monthly budget as set now; 0 when none is set
     months: list[MonthTotal]  # only months that have transactions, oldest first
+
+
+class AuditEntry(CamelModel):
+    id: int
+    action: Literal["create", "update", "delete", "sign_in", "restore"]
+    entity: Literal["transaction", "wallet", "category", "budget", "account"]
+    entity_id: str | None
+    label: str
+    changes: dict[str, list] | None  # updates only: column name -> [before, after]; keys stay snake_case
+    created_at: datetime

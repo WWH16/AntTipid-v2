@@ -10,7 +10,7 @@ supabase/   SQL migrations (tables, RLS policies, default category trigger, rece
 
 ## Run locally
 
-1. Apply `supabase/migrations/20261020000000_init.sql` in your Supabase project's SQL Editor.
+1. Apply every file in `supabase/migrations/`, in name order, in your Supabase project's SQL Editor.
 2. Configure environment files:
    - Copy `backend/.env.example` to `backend/.env` and set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DATABASE_URL` (transaction pooler, port `6543`), and `OPENROUTER_API_KEY` or `GEMINI_API_KEY`.
    - Copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
