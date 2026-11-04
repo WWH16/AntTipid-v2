@@ -1,6 +1,7 @@
 // Where the money went this month, and how the last six months compare. Every chart opens a detail panel.
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
-import { ChartPie } from 'lucide-react'
+import { ChartPie, Printer } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -13,7 +14,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { currentMonth, dateInMonth, dayIso, dayLabel, money, monthLabel } from '@/lib/format'
-import { budgetRemaining, monthBudgets, outsideBudgets } from '@/lib/budget'
+import { budgetRemaining, endLine, monthBudgets, outsideBudgets } from '@/lib/budget'
 import { monthTotals } from '@/lib/report'
 import { cn } from '@/lib/utils'
 
@@ -96,6 +97,11 @@ export function ReportsPage() {
         page="Reports"
         headline={!data ? 'Reports' : top ? `${category(top.categoryId)?.name ?? 'Other'} took ${Math.round((top.total / spentTotal) * 100)}% of your spending` : 'No spending recorded'}
         description={monthEmpty ? undefined : 'Tap any chart for details.'}
+        action={
+          <Button variant="outline" size="sm" aria-label="Print preview" nativeButton={false} render={<Link to={`/reports/print?month=${month}`} />}>
+            <Printer /><span className="hidden sm:inline">Print preview</span>
+          </Button>
+        }
       />
       <MonthSwitcher month={month} onChange={setMonth} />
 
@@ -235,14 +241,4 @@ export function ReportsPage() {
       )}
     </>
   )
-}
-
-/** How a finished month ended against its monthly budget. */
-function endLine(b: { limit: number; spent: number }) {
-  const left = Math.round(b.limit - b.spent)
-  const limit = money(b.limit, { whole: true })
-  // "Under", not "saved": the Saved total above is income minus spending, a different number.
-  if (left > 0) return `You stayed ${money(left, { whole: true })} under your ${limit} monthly budget.`
-  if (left < 0) return `You went ${money(-left, { whole: true })} over your ${limit} monthly budget.`
-  return `You used your whole ${limit} monthly budget.`
 }

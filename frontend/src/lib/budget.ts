@@ -20,6 +20,16 @@ export function budgetRemaining(b: Pick<BudgetStatus, 'spent' | 'limit'>) {
   return left >= 0 ? `${money(left, { whole: true })} left` : `${money(-left, { whole: true })} over`
 }
 
+/** How a finished month ended against its monthly budget. */
+export function endLine(b: { limit: number; spent: number }) {
+  const left = Math.round(b.limit - b.spent)
+  const limit = money(b.limit, { whole: true })
+  // "Under", not "saved": the Saved total above is income minus spending, a different number.
+  if (left > 0) return `You stayed ${money(left, { whole: true })} under your ${limit} monthly budget.`
+  if (left < 0) return `You went ${money(-left, { whole: true })} over your ${limit} monthly budget.`
+  return `You used your whole ${limit} monthly budget.`
+}
+
 /**
  * Spending in categories without a budget of their own, and the room the monthly budget leaves for it: whatever
  * isn't assigned to a category. Spending past that room is what pushes the month over while every category

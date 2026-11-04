@@ -18,6 +18,7 @@ const ActivityPage = lazy(() => APP_PAGES[1]().then((m) => ({ default: m.Activit
 const BudgetsPage = lazy(() => APP_PAGES[2]().then((m) => ({ default: m.BudgetsPage })))
 const ReportsPage = lazy(() => APP_PAGES[3]().then((m) => ({ default: m.ReportsPage })))
 const SettingsPage = lazy(() => APP_PAGES[4]().then((m) => ({ default: m.SettingsPage })))
+const PrintReportPage = lazy(() => import('@/pages/print-report').then((m) => ({ default: m.PrintReportPage })))
 const LandingPage = lazy(() => import('@/pages/landing').then((m) => ({ default: m.LandingPage })))
 const PrivacyPage = lazy(() => import('@/pages/privacy').then((m) => ({ default: m.PrivacyPage })))
 const TermsPage = lazy(() => import('@/pages/terms').then((m) => ({ default: m.TermsPage })))
@@ -56,6 +57,7 @@ export default function App() {
       <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />
       <Route path="/terms" element={<Suspense fallback={null}><TermsPage /></Suspense>} />
       <Route path="/sign-in" element={<Suspense fallback={<LoadingAuth />}><SignInPage /></Suspense>} />
+      <Route path="/reports/print" element={<RequireUser><Suspense fallback={<LoadingPage />}><PrintReportPage /></Suspense></RequireUser>} />
       <Route element={<RequireUser><Suspense fallback={<LoadingPage />}><AppShell /></Suspense></RequireUser>}>
         <Route index element={page(<HomePage />)} />
         <Route path="activity" element={page(<ActivityPage />)} />

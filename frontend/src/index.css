@@ -1041,3 +1041,9 @@
     min-height: 44px;
   }
 }
+
+/* Print preview: A4 with a margin, on white whatever the theme. */
+@media print {
+  @page { size: A4; margin: 15mm; }
+  html, body { background: white; }
+}
