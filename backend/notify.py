@@ -187,9 +187,6 @@ def after_save(conn, user_id, txn_id=None) -> None:
 
 # ---------------------------------------------------------------------------------------------- email
 
-BUDGET_KINDS = {"near", "used", "over", "run_out"}
-
-
 def email_ready() -> bool:
     return bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_APP_PASSWORD"))
 
@@ -201,17 +198,14 @@ def open_smtp() -> smtplib.SMTP:
     return smtp
 
 
-def send_email(to: str, subject: str, text: str, html_body: str, smtp: smtplib.SMTP | None = None) -> None:
+def send_email(to: str, subject: str, text: str, html_body: str) -> None:
     """Send one email, as plain text and HTML. Raises on failure."""
     message = EmailMessage()
     message["Subject"], message["From"], message["To"] = subject, f"AntTipid <{os.environ['SMTP_USER']}>", to
     message.set_content(text)
     message.add_alternative(html_body, subtype="html")
-    if smtp:
+    with open_smtp() as smtp:
         smtp.send_message(message)
-        return
-    with open_smtp() as opened:
-        opened.send_message(message)
 
 
 def letter(heading: str, paragraphs: list[list[tuple[str, bool]]], links: list[tuple[str, str]]) -> tuple[str, str]:
@@ -253,7 +247,7 @@ def email_text(rows: list[dict]) -> tuple[str, str, str]:
     """Subject, text and HTML for one save's new notifications. No user-typed text goes in the subject."""
     count = len(rows)
     subject = f"AntTipid: {count} new notification{'' if count == 1 else 's'}"
-    if all(r["kind"] in BUDGET_KINDS for r in rows):
+    if all(r["kind"] != "unusual" for r in rows):
         heading = "Your budget needs a look" if count == 1 else "Your budgets need a look"
     else:
         heading = "Unusual purchase" if count == 1 else "A few things need a look"

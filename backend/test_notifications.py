@@ -255,7 +255,7 @@ def test_list_read_and_privacy():
         mine = client.get("/api/notifications", headers=ha).json()
         assert mine["unread"] == 1 and len(mine["items"]) == 1
         row = mine["items"][0]
-        assert row["kind"] == "near" and row["title"] and row["link"] == "/budgets" and row["readAt"] is None and row["createdAt"]
+        assert row["title"] and row["link"] == "/budgets" and row["createdAt"]
         assert client.get("/api/notifications", headers=hb).json() == {"items": [], "unread": 0}
         with user_tx(direct(user_b)) as conn:
             assert conn.execute("select count(*) as n from notifications").fetchone()["n"] == 0
@@ -263,7 +263,7 @@ def test_list_read_and_privacy():
             assert conn.execute("select count(*) as n from notifications").fetchone()["n"] == 1
         assert client.post("/api/notifications/read", headers=ha).status_code == 204
         mine = client.get("/api/notifications", headers=ha).json()
-        assert mine["unread"] == 0 and mine["items"][0]["readAt"]
+        assert mine["unread"] == 0 and len(mine["items"]) == 1
 
 
 @needs_db
@@ -282,8 +282,8 @@ def test_settings_default_on_and_save():
 def mail():
     """Email looks configured, and goes into a list instead of out."""
     sent = []
-    fake = lambda to, subject, text, html, smtp=None: sent.append(SimpleNamespace(to=to, subject=subject, text=text, html=html))  # noqa: E731
-    with patch("notify.email_ready", return_value=True), patch("notify.send_email", side_effect=fake), patch("notify.open_smtp"):
+    fake = lambda to, subject, text, html: sent.append(SimpleNamespace(to=to, subject=subject, text=text, html=html))  # noqa: E731
+    with patch("notify.email_ready", return_value=True), patch("notify.send_email", side_effect=fake):
         yield sent
 
 
@@ -438,7 +438,7 @@ def test_new_month_touches_only_the_given_users():
         assert result == {"created": 1, "sent": 1}
         assert db_keys(a) == {f"new_month:{current_month()}"} and db_keys(b) == set()
         item = client.get("/api/notifications", headers=ha).json()["items"][0]
-        assert item["kind"] == "new_month" and item["link"] == f"/reports?month={shift_month(current_month(), -1)}"
+        assert item["link"] == f"/reports?month={shift_month(current_month(), -1)}"
         assert "new month" in item["body"].lower()
 
 

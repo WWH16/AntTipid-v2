@@ -18,14 +18,15 @@ from reports import TOTALS, _budgets_in
 router = APIRouter()
 log = logging.getLogger("notify")
 
-MAX_RECAP_EMAILS = 400  # ponytail: Gmail allows about 500 emails a day. Move to a mail service if users outgrow that.
+# ponytail: one mail connection per recap, and Gmail allows about 500 emails a day. Share a connection, then move to a
+# mail service, if users outgrow that.
 
 
 @router.get("/notifications", response_model=NotificationList)
 def list_notifications(user: User):
     with user_tx(user) as conn:
         items = conn.execute(
-            "select id, kind, title, body, link, created_at, read_at from notifications where user_id = %s order by id desc limit 50",
+            "select id, title, body, link, created_at from notifications where user_id = %s order by id desc limit 50",
             (user.id,),
         ).fetchall()
         unread = conn.execute("select count(*) as n from notifications where user_id = %s and read_at is null", (user.id,)).fetchone()
@@ -165,24 +166,19 @@ def run_new_month(month: str, only_users: list[str] | None = None) -> dict:
             """
             select user_id from notifications
             where key = %s and emailed_at is null and created_at > now() - interval '1 day' and user_id = any(%s::uuid[])
-            limit %s
             """,
-            (key, list(recaps), MAX_RECAP_EMAILS),
+            (key, list(recaps)),
         ).fetchall()
 
     sent = []
-    if waiting and notify.email_ready():  # no database connection is held while sending
-        try:
-            with notify.open_smtp() as smtp:
-                for row in waiting:
-                    email, runs = recaps[row["user_id"]]
-                    try:
-                        notify.send_email(email, *recap_email(month, runs), smtp=smtp)
-                        sent.append(row["user_id"])
-                    except Exception:
-                        log.exception("recap email failed")
-        except Exception:
-            log.exception("couldn't open the mail connection")
+    if notify.email_ready():  # no database connection is held while sending
+        for row in waiting:
+            email, runs = recaps[row["user_id"]]
+            try:
+                notify.send_email(email, *recap_email(month, runs))
+                sent.append(row["user_id"])
+            except Exception:
+                log.exception("recap email failed")
     if sent:
         with connect() as conn:
             conn.execute("update notifications set emailed_at = now() where key = %s and user_id = any(%s::uuid[])", (key, sent))
