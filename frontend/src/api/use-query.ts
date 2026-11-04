@@ -111,6 +111,6 @@ export function useQuery<T>(key: string, load: () => Promise<T>) {
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, v])
-  if (state.key === key) return { data: cached ?? state.data, error: state.error, loading: false }
-  return { data: cached, error: undefined, loading: cached === undefined }
+  if (state.key === key) return { data: cached ?? state.data, error: state.error, loading: false, settled: true }
+  return { data: cached, error: undefined, loading: cached === undefined, settled: false }
 }

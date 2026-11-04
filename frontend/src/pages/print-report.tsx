@@ -8,13 +8,13 @@ import { monthLink, useApp, useRefData } from '@/app-state'
 import { ErrorState } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { endLine, monthBudgets } from '@/lib/budget'
-import { currentMonth, dayLabel, longDate, money, monthLabel, todayIso } from '@/lib/format'
-import { categoryRows, printMonth, signedAmount } from '@/lib/print-report'
+import { currentMonth, longDate, money, monthLabel, todayIso } from '@/lib/format'
+import { categoryRows, printDate, printMonth, signedAmount } from '@/lib/print-report'
 import { monthTotals } from '@/lib/report'
 
 const th = 'border-b border-neutral-300 py-1.5 font-semibold'
-const td = 'break-inside-avoid border-b border-neutral-300 py-1.5 align-top break-words'
-const num = 'text-right tabular-nums'
+const td = 'break-inside-avoid border-b border-neutral-300 py-1.5 align-top [overflow-wrap:anywhere]'
+const num = 'pl-2 text-right tabular-nums'
 
 export function PrintReportPage() {
   const [params] = useSearchParams()
@@ -22,14 +22,16 @@ export function PrintReportPage() {
   const { user } = useApp()
   const report = useQuery(`report:${month}`, () => api.reports.monthly(month))
   const transactions = useQuery(`tx:${JSON.stringify({ month })}`, () => api.transactions.list({ month }))
-  const { category, wallet, loading: refLoading } = useRefData()
+  const { category, wallet, settled: refSettled, error: refError } = useRefData()
   useEffect(() => { document.title = `AntTipid report ${month}` }, [month])
 
-  const error = report.error ?? transactions.error
+  const error = report.error ?? transactions.error ?? refError
   const data = report.data
   const txs = transactions.data
-  const ready = !!data && !!txs && !refLoading && !error
+  // Settled, not just loaded: cached data from an earlier visit shows at once but may be stale, and must not print.
+  const ready = !!data && !!txs && report.settled && transactions.settled && refSettled && !error
 
+  const rows = data ? categoryRows(data, (id) => category(id)?.name ?? 'Other') : []
   const thisMonth = data?.trend.at(-1)
   const spentTotal = data?.byCategory.reduce((s, c) => s + c.total, 0) ?? 0
   // Same rule as Reports: only a finished month with spending, and only when it has a monthly budget.
@@ -67,22 +69,26 @@ export function PrintReportPage() {
 
           <section className="mt-6">
             <h2 className="mb-2 text-base font-semibold">Spending by category</h2>
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr><th className={th}>Category</th><th className={`${th} ${num}`}>Spent</th><th className={`${th} ${num}`}>Share</th><th className={`${th} ${num}`}>Budget</th><th className={`${th} ${num}`}>Left</th></tr>
-              </thead>
-              <tbody>
-                {categoryRows(data, (id) => category(id)?.name ?? 'Other').map((r) => (
-                  <tr key={r.name}>
-                    <td className={td}>{r.name}</td>
-                    <td className={`${td} ${num}`}>{money(r.spent)}</td>
-                    <td className={`${td} ${num}`}>{r.share}%</td>
-                    <td className={`${td} ${num}`}>{r.limit === null ? '—' : money(r.limit)}</td>
-                    <td className={`${td} ${num}`}>{r.left === null ? '—' : money(r.left)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {rows.length ? (
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr><th className={th}>Category</th><th className={`${th} ${num}`}>Spent</th><th className={`${th} ${num} max-sm:hidden print:table-cell`}>Share</th><th className={`${th} ${num}`}>Budget</th><th className={`${th} ${num}`}>Left</th></tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id}>
+                      <td className={td}>{r.name}</td>
+                      <td className={`${td} ${num}`}>{money(r.spent)}</td>
+                      <td className={`${td} ${num} max-sm:hidden print:table-cell`}>{r.share}%</td>
+                      <td className={`${td} ${num}`}>{r.limit === null ? '—' : money(r.limit)}</td>
+                      <td className={`${td} ${num}`}>{r.left === null ? '—' : money(r.left)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>No spending recorded in {monthLabel(month)}.</p>
+            )}
           </section>
 
           <section className="mt-6">
@@ -116,10 +122,10 @@ export function PrintReportPage() {
                 <tbody>
                   {txs.map((t) => (
                     <tr key={t.id}>
-                      <td className={`${td} whitespace-nowrap pr-2`}>{dayLabel(t.date)}</td>
+                      <td className={`${td} whitespace-nowrap pr-2`}>{printDate(t.date)}</td>
                       <td className={`${td} pr-2`}>{t.title}</td>
                       <td className={`${td} pr-2`}>{t.categoryId ? (category(t.categoryId)?.name ?? 'Other') : '—'}</td>
-                      <td className={`${td} pr-2 max-sm:hidden print:table-cell`}>{wallet(t.walletId)?.name ?? '—'}</td>
+                      <td className={`${td} pr-2 max-sm:hidden print:table-cell`}>{wallet(t.walletId)?.name ?? '—'}{t.kind === 'transfer' && ` to ${wallet(t.toWalletId)?.name ?? 'wallet'}`}</td>
                       <td className={`${td} ${num} whitespace-nowrap`}>{signedAmount(t.kind, t.amount)}</td>
                     </tr>
                   ))}
