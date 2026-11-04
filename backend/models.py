@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from annotated_types import Ge, Gt, Le, Lt, MaxLen
-from pydantic import StringConstraints
+from pydantic import StringConstraints, model_validator
 
 from receipts import CamelModel, ReceiptItem
 
@@ -227,3 +227,97 @@ class AuditEntry(CamelModel):
     label: str
     changes: dict[str, list] | None  # updates only: column name -> [before, after]; keys stay snake_case
     created_at: datetime
+
+
+class BackupWallet(CamelModel):
+    id: UUID
+    name: Name
+    type: WalletType
+    opening_balance: Balance
+    archived: bool
+    created_at: datetime
+
+
+class BackupCategory(CamelModel):
+    id: UUID
+    name: ShortName
+    kind: CategoryKind
+    icon: IconKey
+    once_a_month: bool
+    created_at: datetime
+
+
+class BackupAnomaly(CamelModel):
+    unusual: bool
+    decision: Literal["one_off", "normal"] | None
+    method: Literal["kmeans", "simple", "none"] | None
+    usual_low: float | None
+    usual_high: float | None
+    checked_at: datetime
+
+
+class BackupTransaction(CamelModel):
+    id: UUID
+    kind: TransactionKind
+    amount: Money
+    title: TitleStr
+    date: Date
+    wallet_id: UUID
+    to_wallet_id: UUID | None
+    category_id: UUID | None
+    note: NoteStr
+    source: Literal["manual", "receipt"]
+    receipt_path: str | None
+    created_at: datetime
+    items: ItemList = []
+    anomaly: BackupAnomaly | None
+
+
+class BackupBudget(CamelModel):
+    category_id: UUID | None
+    limit: Money
+    warn_at: Percent
+    created_at: datetime
+
+
+class BackupBudgetMonth(CamelModel):
+    category_id: UUID | None
+    month: Date
+    limit: Money | None
+
+
+class BackupFile(CamelModel):
+    """One user's records, as GET /backup writes them and POST /backup/restore reads them."""
+
+    app: Literal["anttipid"]
+    version: Literal[1]
+    exported_on: Date
+    wallets: Annotated[list[BackupWallet], MaxLen(1000)]
+    categories: Annotated[list[BackupCategory], MaxLen(1000)]
+    transactions: Annotated[list[BackupTransaction], MaxLen(50_000)]
+    budgets: Annotated[list[BackupBudget], MaxLen(1000)]
+    budget_history: Annotated[list[BackupBudgetMonth], MaxLen(20_000)]
+
+    @model_validator(mode="after")
+    def _ids_exist(self):
+        wallets, cats = {w.id for w in self.wallets}, {c.id for c in self.categories}
+        if len(wallets) < len(self.wallets) or len(cats) < len(self.categories):
+            raise ValueError("The file lists the same wallet or category twice.")
+        for t in self.transactions:
+            if (
+                t.wallet_id not in wallets
+                or (t.to_wallet_id and t.to_wallet_id not in wallets)
+                or (t.category_id and t.category_id not in cats)
+            ):
+                raise ValueError("A transaction names a wallet or category the file does not contain.")
+        for row in (*self.budgets, *self.budget_history):
+            if row.category_id and row.category_id not in cats:
+                raise ValueError("A budget names a category the file does not contain.")
+        return self
+
+
+class RestoreResult(CamelModel):
+    wallets: int
+    categories: int
+    transactions: int
+    budgets: int

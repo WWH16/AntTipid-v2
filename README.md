@@ -46,3 +46,5 @@ npm run dev
 | Budgets | Whole-month budget, category budgets worst first, quick-add for unbudgeted categories |
 | Reports | Earned/spent/saved, spending by category, 6-month income vs spending (chart or table) |
 | Settings | Wallets, categories, account |
+
+The app's backup (`GET /api/backup`, restored with `POST /api/backup/restore`) covers one user's records, not receipt photos. Whole-project backups come from the Supabase plan.
