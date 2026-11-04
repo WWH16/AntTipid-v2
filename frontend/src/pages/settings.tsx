@@ -2,7 +2,7 @@
 // Tablet and up: the list on the left, the chosen section beside it. The section is kept in the URL (?tab=categories).
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, DatabaseBackup, History, Info, LogOut, MoreHorizontal, Pencil, Plus, ShieldCheck, Tags, Trash2, Wallet as WalletIcon } from 'lucide-react'
+import { Archive, ArchiveRestore, Bell, ChevronLeft, ChevronRight, DatabaseBackup, History, Info, LogOut, MoreHorizontal, Pencil, Plus, ShieldCheck, Tags, Trash2, Wallet as WalletIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -12,6 +12,7 @@ import { api } from '@/api/endpoints'
 import { dropCached, upsertCached } from '@/api/use-query'
 import { AuditLogSection } from '@/components/audit-log-section'
 import { BackupSection } from '@/components/backup-section'
+import { NotificationSettingsSection } from '@/components/notification-settings-section'
 import { SectionHeader } from '@/components/section-header'
 import { CategoryMedia } from '@/components/category-icon'
 import { CATEGORY_ICONS } from '@/lib/category-icons'
@@ -41,7 +42,7 @@ type Dlg =
   | { type: 'account' }
   | null
 
-const SECTIONS = ['wallets', 'categories', 'account', 'backup', 'audit'] as const
+const SECTIONS = ['wallets', 'categories', 'account', 'notifications', 'backup', 'audit'] as const
 type Section = (typeof SECTIONS)[number]
 
 export function SettingsPage() {
@@ -81,6 +82,7 @@ export function SettingsPage() {
             </RowGroup>
 
             <RowGroup title="Data">
+              <SettingsRow {...link('notifications')} current={section === 'notifications'} media={<Bell />} label="Notifications" />
               <SettingsRow {...link('backup')} current={section === 'backup'} media={<DatabaseBackup />} label="Backup and restore" />
               <SettingsRow {...link('audit')} current={section === 'audit'} media={<History />} label="Audit log" />
             </RowGroup>
@@ -103,6 +105,7 @@ export function SettingsPage() {
             {section === 'wallets' && <WalletsTab onEdit={setDlg} />}
             {section === 'categories' && <CategoriesTab onEdit={setDlg} />}
             {section === 'account' && <AccountTab onEdit={() => setDlg({ type: 'account' })} />}
+            {section === 'notifications' && <NotificationSettingsSection />}
             {section === 'backup' && <BackupSection />}
             {section === 'audit' && <AuditLogSection />}
           </Card>
