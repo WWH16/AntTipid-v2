@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile
 from psycopg import errors
 
+import notify
 import storage
 from anomalies import record
 from auth import AuthUser, User
@@ -312,6 +313,7 @@ def create_transaction(body: TransactionIn, user: User):
         _write_items(conn, user, r["id"], t.items)
         # Judged now, against the history before it, and kept (DSS feature 9).
         record(conn, user.id, r["id"], body.anomaly_decision, body.anomaly_also_earlier)
+        notify.after_save(conn, user.id, r["id"])
         return _txn(_get_txn(conn, user, r["id"]))
 
 
@@ -342,6 +344,7 @@ def update_transaction(txn_id: UUID, body: TransactionPatch, user: User):
             record(conn, user.id, txn_id, t.anomaly_decision, bool(t.anomaly_also_earlier))
         elif "anomaly_decision" in body.model_fields_set:
             conn.execute("update anomaly_checks set decision = %s where transaction_id = %s and unusual", (t.anomaly_decision, txn_id))
+        notify.after_save(conn, user.id, txn_id)
         return _txn(_get_txn(conn, user, txn_id))
 
 

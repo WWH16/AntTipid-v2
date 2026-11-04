@@ -1,7 +1,7 @@
 """AntTipid API: receipt scanning plus the user's wallets, categories, transactions, budgets and reports.
 
 Data lives in Supabase Postgres (db.py), receipt photos in Supabase Storage (storage.py), and every route needs a
-Supabase access token (auth.py). Route groups are in ledger.py, reports.py, audit.py and backup.py.
+Supabase access token (auth.py). Route groups are in ledger.py, reports.py, audit.py, backup.py and notify_routes.py.
 """
 
 import logging
@@ -24,6 +24,7 @@ from psycopg import errors  # noqa: E402
 import audit  # noqa: E402
 import backup  # noqa: E402
 import ledger  # noqa: E402
+import notify_routes  # noqa: E402
 import reports  # noqa: E402
 from auth import AuthUser, User  # noqa: E402
 from db import user_tx  # noqa: E402
@@ -72,6 +73,7 @@ api.include_router(ledger.router)
 api.include_router(reports.router)
 api.include_router(audit.router)
 api.include_router(backup.router)
+api.include_router(notify_routes.router)
 app.include_router(api)
 
 
