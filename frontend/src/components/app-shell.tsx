@@ -5,6 +5,7 @@ import { MONTH_PAGES, monthLink, useApp, useCurrentMonth } from '@/app-state'
 import { refresh } from '@/api/use-query'
 import { AddTransactionSheet } from '@/components/add-transaction-sheet'
 import { LogoWithTagline } from '@/components/logo'
+import { NotificationBell, useNotificationToast } from '@/components/notification-bell'
 import { TransactionSheet } from '@/components/transaction-sheet'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -41,6 +42,7 @@ export function AppShell() {
   // A new month starting while the app is open restarts the page, so "this month" and its data move with it.
   const thisMonth = useCurrentMonth()
   const online = useOnline()
+  useNotificationToast()
 
   return (
     <SidebarProvider>
@@ -72,6 +74,7 @@ export function AppShell() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                <NotificationBell sidebar />
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

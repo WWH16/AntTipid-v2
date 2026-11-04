@@ -2,7 +2,7 @@
 import { authMessage, supabase, toUser } from '@/lib/supabase'
 import type {
   Anomaly, AnomalyCheck, AuditEntry, AnomalyDecision, Budget, SimilarOneOff, BudgetStatus, Category, MonthHistory, MonthSummary, MonthlyReport, NewTransaction,
-  ReceiptScan, Transaction, TransactionFilters, User, Wallet,
+  NotificationList, NotificationSettings, ReceiptScan, Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
 import { download, http, json } from './client'
 
@@ -106,6 +106,13 @@ export const api = {
       http<SimilarOneOff[]>(`/anomalies/${id}/decision`, json('PUT', { decision, alsoEarlier })),
   },
   audit: { list: (limit: number) => http<AuditEntry[]>('/audit', { query: { limit } }) },
+  notifications: {
+    list: () => http<NotificationList>('/notifications'),
+    read: () => http<null>('/notifications/read', { method: 'POST' }),
+    settings: () => http<NotificationSettings>('/notifications/settings'),
+    saveSettings: (s: NotificationSettings) => http<NotificationSettings>('/notifications/settings', json('PUT', s)),
+    testEmail: () => http<null>('/notifications/test', { method: 'POST' }),
+  },
   backup: {
     download: () => download('/backup', {}, 'anttipid-backup.json'),
     restore: (text: string) => http<null>('/backup/restore', { method: 'POST', body: text }),

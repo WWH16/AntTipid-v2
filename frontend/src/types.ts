@@ -148,6 +148,31 @@ export interface AnomalyCheck {
   duplicate: boolean
 }
 
+/** One thing the bell lists. Named so it can't be mistaken for the browser's own Notification. */
+export interface AppNotification {
+  id: number
+  kind: string
+  title: string
+  body: string
+  link: string // an app path
+  createdAt: string
+  readAt: string | null
+}
+
+export interface NotificationList {
+  items: AppNotification[] // the latest 50, newest first
+  unread: number
+}
+
+export interface NotificationSettings {
+  emailEnabled: boolean
+  nearLimit: boolean
+  overLimit: boolean
+  runOut: boolean
+  unusual: boolean
+  newMonth: boolean
+}
+
 /** One row of the audit log. Keys inside `changes` are the database column names, each with [old, new]. */
 export interface AuditEntry {
   id: number
