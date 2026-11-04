@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '@/app-state'
+import { NotificationBell } from '@/components/notification-bell'
 import { UserAvatar } from '@/components/user-avatar'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
@@ -36,7 +37,11 @@ export function PageHeader({ page, headline, description, action }: {
           {description && <p className="mt-1 text-sm text-muted-foreground md:text-base">{description}</p>}
         </div>
       </div>
-      {(action || avatar) && <div className="flex shrink-0 items-center gap-2">{action}{avatar}</div>}
+      <div className="flex shrink-0 items-center gap-2">
+        {action}
+        <div className="md:hidden"><NotificationBell /></div>
+        {avatar}
+      </div>
     </header>
   )
 }
