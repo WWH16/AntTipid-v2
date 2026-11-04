@@ -2,7 +2,7 @@
 import { authMessage, supabase, toUser } from '@/lib/supabase'
 import type {
   Anomaly, AnomalyCheck, AuditEntry, AnomalyDecision, Budget, SimilarOneOff, BudgetStatus, Category, MonthHistory, MonthSummary, MonthlyReport, NewTransaction,
-  ReceiptScan, Transaction, TransactionFilters, User, Wallet,
+  ReceiptScan, RestoreResult, Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
 import { download, http, json } from './client'
 
@@ -106,6 +106,10 @@ export const api = {
       http<SimilarOneOff[]>(`/anomalies/${id}/decision`, json('PUT', { decision, alsoEarlier })),
   },
   audit: { list: (limit: number) => http<AuditEntry[]>('/audit', { query: { limit } }) },
+  backup: {
+    download: () => download('/backup', {}, 'anttipid-backup.json'),
+    restore: (text: string) => http<RestoreResult>('/backup/restore', { method: 'POST', body: text }),
+  },
   receipts: {
     // Expects a photo already shrunk with shrinkPhoto (the scan panel reuses it for the preview and the upload).
     scan: (photo: Blob, signal?: AbortSignal) => {
