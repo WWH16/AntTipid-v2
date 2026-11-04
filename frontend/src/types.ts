@@ -147,3 +147,14 @@ export interface AnomalyCheck {
   /** The same amount, category and day is already saved. */
   duplicate: boolean
 }
+
+/** One row of the audit log. Keys inside `changes` are the database column names, each with [old, new]. */
+export interface AuditEntry {
+  id: number
+  action: 'create' | 'update' | 'delete' | 'sign_in' | 'restore'
+  entity: 'transaction' | 'wallet' | 'category' | 'budget' | 'account'
+  entityId: string | null
+  label: string
+  changes: Record<string, [unknown, unknown]> | null
+  createdAt: string
+}

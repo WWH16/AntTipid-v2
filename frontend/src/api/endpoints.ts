@@ -1,7 +1,7 @@
 // Every call the app makes: Supabase Auth for sign-in, the FastAPI backend for everything else.
 import { authMessage, supabase, toUser } from '@/lib/supabase'
 import type {
-  Anomaly, AnomalyCheck, AnomalyDecision, Budget, SimilarOneOff, BudgetStatus, Category, MonthHistory, MonthSummary, MonthlyReport, NewTransaction,
+  Anomaly, AnomalyCheck, AuditEntry, AnomalyDecision, Budget, SimilarOneOff, BudgetStatus, Category, MonthHistory, MonthSummary, MonthlyReport, NewTransaction,
   ReceiptScan, Transaction, TransactionFilters, User, Wallet,
 } from '@/types'
 import { download, http, json } from './client'
@@ -105,6 +105,7 @@ export const api = {
     decide: (id: string, decision: AnomalyDecision | null, alsoEarlier = false) =>
       http<SimilarOneOff[]>(`/anomalies/${id}/decision`, json('PUT', { decision, alsoEarlier })),
   },
+  audit: { list: (limit: number) => http<AuditEntry[]>('/audit', { query: { limit } }) },
   receipts: {
     // Expects a photo already shrunk with shrinkPhoto (the scan panel reuses it for the preview and the upload).
     scan: (photo: Blob, signal?: AbortSignal) => {

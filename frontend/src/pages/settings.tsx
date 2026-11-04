@@ -2,7 +2,7 @@
 // Tablet and up: the list on the left, the chosen section beside it. The section is kept in the URL (?tab=categories).
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, Info, LogOut, MoreHorizontal, Pencil, Plus, ShieldCheck, Tags, Trash2, Wallet as WalletIcon } from 'lucide-react'
+import { Archive, ArchiveRestore, ChevronLeft, ChevronRight, History, Info, LogOut, MoreHorizontal, Pencil, Plus, ShieldCheck, Tags, Trash2, Wallet as WalletIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -10,6 +10,8 @@ import { DetailList } from '@/components/detail-list'
 import { useApp, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { dropCached, upsertCached } from '@/api/use-query'
+import { AuditLogSection } from '@/components/audit-log-section'
+import { SectionHeader } from '@/components/section-header'
 import { CategoryMedia } from '@/components/category-icon'
 import { CATEGORY_ICONS } from '@/lib/category-icons'
 import { PageHeader } from '@/components/page-header'
@@ -38,7 +40,7 @@ type Dlg =
   | { type: 'account' }
   | null
 
-const SECTIONS = ['wallets', 'categories', 'account'] as const
+const SECTIONS = ['wallets', 'categories', 'account', 'audit'] as const
 type Section = (typeof SECTIONS)[number]
 
 export function SettingsPage() {
@@ -77,6 +79,10 @@ export function SettingsPage() {
               <SettingsRow {...link('categories')} current={section === 'categories'} media={<Tags />} label="Categories" value={loading ? undefined : String(categories.length)} />
             </RowGroup>
 
+            <RowGroup title="Data">
+              <SettingsRow {...link('audit')} current={section === 'audit'} media={<History />} label="Audit log" />
+            </RowGroup>
+
             <RowGroup title="About">
               <SettingsRow to="/privacy" media={<ShieldCheck />} label="Privacy policy" />
               <SettingsRow media={<Info />} label="Version" value={version} />
@@ -95,6 +101,7 @@ export function SettingsPage() {
             {section === 'wallets' && <WalletsTab onEdit={setDlg} />}
             {section === 'categories' && <CategoriesTab onEdit={setDlg} />}
             {section === 'account' && <AccountTab onEdit={() => setDlg({ type: 'account' })} />}
+            {section === 'audit' && <AuditLogSection />}
           </Card>
         </div>
       </div>
@@ -103,19 +110,6 @@ export function SettingsPage() {
       {dlg?.type === 'category' && <CategoryForm key={dlg.category?.id ?? 'new'} category={dlg.category} kind={dlg.kind} onClose={() => setDlg(null)} />}
       {dlg?.type === 'account' && <AccountForm onClose={() => setDlg(null)} />}
     </>
-  )
-}
-
-/** Title, one line of help and the section's main action, above its list. */
-function SectionHeader({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-  return (
-    <div className="flex items-start justify-between gap-4 pb-3">
-      <div className="min-w-0">
-        <h2 className="text-lg leading-tight font-semibold">{title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-      {action}
-    </div>
   )
 }
 
