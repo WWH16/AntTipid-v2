@@ -1,10 +1,17 @@
 """Notifications: which warnings a save causes. The rules match frontend/src/lib/budget.ts, so email and screen agree."""
 
+import html
 import logging
 import math
+import os
+import smtplib
+import ssl
 from datetime import date
+from email.message import EmailMessage
 
 from anomalies import month_unusual
+from auth import AuthUser
+from db import user_tx
 from months import days_in, month_range, today
 
 log = logging.getLogger("notify")
@@ -176,3 +183,110 @@ def after_save(conn, user_id, txn_id=None) -> None:
                 check_unusual(conn, user_id, txn_id, settings)
     except Exception:
         log.exception("notification checks failed")
+
+
+# ---------------------------------------------------------------------------------------------- email
+
+BUDGET_KINDS = {"near", "used", "over", "run_out"}
+
+
+def email_ready() -> bool:
+    return bool(os.environ.get("SMTP_USER") and os.environ.get("SMTP_APP_PASSWORD"))
+
+
+def open_smtp() -> smtplib.SMTP:
+    smtp = smtplib.SMTP("smtp.gmail.com", 587, timeout=5)
+    smtp.starttls(context=ssl.create_default_context())
+    smtp.login(os.environ["SMTP_USER"], os.environ["SMTP_APP_PASSWORD"])
+    return smtp
+
+
+def send_email(to: str, subject: str, text: str, html_body: str, smtp: smtplib.SMTP | None = None) -> None:
+    """Send one email, as plain text and HTML. Raises on failure."""
+    message = EmailMessage()
+    message["Subject"], message["From"], message["To"] = subject, f"AntTipid <{os.environ['SMTP_USER']}>", to
+    message.set_content(text)
+    message.add_alternative(html_body, subtype="html")
+    if smtp:
+        smtp.send_message(message)
+        return
+    with open_smtp() as opened:
+        opened.send_message(message)
+
+
+def letter(heading: str, paragraphs: list[list[tuple[str, bool]]], links: list[tuple[str, str]]) -> tuple[str, str]:
+    """The email's text and HTML, as a short letter so it never reads like a bill. A paragraph is (words, bold) runs; a
+    link is (label, app path). Everything passed in is escaped here."""
+    app = os.environ.get("APP_URL", "").rstrip("/")
+    settings = f"{app}/settings?tab=notifications"
+    why = "You received this email because notifications are on for this address on AntTipid."
+    copyright_line = f"© {today().year} AntTipid"
+    text = "\n\n".join([
+        heading,
+        *("".join(words for words, _ in runs) for runs in paragraphs),
+        *(f"{label}: {app}{path}" for label, path in links),
+        "Thank you,\nAntTipid\nYour expense and budget tracker",
+        f"{why}\n\nManage notifications: {settings}\n\n{copyright_line}",
+    ])
+
+    esc = lambda words: html.escape(words, quote=False)  # noqa: E731
+    run = lambda words, bold: f"<strong>{esc(words)}</strong>" if bold else esc(words)  # noqa: E731
+    p = "margin:0 0 16px"
+    link = "color:#1155cc;font-weight:bold;text-decoration:underline"
+    small = "margin:0 0 10px;font-size:12px;line-height:1.5;color:#5f6368"
+    body = "".join(f'<p style="{p}">{"".join(run(w, b) for w, b in runs)}</p>' for runs in paragraphs)
+    buttons = "".join(f'<p style="margin:0 0 8px"><a href="{html.escape(app + path)}" style="{link}">{esc(label)}</a></p>' for label, path in links)
+    page = (
+        '<div style="max-width:600px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a">'
+        f'<h1 style="margin:0 0 16px;font-size:20px;line-height:1.3">{esc(heading)}</h1>{body}{buttons}'
+        '<p style="margin:20px 0 16px">Thank you,</p>'
+        '<p style="margin:0"><strong>AntTipid</strong></p><p style="margin:0 0 20px">Your expense and budget tracker</p>'
+        '<div style="border-top:1px solid #dadce0;padding-top:16px">'
+        f'<p style="{small}">{why}</p>'
+        f'<p style="{small}">Manage notifications<br><a href="{html.escape(settings)}" style="color:#1155cc">{esc(settings)}</a></p>'
+        f'<p style="{small}">{copyright_line}</p></div></div>'
+    )
+    return text, page
+
+
+def email_text(rows: list[dict]) -> tuple[str, str, str]:
+    """Subject, text and HTML for one save's new notifications. No user-typed text goes in the subject."""
+    count = len(rows)
+    subject = f"AntTipid: {count} new notification{'' if count == 1 else 's'}"
+    if all(r["kind"] in BUDGET_KINDS for r in rows):
+        heading = "Your budget needs a look" if count == 1 else "Your budgets need a look"
+    else:
+        heading = "Unusual purchase" if count == 1 else "A few things need a look"
+    link = ("See your budgets", "/budgets") if all(r["link"] == "/budgets" for r in rows) else ("Open AntTipid", "/")
+    paragraphs = [[(f"{r['title']}.", True), *([(f" {r['body']}", False)] if r["body"] else [])] for r in rows]
+    return (subject, *letter(heading, paragraphs, [link]))
+
+
+def send_pending(user: AuthUser) -> None:
+    """Email this user's new notifications, after the save's transaction has committed. Never raises: the save already
+    worked. Rows are claimed first so two saves can't send the same one, and given back if sending fails, for the next
+    save to retry. Rows over a day old aren't sent, so email set up later doesn't deliver old warnings."""
+    to = user.claims.get("email")
+    if not to or not email_ready():
+        return
+    try:
+        with user_tx(user) as conn:
+            rows = conn.execute(
+                """
+                update notifications set emailed_at = now()
+                where user_id = %s and emailed_at is null and created_at > now() - interval '1 day'
+                returning id, kind, title, body, link
+                """,
+                (user.id,),
+            ).fetchall()
+        if not rows:
+            return
+        rows.sort(key=lambda r: r["id"])
+        try:
+            send_email(to, *email_text(rows))
+        except Exception:
+            log.exception("notification email failed")
+            with user_tx(user) as conn:
+                conn.execute("update notifications set emailed_at = null where id = any(%s) and user_id = %s", ([r["id"] for r in rows], user.id))
+    except Exception:
+        log.exception("couldn't work out which notifications to email")

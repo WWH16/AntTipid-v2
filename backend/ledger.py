@@ -314,7 +314,9 @@ def create_transaction(body: TransactionIn, user: User):
         # Judged now, against the history before it, and kept (DSS feature 9).
         record(conn, user.id, r["id"], body.anomaly_decision, body.anomaly_also_earlier)
         notify.after_save(conn, user.id, r["id"])
-        return _txn(_get_txn(conn, user, r["id"]))
+        saved = _txn(_get_txn(conn, user, r["id"]))
+    notify.send_pending(user)  # after the commit, so no database connection is held while sending
+    return saved
 
 
 @router.get("/transactions/{txn_id}", response_model=Transaction, response_model_exclude_none=True)
@@ -345,7 +347,9 @@ def update_transaction(txn_id: UUID, body: TransactionPatch, user: User):
         elif "anomaly_decision" in body.model_fields_set:
             conn.execute("update anomaly_checks set decision = %s where transaction_id = %s and unusual", (t.anomaly_decision, txn_id))
         notify.after_save(conn, user.id, txn_id)
-        return _txn(_get_txn(conn, user, txn_id))
+        saved = _txn(_get_txn(conn, user, txn_id))
+    notify.send_pending(user)
+    return saved
 
 
 @router.delete("/transactions/{txn_id}", status_code=204)
