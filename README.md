@@ -12,7 +12,7 @@ supabase/   SQL migrations (tables, RLS policies, default category trigger, rece
 
 1. Apply every file in `supabase/migrations/`, in name order, in your Supabase project's SQL Editor.
 2. Configure environment files:
-   - Copy `backend/.env.example` to `backend/.env` and set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DATABASE_URL` (transaction pooler, port `6543`), and `OPENROUTER_API_KEY` or `GEMINI_API_KEY`.
+   - Copy `backend/.env.example` to `backend/.env` and set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DATABASE_URL` (transaction pooler, port `6543`), and `OPENROUTER_API_KEY` or `GEMINI_API_KEY`. For notification email, also set `SMTP_USER` and `SMTP_APP_PASSWORD` (a Gmail address and an app password), `APP_URL` (the frontend's address) and, on Vercel, `CRON_SECRET` (any long random string). Without the SMTP values the bell still works and no email is sent.
    - Copy `frontend/.env.example` to `frontend/.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 3. Optional, for "Continue with Google":
    - In Google Cloud Console → APIs & Services → Credentials, create an OAuth client ID (Web application) with the authorized redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`.
