@@ -4,6 +4,25 @@ import { budgetState, endLine, everyday, fixedPart, leavesOut, monthBudgets, num
 
 const budget = (categoryId: string | null, limit: number, spent: number) => ({ id: String(categoryId), categoryId, limit, spent, warnAt: 80 })
 
+// spent, limit, month, today, expected. The same table is in backend/test_notifications.py, so email and screen agree.
+const RUN_OUT: [number, number, string, string, string | null][] = [
+  [6000, 10000, '2026-11', '2026-11-10', '2026-11-17'],
+  [1000, 10000, '2026-11', '2026-11-10', null],
+  [6000, 10000, '2026-11', '2026-11-04', null],
+  [11000, 10000, '2026-11', '2026-11-10', null],
+  [0, 10000, '2026-11', '2026-11-10', null],
+  [6000, 10000, '2026-10', '2026-11-10', null],
+  [3000, 9000, '2026-11', '2026-11-10', null],
+  [7000, 10000, '2026-02', '2026-02-14', '2026-02-20'],
+]
+
+test('pace: the run-out date matches the table in backend/test_notifications.py', () => {
+  for (const [spent, limit, month, today, want] of RUN_OUT) {
+    const p = pace({ spent, limit }, month, today)
+    assert.equal(p && !p.lasts ? p.runsOut : null, want)
+  }
+})
+
 test('outsideBudgets: spending without a category budget, against what the month leaves unassigned', () => {
   // ₱10,000 month, ₱8,000 assigned: ₱2,000 room. ₱9,500 spent, ₱6,000 of it in budgeted categories.
   assert.deepEqual(
