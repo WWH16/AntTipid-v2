@@ -86,6 +86,7 @@ def create_budget(body: BudgetIn, user: User):
             (user.id, body.category_id, body.limit, body.warn_at),
         )
         notify.after_save(conn, user.id)
+    notify.send_pending(user)
 
 
 @router.put("/budgets/{budget_id}", status_code=204)
@@ -103,6 +104,7 @@ def update_budget(budget_id: UUID, body: BudgetIn, user: User):
             notify.after_save(conn, user.id)
     except errors.UniqueViolation:
         raise HTTPException(409, "There's already a budget for that category.")
+    notify.send_pending(user)
 
 
 @router.delete("/budgets/{budget_id}", status_code=204)

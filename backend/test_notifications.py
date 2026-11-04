@@ -3,11 +3,14 @@
 Run with: .venv/Scripts/python test_notifications.py
 """
 
+import os
+from contextlib import contextmanager
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from db import connect, user_tx
 from months import current_month, shift_month, today
-from notify import budget_state, end_line, runs_out, short_date
+from notify import budget_state, email_ready, email_text, end_line, runs_out, send_pending, short_date
 from test_audit_backup import direct, food_id, needs_db, users, wallet
 
 ALL_ON = {"emailEnabled": True, "nearLimit": True, "overLimit": True, "runOut": True, "unusual": True, "newMonth": True}
@@ -269,6 +272,132 @@ def test_settings_default_on_and_save():
         assert client.put("/api/notifications/settings", json=ALL_ON, headers=h).json() == ALL_ON
         with connect() as conn:
             assert conn.execute("select count(*) as n from notification_settings where user_id = %s", (uid,)).fetchone()["n"] == 1
+
+
+@contextmanager
+def mail():
+    """Email looks configured, and goes into a list instead of out."""
+    sent = []
+    fake = lambda to, subject, text, html, smtp=None: sent.append(SimpleNamespace(to=to, subject=subject, text=text, html=html))  # noqa: E731
+    with patch("notify.email_ready", return_value=True), patch("notify.send_email", side_effect=fake):
+        yield sent
+
+
+def unsent(uid):
+    with connect() as conn:
+        return conn.execute("select count(*) as n from notifications where user_id = %s and emailed_at is null", (uid,)).fetchone()["n"]
+
+
+@needs_db
+def test_one_save_sends_one_email_to_the_signed_in_address():
+    with users() as (client, (uid,), (h,)), at_day(1), mail() as sent:
+        w, food = wallet(client, h, "Cash"), food_id(client, h)
+        budget(client, h, None, 1000)
+        budget(client, h, food, 500)
+        spend(client, h, w, food, 450)  # category near
+        spend(client, h, w, food, 400)  # monthly near and category over: two rows, one email
+        assert len(sent) == 2 and {s.to for s in sent} == {"test@example.com"}
+        assert sent[1].subject == "AntTipid: 2 new notifications"
+        assert unsent(uid) == 0
+
+
+@needs_db
+def test_budget_save_sends_email_too():
+    with users() as (client, _, (h,)), at_day(1), mail() as sent:
+        w, food = wallet(client, h, "Cash"), food_id(client, h)
+        spend(client, h, w, food, 500)
+        assert sent == []
+        budget(client, h, None, 550)
+        assert len(sent) == 1
+
+
+@needs_db
+def test_failed_send_keeps_the_save_and_retries_next_save():
+    with users() as (client, (uid,), (h,)), at_day(1), mail() as sent:
+        w, food = wallet(client, h, "Cash"), food_id(client, h)
+        budget(client, h, None, 1000)
+        with patch("notify.send_email", side_effect=OSError("smtp down")):
+            res = client.post("/api/transactions", headers=h, json=expense_body(w, food, 850))
+        assert res.status_code == 201 and unsent(uid) == 1
+        spend(client, h, w, food, 5)
+        assert len(sent) == 1 and unsent(uid) == 0
+
+
+@needs_db
+def test_master_switch_off_never_sends_old_rows():
+    with users() as (client, (uid,), (h,)), at_day(1), mail() as sent:
+        w, food = wallet(client, h, "Cash"), food_id(client, h)
+        client.put("/api/notifications/settings", json={**ALL_ON, "emailEnabled": False}, headers=h)
+        budget(client, h, None, 1000)
+        spend(client, h, w, food, 850)
+        assert client.get("/api/notifications", headers=h).json()["unread"] == 1 and sent == []
+        client.put("/api/notifications/settings", json=ALL_ON, headers=h)
+        spend(client, h, w, food, 5)
+        assert sent == []
+
+
+@needs_db
+def test_rows_older_than_a_day_are_never_sent():
+    with users() as (client, (uid,), (h,)), at_day(1), mail() as sent:
+        with connect() as conn:
+            conn.execute(
+                "insert into notifications (user_id, key, kind, title, link, created_at)"
+                " values (%s, 'old', 'near', 'Old', '/budgets', now() - interval '2 days')", (uid,),
+            )
+        spend(client, h, wallet(client, h, "Cash"), food_id(client, h), 5)
+        assert sent == [] and unsent(uid) == 1
+
+
+@needs_db
+def test_user_text_stays_out_of_the_subject_recipient_and_html():
+    with users() as (client, _, (h,)), at_day(1), mail() as sent:
+        w = wallet(client, h, "Cash")
+        pets = category(client, h, "<b>Pets</b>\nBcc: y@evil.test")
+        budget(client, h, pets, 100)
+        spend(client, h, w, pets, 90)
+        assert sent[0].to == "test@example.com" and sent[0].subject == "AntTipid: 1 new notification"
+        assert "<b>Pets" not in sent[0].html and "&lt;b&gt;Pets" in sent[0].html
+
+
+def test_no_smtp_settings_means_no_send():
+    with patch.dict(os.environ, {"SMTP_USER": "", "SMTP_APP_PASSWORD": ""}), patch("notify.send_email") as send:
+        assert not email_ready()
+        send_pending(direct("00000000-0000-0000-0000-000000000000"))
+        send.assert_not_called()
+
+
+def test_email_text_is_a_letter():
+    budgets = [{"kind": "near", "title": "Food budget is at 90%", "body": "You've used ₱900 of ₱1,000.", "link": "/budgets"},
+               {"kind": "run_out", "title": "Spending fast", "body": "Keep to ₱450 a day.", "link": "/budgets"}]
+    with patch.dict(os.environ, {"APP_URL": "https://app.test/"}):
+        subject, text, html = email_text(budgets)
+    assert subject == "AntTipid: 2 new notifications"
+    for part in (text, html):
+        for words in ("Your budgets need a look", "Food budget is at 90%", "You've used ₱900 of ₱1,000.", "See your budgets",
+                      "https://app.test/budgets", "Thank you,", "Your expense and budget tracker", "Manage notifications",
+                      "https://app.test/settings?tab=notifications", "AntTipid"):
+            assert words in part, words
+    assert "<strong>Food budget is at 90%" in html
+
+    unusual = {"kind": "unusual", "title": "Unusual purchase: ₱4,500 on Bills", "body": "", "link": "/activity?month=2026-11"}
+    with patch.dict(os.environ, {"APP_URL": "https://app.test"}):
+        one, both = email_text([unusual]), email_text([budgets[0], unusual])
+    assert one[0] == "AntTipid: 1 new notification"
+    assert "<h1" in one[2] and "Unusual purchase</h1>" in one[2] and "Open AntTipid" in one[2]
+    assert "A few things need a look" in both[2] and "Open AntTipid" in both[2]
+
+
+@needs_db
+def test_test_email_limit_and_failures():
+    with users(3) as (client, _, (h1, h2, h3)), mail() as sent:
+        assert client.post("/api/notifications/test", headers=h1).status_code == 204
+        assert [s.to for s in sent] == ["test@example.com"]
+        assert client.post("/api/notifications/test", headers=h1).status_code == 429
+        assert len(sent) == 1
+        with patch("notify.email_ready", return_value=False):
+            assert client.post("/api/notifications/test", headers=h2).status_code == 503
+        with patch("notify.send_email", side_effect=OSError("smtp down")):
+            assert client.post("/api/notifications/test", headers=h3).status_code == 502
 
 
 if __name__ == "__main__":
