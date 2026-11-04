@@ -230,12 +230,10 @@ class AuditEntry(CamelModel):
 
 class Notification(CamelModel):
     id: int
-    kind: str
     title: str
     body: str
     link: str  # an app path
     created_at: datetime
-    read_at: datetime | None
 
 
 class NotificationList(CamelModel):
