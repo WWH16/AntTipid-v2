@@ -153,16 +153,7 @@ export interface AuditEntry {
   id: number
   action: 'create' | 'update' | 'delete' | 'sign_in' | 'restore'
   entity: 'transaction' | 'wallet' | 'category' | 'budget' | 'account'
-  entityId: string | null
   label: string
   changes: Record<string, [unknown, unknown]> | null
   createdAt: string
-}
-
-/** What a restore put back, as counts. */
-export interface RestoreResult {
-  wallets: number
-  categories: number
-  transactions: number
-  budgets: number
 }

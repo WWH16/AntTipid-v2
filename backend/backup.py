@@ -8,7 +8,7 @@ from fastapi import APIRouter, Response
 import months
 from auth import User
 from db import user_tx
-from models import BackupFile, RestoreResult
+from models import BackupFile
 
 router = APIRouter()
 
@@ -53,7 +53,7 @@ def export_backup(user: User):
     )
 
 
-@router.post("/backup/restore", response_model=RestoreResult)
+@router.post("/backup/restore", status_code=204)
 def restore_backup(body: BackupFile, user: User):
     # One transaction: any failure, including one in the last insert, undoes every step.
     with user_tx(user) as conn:
@@ -115,6 +115,3 @@ def restore_backup(body: BackupFile, user: User):
             "insert into audit_log (user_id, action, entity, label) values (%s, 'restore', 'account', %s)",
             (user.id, f"{len(body.transactions)} transaction{'' if len(body.transactions) == 1 else 's'}"),
         )
-    return RestoreResult(
-        wallets=len(body.wallets), categories=len(body.categories), transactions=len(body.transactions), budgets=len(body.budgets)
-    )

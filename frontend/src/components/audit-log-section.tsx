@@ -42,7 +42,7 @@ export function AuditLogSection() {
             })}
           </ItemGroup>
           {data.length === limit && limit < MAX && (
-            <Button variant="outline" className="mt-3" disabled={loading} onClick={() => setLimit(limit + PAGE)}>Load more</Button>
+            <Button variant="outline" className="mt-3" onClick={() => setLimit(limit + PAGE)}>Load more</Button>
           )}
         </>
       )}
