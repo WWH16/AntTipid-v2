@@ -33,8 +33,8 @@ export function AuditLogSection() {
               return (
                 <Item key={e.id} size="sm">
                   <ItemContent>
-                    <ItemTitle className="break-words">{title}</ItemTitle>
-                    {detail && <ItemDescription className="break-words">{detail}</ItemDescription>}
+                    <ItemTitle className="line-clamp-none break-words">{title}</ItemTitle>
+                    {detail && <ItemDescription className="line-clamp-none break-words">{detail}</ItemDescription>}
                     <p className="text-xs text-muted-foreground">{auditTime(e.createdAt)}</p>
                   </ItemContent>
                 </Item>
