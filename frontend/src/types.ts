@@ -158,3 +158,11 @@ export interface AuditEntry {
   changes: Record<string, [unknown, unknown]> | null
   createdAt: string
 }
+
+/** What a restore put back, as counts. */
+export interface RestoreResult {
+  wallets: number
+  categories: number
+  transactions: number
+  budgets: number
+}
