@@ -338,6 +338,15 @@ def test_restore_other_accounts_backup():
             assert conn.execute(count, (user_a,)).fetchone()["n"] == 1
 
 
+def test_restore_audit_label_singular():
+    if not os.environ.get("DATABASE_URL"):
+        return print(SKIP)
+    with users() as (client, _, (ha,)):
+        one = _file(str(uuid.uuid4()), str(uuid.uuid4()))
+        assert client.post("/api/backup/restore", json=one, headers=ha).status_code == 200
+        assert client.get("/api/audit?limit=1", headers=ha).json()[0]["label"] == "1 transaction"
+
+
 def test_restore_many_rows():
     if not os.environ.get("DATABASE_URL"):
         return print(SKIP)
@@ -368,5 +377,6 @@ if __name__ == "__main__":
     test_restore_failure_changes_nothing()
     test_restore_rejects_damaged_file()
     test_restore_other_accounts_backup()
+    test_restore_audit_label_singular()
     test_restore_many_rows()
     print("All audit checks passed")

@@ -82,6 +82,8 @@ export function useRefData() {
     wallets: walletList,
     categories: categoryList,
     loading: wallets.loading || categories.loading,
+    settled: wallets.settled && categories.settled,
+    error: wallets.error ?? categories.error,
     wallet: (id?: string) => walletList.find((w) => w.id === id),
     category: (id?: string | null) => categoryList.find((c) => c.id === id),
   }

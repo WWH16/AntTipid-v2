@@ -51,7 +51,7 @@ export async function download(path: string, query: Query, fallbackName: string)
   a.href = URL.createObjectURL(await res.blob())
   a.download = name
   a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  setTimeout(() => URL.revokeObjectURL(a.href), 60_000) // a slow save (iOS Safari) can still be reading the blob
 }
 
 export const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })

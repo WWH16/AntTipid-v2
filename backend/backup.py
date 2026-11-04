@@ -13,7 +13,7 @@ from models import BackupFile, RestoreResult
 router = APIRouter()
 
 # ponytail: Vercel caps a request and a response at 4.5 MB, roughly 12,000 transactions. Stream or gzip if anyone gets there.
-# ponytail: photos of transactions not in the file stay in the bucket, unlinked. Clean up by listing the folder if storage matters.
+# ponytail: photos of transactions not in the file stay in the bucket, unlinked until the account is deleted. Clean up by listing the folder if storage matters.
 
 
 def own_receipt(path: str | None, user_id: str) -> str | None:
@@ -113,7 +113,7 @@ def restore_backup(body: BackupFile, user: User):
             )
         conn.execute(
             "insert into audit_log (user_id, action, entity, label) values (%s, 'restore', 'account', %s)",
-            (user.id, f"{len(body.transactions)} transactions"),
+            (user.id, f"{len(body.transactions)} transaction{'' if len(body.transactions) == 1 else 's'}"),
         )
     return RestoreResult(
         wallets=len(body.wallets), categories=len(body.categories), transactions=len(body.transactions), budgets=len(body.budgets)

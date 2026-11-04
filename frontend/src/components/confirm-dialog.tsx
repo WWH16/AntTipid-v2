@@ -17,7 +17,7 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirm,
 }) {
   const [run, busy] = useAction()
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={(o) => { if (!busy) onOpenChange(o) }}>
       {/* The phone's width less a 16px margin each side, not the stock 320px cap, so both buttons fit on one line. */}
       <AlertDialogContent className="data-[size=default]:max-w-[calc(100%-2rem)]">
         <AlertDialogHeader>

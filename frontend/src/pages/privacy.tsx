@@ -14,7 +14,7 @@ export function PrivacyPage() {
         <ul>
           <li><span className="text-foreground">Your account:</span> your name and email address. If you sign in with Google or Facebook, it shares your name, email address and profile picture with AntTipid. The app only uses your name and email.</li>
           <li><span className="text-foreground">What you enter:</span> wallets, categories, transactions, budgets, and receipt photos and items you attach to a transaction.</li>
-          <li><span className="text-foreground">An audit log:</span> each sign-in and each change to your wallets, categories, transactions and budgets, with the time. It keeps the item's name and its old and new values, even after you delete the item. You can read it in Settings, and it's deleted with your account.</li>
+          <li><span className="text-foreground">An audit log:</span> each sign-in and each change to your wallets, categories, transactions and budgets, with the time. It keeps the item's name and its old and new values, even after you delete the item. You can read it in Settings, and it's deleted with your account. After you restore a backup, photos of transactions that aren't in that backup stay in storage until your account is deleted.</li>
         </ul>
         <p>AntTipid has no ads and no analytics or tracking tools, and it never sells or rents your information.</p>
       </Section>
