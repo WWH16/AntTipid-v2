@@ -8,9 +8,13 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from fastapi.testclient import TestClient
+
 from db import connect, user_tx
+from main import app
 from months import current_month, shift_month, today
 from notify import budget_state, email_ready, email_text, end_line, runs_out, send_pending, short_date
+from notify_routes import recap_body, recap_email, recap_runs, run_new_month
 from test_audit_backup import direct, food_id, needs_db, users, wallet
 
 ALL_ON = {"emailEnabled": True, "nearLimit": True, "overLimit": True, "runOut": True, "unusual": True, "newMonth": True}
@@ -279,7 +283,7 @@ def mail():
     """Email looks configured, and goes into a list instead of out."""
     sent = []
     fake = lambda to, subject, text, html, smtp=None: sent.append(SimpleNamespace(to=to, subject=subject, text=text, html=html))  # noqa: E731
-    with patch("notify.email_ready", return_value=True), patch("notify.send_email", side_effect=fake):
+    with patch("notify.email_ready", return_value=True), patch("notify.send_email", side_effect=fake), patch("notify.open_smtp"):
         yield sent
 
 
@@ -398,6 +402,91 @@ def test_test_email_limit_and_failures():
             assert client.post("/api/notifications/test", headers=h2).status_code == 503
         with patch("notify.send_email", side_effect=OSError("smtp down")):
             assert client.post("/api/notifications/test", headers=h3).status_code == 502
+
+
+def test_recap_body():
+    text = recap_body(recap_runs("2026-10", 25000, 18200, 20000, "Food & dining", 7000))
+    assert "In October" in text and "₱25,000" in text and "₱18,200" in text and "₱6,800" in text and "Food & dining" in text
+    assert "You stayed ₱1,800 under your ₱20,000 monthly budget." in text
+    assert "new month" in text.lower() and "November" in text  # the little reminder
+    assert "monthly budget" not in recap_body(recap_runs("2026-10", 0, 500, None, "Food & dining", 500))
+    assert "₱500 more than you earned" in recap_body(recap_runs("2026-10", 0, 500, None, "Food & dining", 500))
+
+
+def test_recap_email():
+    runs = recap_runs("2026-10", 25000, 18200, 20000, "Food & dining", 7000)
+    with patch.dict(os.environ, {"APP_URL": "https://app.test"}):
+        subject, text, html = recap_email("2026-10", runs)
+    assert subject == "AntTipid: your October recap"
+    for part in (text, html):
+        for words in ("Your October recap", "https://app.test/reports?month=2026-10", "https://app.test/budgets", "Check your budgets"):
+            assert words in part, words
+    assert "<strong>₱6,800</strong>" in html and "<strong>Food &amp; dining</strong>" in html
+
+
+def last_month_expense(client, h, amount=500):
+    w, food = wallet(client, h, "Cash"), food_id(client, h)
+    spend(client, h, w, food, amount, date=f"{shift_month(current_month(), -1)}-15")
+
+
+@needs_db
+def test_new_month_touches_only_the_given_users():
+    with users(2) as (client, (a, b), (ha, hb)), at_day(1), mail():
+        last_month_expense(client, ha)
+        last_month_expense(client, hb)
+        result = run_new_month(shift_month(current_month(), -1), only_users=[a])
+        assert result == {"created": 1, "sent": 1}
+        assert db_keys(a) == {f"new_month:{current_month()}"} and db_keys(b) == set()
+        item = client.get("/api/notifications", headers=ha).json()["items"][0]
+        assert item["kind"] == "new_month" and item["link"] == f"/reports?month={shift_month(current_month(), -1)}"
+        assert "new month" in item["body"].lower()
+
+
+@needs_db
+def test_new_month_rerun_is_safe():
+    with users() as (client, (a,), (h,)), at_day(1), mail() as sent:
+        last_month_expense(client, h)
+        month = shift_month(current_month(), -1)
+        assert run_new_month(month, only_users=[a]) == {"created": 1, "sent": 1}
+        assert run_new_month(month, only_users=[a]) == {"created": 0, "sent": 0}
+        assert len(sent) == 1 and sent[0].to == f"audit-{a[:8]}@example.com"
+
+
+@needs_db
+def test_new_month_skips_quiet_and_switched_off_users():
+    with users(3) as (client, (quiet, off, no_email), (hq, ho, hn)), at_day(1), mail() as sent:
+        last_month_expense(client, ho)
+        last_month_expense(client, hn)
+        client.put("/api/notifications/settings", json={**ALL_ON, "newMonth": False}, headers=ho)
+        client.put("/api/notifications/settings", json={**ALL_ON, "emailEnabled": False}, headers=hn)
+        result = run_new_month(shift_month(current_month(), -1), only_users=[quiet, off, no_email])
+        assert result == {"created": 1, "sent": 0} and sent == []
+        assert db_keys(quiet) == set() and db_keys(off) == set() and db_keys(no_email) == {f"new_month:{current_month()}"}
+        assert unsent(no_email) == 0
+
+
+@needs_db
+def test_new_month_send_failure_retries_on_rerun():
+    with users() as (client, (a,), (h,)), at_day(1), mail() as sent:
+        last_month_expense(client, h)
+        month = shift_month(current_month(), -1)
+        with patch("notify.send_email", side_effect=OSError("smtp down")):
+            assert run_new_month(month, only_users=[a]) == {"created": 1, "sent": 0}
+        assert unsent(a) == 1
+        assert run_new_month(month, only_users=[a]) == {"created": 0, "sent": 1}
+        assert len(sent) == 1 and unsent(a) == 0
+
+
+def test_cron_route_needs_the_secret():
+    with patch.dict(os.environ, {"CRON_SECRET": "s3cret"}), patch("notify_routes.run_new_month", return_value={"created": 0, "sent": 0}) as run:
+        client = TestClient(app)
+        assert client.get("/api/cron/new-month").status_code == 401
+        assert client.get("/api/cron/new-month", headers={"Authorization": "Bearer nope"}).status_code == 401
+        assert client.get("/api/cron/new-month", headers={"Authorization": "Bearer s3cret"}).status_code == 200
+        run.assert_called_once_with(shift_month(current_month(), -1))
+    with patch.dict(os.environ, {"CRON_SECRET": ""}), patch("notify_routes.run_new_month") as run:
+        assert TestClient(app).get("/api/cron/new-month", headers={"Authorization": "Bearer "}).status_code == 401
+        run.assert_not_called()
 
 
 if __name__ == "__main__":
