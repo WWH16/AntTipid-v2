@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { budgetState, everyday, fixedPart, leavesOut, monthBudgets, numberLine, verdictCopy, outsideBudgets, pace, paceLine, unusualLine, withUnusual } from './budget.ts'
+import { budgetState, endLine, everyday, fixedPart, leavesOut, monthBudgets, numberLine, verdictCopy, outsideBudgets, pace, paceLine, unusualLine, withUnusual } from './budget.ts'
 
 const budget = (categoryId: string | null, limit: number, spent: number) => ({ id: String(categoryId), categoryId, limit, spent, warnAt: 80 })
 
@@ -121,4 +121,10 @@ test('numberLine: the usual band and where this amount falls, on a log scale', (
   assert.ok(far.bandLeft >= 0 && far.bandLeft + far.bandWidth < far.marker && far.marker <= 100)
   const inside = numberLine(87, 447, 200)
   assert.ok(inside.marker > inside.bandLeft && inside.marker < inside.bandLeft + inside.bandWidth)
+})
+
+test('endLine: how a finished month ended', () => {
+  assert.equal(endLine({ limit: 1000, spent: 800 }), 'You stayed ₱200 under your ₱1,000 monthly budget.')
+  assert.equal(endLine({ limit: 1000, spent: 1200 }), 'You went ₱200 over your ₱1,000 monthly budget.')
+  assert.equal(endLine({ limit: 1000, spent: 1000 }), 'You used your whole ₱1,000 monthly budget.')
 })
