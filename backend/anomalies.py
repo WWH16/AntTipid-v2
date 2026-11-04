@@ -269,6 +269,33 @@ def record(conn, user_id, txn_id, decision: str | None = None, also_earlier: boo
         mark_normal(conn, similar_one_offs(conn, user_id, t["category_id"], t["amount"], t["date"], exclude=t["id"])[0])
 
 
+def month_unusual(conn, user_id, start, end) -> list[dict]:
+    """A month's unusual purchases that aren't called normal: one-offs and ones waiting for review. Verdicts are kept
+    from when each was saved; a purchase saved before verdicts were kept is judged once now."""
+    unchecked = conn.execute(
+        """
+        select t.id from transactions t
+        join categories c on c.id = t.category_id and not c.once_a_month
+        left join anomaly_checks a on a.transaction_id = t.id
+        where t.user_id = %s and t.kind = 'expense' and t.date >= %s and t.date < %s and a.transaction_id is null
+        order by t.date, t.created_at
+        """,
+        (user_id, start, end),
+    ).fetchall()
+    record_unchecked(conn, user_id, [r["id"] for r in unchecked])
+    return conn.execute(
+        """
+        select t.id, t.category_id, t.amount, a.decision, a.method, a.usual_low, a.usual_high
+        from transactions t
+        join categories c on c.id = t.category_id and not c.once_a_month
+        join anomaly_checks a on a.transaction_id = t.id and a.unusual and a.decision is distinct from 'normal'
+        where t.user_id = %s and t.date >= %s and t.date < %s
+        order by t.date, t.created_at
+        """,
+        (user_id, start, end),
+    ).fetchall()
+
+
 def record_unchecked(conn, user_id, txn_ids: list) -> None:
     """Judge older purchases that have no verdict yet, in one go: one history query per category, every judgement in
     memory in the order they were saved (each one's verdict counting for the next, as one by one), one batched write.

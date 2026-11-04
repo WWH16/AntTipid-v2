@@ -7,7 +7,8 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from psycopg import errors
 
-from anomalies import judge, mark_normal, record_unchecked, similar_one_offs
+import notify
+from anomalies import judge, mark_normal, month_unusual, similar_one_offs
 from auth import AuthUser, User
 from db import user_tx
 from ledger import category_kind
@@ -84,6 +85,7 @@ def create_budget(body: BudgetIn, user: User):
             """,
             (user.id, body.category_id, body.limit, body.warn_at),
         )
+        notify.after_save(conn, user.id)
 
 
 @router.put("/budgets/{budget_id}", status_code=204)
@@ -98,6 +100,7 @@ def update_budget(budget_id: UUID, body: BudgetIn, user: User):
             ).fetchone()
             if not r:
                 raise HTTPException(404, "Budget not found")
+            notify.after_save(conn, user.id)
     except errors.UniqueViolation:
         raise HTTPException(409, "There's already a budget for that category.")
 
@@ -240,28 +243,7 @@ def anomalies(month: Month, user: User):
     history before it, in the order they were saved."""
     start, end = month_range(month)
     with user_tx(user) as conn:
-        unchecked = conn.execute(
-            """
-            select t.id from transactions t
-            join categories c on c.id = t.category_id and not c.once_a_month
-            left join anomaly_checks a on a.transaction_id = t.id
-            where t.user_id = %s and t.kind = 'expense' and t.date >= %s and t.date < %s and a.transaction_id is null
-            order by t.date, t.created_at
-            """,
-            (user.id, start, end),
-        ).fetchall()
-        record_unchecked(conn, user.id, [r["id"] for r in unchecked])
-        rows = conn.execute(
-            """
-            select t.id, t.category_id, t.amount, a.decision, a.method, a.usual_low, a.usual_high
-            from transactions t
-            join categories c on c.id = t.category_id and not c.once_a_month
-            join anomaly_checks a on a.transaction_id = t.id and a.unusual and a.decision is distinct from 'normal'
-            where t.user_id = %s and t.date >= %s and t.date < %s
-            order by t.date, t.created_at
-            """,
-            (user.id, start, end),
-        ).fetchall()
+        rows = month_unusual(conn, user.id, start, end)
     num = lambda v: float(v) if v is not None else None  # noqa: E731
     return [
         Anomaly(transaction_id=str(r["id"]), category_id=str(r["category_id"]), amount=float(r["amount"]), decision=r["decision"],

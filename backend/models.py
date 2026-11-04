@@ -228,6 +228,30 @@ class AuditEntry(CamelModel):
     created_at: datetime
 
 
+class Notification(CamelModel):
+    id: int
+    kind: str
+    title: str
+    body: str
+    link: str  # an app path
+    created_at: datetime
+    read_at: datetime | None
+
+
+class NotificationList(CamelModel):
+    items: list[Notification]  # the latest 50
+    unread: int
+
+
+class NotificationSettings(CamelModel):
+    email_enabled: bool
+    near_limit: bool
+    over_limit: bool
+    run_out: bool
+    unusual: bool
+    new_month: bool
+
+
 class BackupWallet(CamelModel):
     id: UUID
     name: Name
