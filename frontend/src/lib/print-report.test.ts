@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { categoryRows, printDate, printMonth, signedAmount } from './print-report.ts'
-
-test('printMonth: a real month up to the current one, else the current one', () => {
-  assert.equal(printMonth('2026-10', '2026-11'), '2026-10')
-  for (const bad of [null, '', 'x', '2026-13', '2027-01']) assert.equal(printMonth(bad, '2026-11'), '2026-11')
-})
+import { categoryRows, printDate, signedAmount } from './print-report.ts'
 
 test('categoryRows: spending first, then budgets with no spending', () => {
   const rows = categoryRows({

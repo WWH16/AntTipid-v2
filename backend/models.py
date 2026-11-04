@@ -223,7 +223,6 @@ class AuditEntry(CamelModel):
     id: int
     action: Literal["create", "update", "delete", "sign_in", "restore"]
     entity: Literal["transaction", "wallet", "category", "budget", "account"]
-    entity_id: str | None
     label: str
     changes: dict[str, list] | None  # updates only: column name -> [before, after]; keys stay snake_case
     created_at: datetime
@@ -301,8 +300,6 @@ class BackupFile(CamelModel):
     @model_validator(mode="after")
     def _ids_exist(self):
         wallets, cats = {w.id for w in self.wallets}, {c.id for c in self.categories}
-        if len(wallets) < len(self.wallets) or len(cats) < len(self.categories):
-            raise ValueError("The file lists the same wallet or category twice.")
         for t in self.transactions:
             if (
                 t.wallet_id not in wallets
@@ -314,10 +311,3 @@ class BackupFile(CamelModel):
             if row.category_id and row.category_id not in cats:
                 raise ValueError("A budget names a category the file does not contain.")
         return self
-
-
-class RestoreResult(CamelModel):
-    wallets: int
-    categories: int
-    transactions: int
-    budgets: int

@@ -1,15 +1,15 @@
 // A paper copy of one month: totals, spending by category, the 6-month trend and every transaction. Opens outside the
 // app shell, always on white, so the preview matches what prints (and what "Save as PDF" writes).
 import { useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
-import { monthLink, useApp, useRefData } from '@/app-state'
+import { monthLink, useApp, useMonth, useRefData } from '@/app-state'
 import { ErrorState } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { endLine, monthBudgets } from '@/lib/budget'
 import { currentMonth, longDate, money, monthLabel, todayIso } from '@/lib/format'
-import { categoryRows, printDate, printMonth, signedAmount } from '@/lib/print-report'
+import { categoryRows, printDate, signedAmount } from '@/lib/print-report'
 import { monthTotals } from '@/lib/report'
 
 const th = 'border-b border-neutral-300 py-1.5 font-semibold'
@@ -17,8 +17,7 @@ const td = 'break-inside-avoid border-b border-neutral-300 py-1.5 align-top [ove
 const num = 'pl-2 text-right tabular-nums'
 
 export function PrintReportPage() {
-  const [params] = useSearchParams()
-  const month = printMonth(params.get('month'), currentMonth())
+  const [month] = useMonth()
   const { user } = useApp()
   const report = useQuery(`report:${month}`, () => api.reports.monthly(month))
   const transactions = useQuery(`tx:${JSON.stringify({ month })}`, () => api.transactions.list({ month }))
