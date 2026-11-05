@@ -189,6 +189,14 @@ export function HelpPrdPage() {
                 The primary user is a person in the Philippines who manages day-to-day spending across cash and e-wallets, mostly on a phone.
                 AntTipid has one account type. It has no administrator role, and no account can see another account’s records.
               </p>
+              <Figure
+                n={1}
+                name="usecases"
+                width={760}
+                height={768}
+                alt="Use case diagram. A visitor can view the public pages and sign up or sign in, through Supabase Auth. A user, who is also a visitor, can record transactions, which always includes the check for warnings and can be extended by scanning a receipt with vision models; manage wallets and categories; set budgets; see the dashboard; decide on warnings; filter activity; view and print reports; back up and restore; and view the audit log. Warnings and monthly recaps are emailed on their own through Gmail, with Vercel Cron starting the recap."
+                caption="Use cases. Decision support is highlighted."
+              />
               <DocTable
                 head={['Type', 'Can use']}
                 rows={[
@@ -210,7 +218,7 @@ export function HelpPrdPage() {
                 shapes how later purchases are judged.
               </p>
               <Figure
-                n={1}
+                n={2}
                 name="decision-loop"
                 width={760}
                 height={196}
