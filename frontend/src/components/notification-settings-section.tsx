@@ -6,6 +6,7 @@ import { setCached, useQuery } from '@/api/use-query'
 import { BusyButton } from '@/components/busy-button'
 import { SectionHeader } from '@/components/section-header'
 import { ErrorState, LoadingItems } from '@/components/states'
+import { Switch } from '@/components/ui/switch'
 import { useAction } from '@/hooks/use-action'
 import type { NotificationSettings } from '@/types'
 
@@ -38,13 +39,13 @@ export function NotificationSettingsSection() {
   }
 
   const row = (key: keyof NotificationSettings, label: string, help: string) => (
-    // Native checkbox: a two-state setting with a label, nothing a custom switch adds.
-    <label key={key} className="flex items-start gap-3 rounded-lg border p-3 text-sm">
-      <input type="checkbox" className="mt-0.5 size-4 shrink-0" checked={data?.[key] ?? false} onChange={(e) => change(key, e.target.checked)} />
+    // The whole row is the tap target: the label turns the switch on and off.
+    <label key={key} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 text-sm">
       <span className="grid min-w-0 gap-0.5">
         <span className="font-medium">{label}</span>
         <span className="break-words text-muted-foreground">{help}</span>
       </span>
+      <Switch aria-label={label} checked={data?.[key] ?? false} onCheckedChange={(checked) => change(key, checked)} />
     </label>
   )
 
