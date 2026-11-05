@@ -301,16 +301,6 @@ export function HelpTrdPage() {
                   ['Speed target', 'Scoring 2,000 expenses in under 100 ms, using sorted values and prefix sums'],
                 ]}
               />
-              <h3>Evaluation</h3>
-              <p>One sample user’s real data plus planted outliers, compared with a 3x median baseline.</p>
-              <DocTable
-                head={['Method', 'Precision', 'Recall', 'F1']}
-                rows={[
-                  ['K-means', '1.00', '0.71', '0.83'],
-                  ['3x median', '0.18', '0.88', '0.30'],
-                ]}
-              />
-              <p>Every 4x and 8x outlier was caught, along with most 2x and few 1.5x ones, which are borderline by design. One user is a small sample, so these figures show the method works and don’t predict accuracy for every user.</p>
             </>
           ),
         },

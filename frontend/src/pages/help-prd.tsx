@@ -310,7 +310,7 @@ export function HelpPrdPage() {
               <DocTable
                 head={['Measure', 'How it’s checked', 'Result']}
                 rows={[
-                  ['Unusual purchases are caught without false alarms', 'K-means against a 3x median baseline, on one sample user’s real data plus planted outliers', 'K-means F1 0.83, baseline 0.30. Details in the Technical Requirement Document.'],
+                  ['Unusual purchases are caught without false alarms', 'Automated checks on the unusual-purchase rules', 'Part of the test suite'],
                   ['The maths behind warnings holds', 'Automated checks on budgets, pace and notifications', 'Part of the test suite'],
                   ['One user can’t reach another’s records', 'Automated user A vs user B checks on every route group', 'Part of the test suite'],
                 ]}
