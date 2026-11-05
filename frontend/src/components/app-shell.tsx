@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ChartColumn, ChevronsUpDown, House, ListOrdered, LogOut, PiggyBank, Plus, RefreshCw, Settings, WifiOff } from 'lucide-react'
+import { ChartColumn, ChevronsUpDown, CircleHelp, FileCode2, FileText, House, ListOrdered, LogOut, PiggyBank, Plus, RefreshCw, Settings, WifiOff } from 'lucide-react'
 import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { MONTH_PAGES, monthLink, useApp, useCurrentMonth } from '@/app-state'
 import { refresh } from '@/api/use-query'
@@ -75,6 +75,7 @@ export function AppShell() {
                   </SidebarMenuItem>
                 ))}
                 <NotificationBell sidebar />
+                <HelpMenu />
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -210,6 +211,25 @@ function PullToRefresh() {
         <span className="sr-only">{busy ? 'Refreshing' : 'Pull to refresh'}</span>
       </span>
     </div>
+  )
+}
+
+/** Tablet and laptop. Phones have no sidebar, so Settings lists the same two documents under Help. */
+function HelpMenu() {
+  const navigate = useNavigate()
+  return (
+    <SidebarMenuItem>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<SidebarMenuButton />}>
+          <CircleHelp />
+          <span>Help</span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="right" align="start" className="w-72">
+          <DropdownMenuItem onClick={() => navigate('/help/prd')}><FileText /> Product Requirement Document</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/help/trd')}><FileCode2 /> Technical Requirement Document</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </SidebarMenuItem>
   )
 }
 

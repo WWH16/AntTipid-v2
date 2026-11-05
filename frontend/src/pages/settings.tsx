@@ -2,7 +2,7 @@
 // Tablet and up: the list on the left, the chosen section beside it. The section is kept in the URL (?tab=categories).
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Archive, ArchiveRestore, Bell, ChevronLeft, ChevronRight, DatabaseBackup, History, Info, LogOut, MoreHorizontal, Pencil, Plus, ShieldCheck, Tags, Trash2, Wallet as WalletIcon } from 'lucide-react'
+import { Archive, ArchiveRestore, Bell, ChevronLeft, ChevronRight, DatabaseBackup, FileCode2, FileText, History, Info, LogOut, MoreHorizontal, Pencil, Plus, ShieldCheck, Tags, Trash2, Wallet as WalletIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -85,6 +85,11 @@ export function SettingsPage() {
               <SettingsRow {...link('notifications')} current={section === 'notifications'} media={<Bell />} label="Notifications" />
               <SettingsRow {...link('backup')} current={section === 'backup'} media={<DatabaseBackup />} label="Backup and restore" />
               <SettingsRow {...link('audit')} current={section === 'audit'} media={<History />} label="Audit log" />
+            </RowGroup>
+
+            <RowGroup title="Help">
+              <SettingsRow to="/help/prd" media={<FileText />} label="Product Requirement Document" />
+              <SettingsRow to="/help/trd" media={<FileCode2 />} label="Technical Requirement Document" />
             </RowGroup>
 
             <RowGroup title="About">
