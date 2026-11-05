@@ -35,9 +35,9 @@ export function HelpTrdPage() {
                 n={1}
                 name="architecture"
                 width={760}
-                height={476}
-                alt="The browser loads the frontend over HTTPS, signs in with Supabase Auth and completes a Turnstile challenge. The frontend rewrites API calls to the FastAPI backend, which verifies tokens with Auth, queries Postgres, stores photos in Storage, sends photos to receipt models and sends email through Gmail."
-                caption="System components and the calls between them."
+                height={556}
+                alt="Four layers. The browser runs the React app, loads the frontend from Vercel over HTTPS, signs in with Supabase Auth and completes a Cloudflare Turnstile challenge. The frontend passes API calls with a bearer JWT to the FastAPI backend on Vercel functions in Singapore, which checks tokens against the Auth keys, queries Postgres, stores photos in Storage, sends photos to OpenRouter and Gemini vision models and sends email through Gmail SMTP."
+                caption="System components in four layers, and the calls between them."
               />
               <DocTable
                 head={['Component', 'Role']}
@@ -69,17 +69,19 @@ export function HelpTrdPage() {
           id: 'stack',
           title: 'Technology stack',
           body: (
-            <DocTable
-              head={['Layer', 'Technology']}
-              rows={[
-                ['Frontend', 'React 19, TypeScript 6, Vite 8, React Router 7, Tailwind CSS 4, shadcn/ui on Base UI, Recharts 3, Sonner, lucide-react, Geist'],
-                ['Frontend auth', '@supabase/auth-js only, instead of all of supabase-js, to keep the download small'],
-                ['Backend', 'Python, FastAPI 0.115, Uvicorn 0.34, psycopg 3.2 with psycopg-pool, PyJWT 2.10, httpx 0.28'],
-                ['Database', 'PostgreSQL on Supabase, with plain SQL migrations'],
-                ['Hosting', 'Vercel, two projects, region sin1 (Singapore)'],
-                ['Quality', 'oxlint, TypeScript build checks, node:test and Python self-checks'],
-              ]}
-            />
+            <>
+              <Figure
+                n={2}
+                name="stack"
+                width={760}
+                height={552}
+                alt="Frontend: React 19, TypeScript 6, Vite 8, React Router 7, Tailwind CSS 4, shadcn/ui, Base UI 1, lucide-react, Recharts 3, Sonner 2, Geist and auth-js 2. Backend: Python 3, FastAPI 0.115, Uvicorn 0.34, httpx 0.28, psycopg 3.2 with psycopg-pool, and PyJWT 2.10. Database: PostgreSQL with row level security, and plain SQL migrations. Hosting: Vercel with two projects in region sin1, Singapore, and Supabase for the database and Auth. Quality checks: oxlint, TypeScript build checks, node:test and Python self-checks."
+                caption="Technology stack by layer, with versions."
+              />
+              <p>
+                The frontend uses {c('@supabase/auth-js')} only, instead of all of {c('supabase-js')}, to keep the download small.
+              </p>
+            </>
           ),
         },
         {
@@ -88,7 +90,7 @@ export function HelpTrdPage() {
           body: (
             <>
               <Figure
-                n={2}
+                n={3}
                 name="data-model"
                 width={760}
                 height={572}
@@ -278,7 +280,7 @@ export function HelpTrdPage() {
               <h3>Unusual purchases</h3>
               <p>Each purchase is judged when saved, against the history before it. The verdict is kept, so a later purchase can’t rewrite it.</p>
               <Figure
-                n={3}
+                n={4}
                 name="anomaly-flow"
                 width={760}
                 height={664}
