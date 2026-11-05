@@ -1,15 +1,16 @@
-// The Help documents (PRD and TRD) in a viewer: a side section to move around, a paper sheet like the print report, and
-// a copy button for the course template in Word. Opens outside the app shell. The sheet is always white, so a manual
-// select-all stays clean too.
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+// The Help documents (PRD and TRD) in a viewer: a side section to move around, a paper sheet like the print report with
+// zoom and fit like a browser's PDF viewer, and a copy button for the course template in Word. Opens outside the app
+// shell. The sheet is always white, so a manual select-all stays clean too.
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode, type RefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { Link, NavLink } from 'react-router-dom'
-import { ArrowLeft, ClipboardCopy, TableOfContents } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ClipboardCopy, Minus, Plus, TableOfContents } from 'lucide-react'
 import { toast } from 'sonner'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useOrigin } from '@/hooks/use-origin'
 import { cn } from '@/lib/utils'
 import { version } from '../../package.json'
@@ -18,20 +19,27 @@ const UPDATED = 'November 5, 2026'
 const WORD_IMAGE_WIDTH = 600 // fits the text width of a Letter or A4 page with 1-inch margins
 const ZOOM_MAX = 4 // times the fitted size
 const ZOOM_STEP = 2
+const PAGE_WIDTH = 794 // the sheet at 100%: A4's 210mm at 96dpi
+const PAGE_RATIO = 297 / 210 // A4's height over its width
+const BAR_ROOM = 64 // the bar over the sheet, and a little air, for Fit page
+const SHEET_ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3]
+// A zoom button stays focusable at its limit, so keyboard focus isn't dropped when a press takes it there.
+const ZOOM_LIMIT = 'aria-disabled:pointer-events-none aria-disabled:opacity-50'
 
 const DOCUMENTS = [
   { to: '/help/prd', short: 'PRD', name: 'Product Requirement Document' },
   { to: '/help/trd', short: 'TRD', name: 'Technical Requirement Document' },
 ]
 
-// The bar and the page share these columns, so Back sits over the side section and the rest over the sheet.
-const FRAME = 'mx-auto max-w-[calc(210mm+2rem)] lg:grid lg:max-w-[calc(16rem+2rem+210mm+2rem)] lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-8 lg:px-4'
+// The bar and the page share these columns, so Back sits over the side section and the rest over the sheet. They grow
+// with a zoomed sheet (--sheet), and never narrow past A4, so the bar keeps its room.
+const FRAME = 'mx-auto max-w-[calc(max(var(--sheet),210mm)+2rem)] lg:grid lg:max-w-[calc(16rem+2rem+max(var(--sheet),210mm)+2rem)] lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-8 lg:px-4'
 
 type Section = { id: string; title: string; body: ReactNode }
 
 const SHEET = [
   'leading-[1.55] text-pretty',
-  '[&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:scroll-mt-20 [&_h2]:text-xl [&_h2]:leading-tight [&_h2]:font-semibold [&_h2]:break-after-avoid',
+  '[&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:scroll-mt-[calc(5rem/var(--sheet-zoom))] [&_h2]:text-xl [&_h2]:leading-tight [&_h2]:font-semibold [&_h2]:break-after-avoid',
   '[&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:leading-snug [&_h3]:font-semibold [&_h3]:break-after-avoid',
   '[&_section_p]:mt-3 [&_section_ul]:mt-3 [&_section_ul]:list-disc [&_section_ul]:pl-5 [&_section_ol]:mt-3 [&_section_ol]:list-decimal [&_section_ol]:pl-5 [&_section_li]:mt-1',
   '[&_section_p]:max-w-[65ch] [&_section_ul]:max-w-[65ch] [&_section_ol]:max-w-[65ch]',
@@ -129,11 +137,68 @@ function DocumentNav({ sections, current, origin, onPick }: {
   )
 }
 
+/**
+ * The sheet's zoom. 100% is A4 width, or the screen where that's narrower, so a phone still opens readable. CSS zoom
+ * scales the page as it stands, keeping its line breaks, and the page scrolls sideways once it outgrows the screen.
+ */
+function useSheetZoom(article: RefObject<HTMLElement | null>) {
+  const probe = useRef<HTMLDivElement>(null) // as wide as the sheet's column can get
+  const [zoom, setZoom] = useState<number | 'page' | 'width'>(1)
+  const [room, setRoom] = useState({ width: PAGE_WIDTH, height: PAGE_WIDTH })
+
+  useLayoutEffect(() => {
+    const measure = () => setRoom({ width: probe.current!.clientWidth, height: innerHeight - BAR_ROOM })
+    measure()
+    addEventListener('resize', measure)
+    return () => removeEventListener('resize', measure)
+  }, [])
+
+  const base = Math.min(PAGE_WIDTH, room.width)
+  const fitWidth = room.width / base
+  const scale = zoom === 'width' ? fitWidth : zoom === 'page' ? Math.min(fitWidth, room.height / (base * PAGE_RATIO)) : zoom
+
+  // Keeps the line in the middle of the screen there, so the reader doesn't lose their place.
+  function zoomTo(next: typeof zoom) {
+    const y = innerHeight / 2
+    const before = article.current!.getBoundingClientRect()
+    flushSync(() => setZoom(next))
+    const after = article.current!.getBoundingClientRect()
+    scrollBy({ top: after.top + (y - before.top) * (after.height / before.height) - y, behavior: 'instant' })
+  }
+
+  return { probe, zoom, base, scale, zoomTo }
+}
+
+/** Zoom out, the zoom and fit menu, zoom in. A phone has only the menu, because the bar is short of room and pinch still works. */
+function SheetZoom({ zoom, scale, zoomTo }: Pick<ReturnType<typeof useSheetZoom>, 'zoom' | 'scale' | 'zoomTo'>) {
+  const smaller = SHEET_ZOOMS.findLast((level) => level < scale)
+  const larger = SHEET_ZOOMS.find((level) => level > scale)
+  const percent = Math.round(scale * 100)
+  return (
+    <div className="ml-auto flex items-center gap-1">
+      <Button variant="outline" size="icon" className={cn(ZOOM_LIMIT, 'max-sm:hidden')} aria-label="Zoom out" focusableWhenDisabled disabled={!smaller} onClick={() => zoomTo(smaller!)}><Minus /></Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="outline" className="tabular-nums" aria-label={`Zoom and fit, now ${percent}%`} />}>{percent}%<ChevronDown /></DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuRadioGroup value={String(zoom)} onValueChange={(value: string) => zoomTo(value === 'page' || value === 'width' ? value : Number(value))}>
+            <DropdownMenuRadioItem value="page">Fit page</DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="width">Fit width</DropdownMenuRadioItem>
+            <DropdownMenuSeparator />
+            {SHEET_ZOOMS.map((level) => <DropdownMenuRadioItem key={level} value={String(level)}>{level * 100}%</DropdownMenuRadioItem>)}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Button variant="outline" size="icon" className={cn(ZOOM_LIMIT, 'max-sm:hidden')} aria-label="Zoom in" focusableWhenDisabled disabled={!larger} onClick={() => zoomTo(larger!)}><Plus /></Button>
+    </div>
+  )
+}
+
 export function DocumentPage({ title, sections }: { title: string; sections: Section[] }) {
   const article = useRef<HTMLElement>(null)
   useEffect(() => { document.title = `${title} | AntTipid` }, [title])
   const origin = useOrigin()
   const current = useCurrentSection(sections)
+  const { probe, zoom, base, scale, zoomTo } = useSheetZoom(article)
 
   const [panelOpen, setPanelOpen] = useState(false)
   // A pick replaces the panel's history entry, then jumps once the panel's scroll lock has let go of the page.
@@ -152,17 +217,23 @@ export function DocumentPage({ title, sections }: { title: string; sections: Sec
   }
 
   return (
-    <div className="min-h-svh bg-background print:bg-transparent">
+    // pt: the bar's height. It's fixed, not sticky, so it stays while a zoomed page scrolls sideways.
+    <div
+      style={{ '--sheet-width': `${base}px`, '--sheet-zoom': scale, '--sheet': `${base * scale}px` } as CSSProperties}
+      className="min-h-svh bg-background pt-13 print:bg-transparent print:pt-0"
+    >
       <a href={`#${sections[0].id}`} className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:p-2">Skip to content</a>
-      <div className="sticky top-0 z-10 bg-background print:hidden">
+      <div ref={probe} className="h-0 w-full sm:w-[calc(100%-2rem)] lg:w-[calc(100%-20rem)]" />
+      <div className="fixed inset-x-0 top-0 z-10 bg-background print:hidden">
         <div className={cn(FRAME, 'flex items-center gap-2 px-4 py-2')}>
           <div className="flex gap-2">
-            <Button variant="outline" nativeButton={false} render={<Link to={origin.from ?? '/'} />}><ArrowLeft /> Back to app</Button>
+            <Button variant="outline" nativeButton={false} render={<Link to={origin.from ?? '/'} />}><ArrowLeft /><span className="max-sm:sr-only">Back to app</span></Button>
             <Button variant="outline" className="lg:hidden" onClick={() => setPanelOpen(true)}><TableOfContents /><span className="max-sm:sr-only">Contents</span></Button>
           </div>
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <p className="hidden truncate text-sm font-medium sm:block">{title}</p>
-            <Button className="ml-auto" onClick={copy}><ClipboardCopy /> <span>Copy<span className="max-[359px]:sr-only"> for Word</span></span></Button>
+            <SheetZoom zoom={zoom} scale={scale} zoomTo={zoomTo} />
+            <Button onClick={copy}><ClipboardCopy /> <span>Copy<span className="max-[359px]:sr-only"> for Word</span></span></Button>
           </div>
         </div>
       </div>
@@ -174,8 +245,9 @@ export function DocumentPage({ title, sections }: { title: string; sections: Sec
           </Card>
         </aside>
 
-        <main className="min-w-0 sm:px-4 sm:pb-4 lg:px-0 print:p-0">
-          <article ref={article} className={cn(SHEET, 'mx-auto max-w-[210mm] bg-card p-4 text-foreground sm:p-10 sm:shadow print:max-w-none print:p-0 print:shadow-none')}>
+        {/* Scrolls sideways itself on touch: a phone shrinks a page that outgrows the screen, which would undo the zoom. */}
+        <main className="min-w-0 sm:px-4 sm:pb-4 lg:px-0 pointer-coarse:overflow-x-auto print:overflow-visible print:p-0">
+          <article ref={article} className={cn(SHEET, 'mx-auto w-(--sheet-width) bg-card p-4 text-foreground [zoom:var(--sheet-zoom)] sm:p-10 sm:shadow print:w-auto print:p-0 print:shadow-none print:[zoom:1]')}>
             <header className="border-b pb-4">
               <p className="font-semibold">AntTipid</p>
               <h1 className="mt-1 text-2xl leading-tight font-semibold sm:text-3xl">{title}</h1>
