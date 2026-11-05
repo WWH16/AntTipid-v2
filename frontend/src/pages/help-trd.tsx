@@ -74,12 +74,13 @@ export function HelpTrdPage() {
                 n={2}
                 name="stack"
                 width={760}
-                height={552}
-                alt="Frontend: React 19, TypeScript 6, Vite 8, React Router 7, Tailwind CSS 4, shadcn/ui, Base UI 1, lucide-react, Recharts 3, Sonner 2, Geist and auth-js 2. Backend: Python 3, FastAPI 0.115, Uvicorn 0.34, httpx 0.28, psycopg 3.2 with psycopg-pool, and PyJWT 2.10. Database: PostgreSQL with row level security, and plain SQL migrations. Hosting: Vercel with two projects in region sin1, Singapore, and Supabase for the database and Auth. Quality checks: oxlint, TypeScript build checks, node:test and Python self-checks."
-                caption="Technology stack by layer, with versions."
+                height={352}
+                alt="Four layers, top to bottom, each resting on the next. Frontend: React 19, TypeScript 6, Vite 8, React Router 7, Tailwind CSS 4, shadcn/ui, Base UI 1, lucide-react, Recharts 3, Sonner 2, Geist and auth-js 2. Backend, highlighted: Python 3, FastAPI 0.115, Uvicorn 0.34, httpx 0.28, psycopg 3.2 with psycopg-pool, and PyJWT 2.10. Database: PostgreSQL with row level security, and SQL migrations. Hosting: Vercel with two projects in region sin1, Singapore, and Supabase."
+                caption="Technology stack, each layer resting on the one below, with versions. The backend is where the rules run."
               />
               <p>
                 The frontend uses {c('@supabase/auth-js')} only, instead of all of {c('supabase-js')}, to keep the download small.
+                Across all layers, oxlint, TypeScript build checks, {c('node:test')} and Python self-checks guard quality.
               </p>
             </>
           ),
