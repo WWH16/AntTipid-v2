@@ -308,6 +308,15 @@ export function HelpTrdPage() {
           id: 'notifications',
           title: 'Notifications',
           body: (
+            <>
+            <Figure
+              n={5}
+              name="notification-states"
+              width={760}
+              height={412}
+              alt="States of a notification's email. A save or the monthly recap adds a row once per key. With email on it waits to send; after the save commits it is claimed and then emailed, or handed back to wait again if sending fails. A row over a day old is never emailed. A row created with email off is handled at once and never emailed."
+              caption="Notification email states."
+            />
             <ul>
               <li>Each save runs {c('after_save')} inside its transaction, in a savepoint, so a bug in a warning can’t cost the save.</li>
               <li>The unique {c('(user_id, key)')} makes each warning fire once, with keys such as {c('near:{budget}:{YYYY-MM}')}.</li>
@@ -315,12 +324,22 @@ export function HelpTrdPage() {
               <li>Rows over a day old aren’t emailed, so email set up later doesn’t deliver old warnings.</li>
               <li>The recap job creates one row per user per month, so running it twice is safe. It holds no database connection while sending.</li>
             </ul>
+            </>
           ),
         },
         {
           id: 'receipts',
           title: 'Receipt scanning',
           body: (
+            <>
+            <Figure
+              n={6}
+              name="receipt-scan"
+              width={760}
+              height={864}
+              alt="Receipt scan flowchart. A photo that isn't JPEG, PNG or WebP under 8 MB gets 415 or 413. If today's 30 scans are used, 429. Otherwise the next vision model is asked, two OpenRouter then two Gemini, 25 seconds each. A bad answer or timeout moves to the next model, and when none are left the reply is 502. An answer with no total is 422, not a receipt. A found total is cleaned up, with today and dateGuessed for a bad date and lowConfidence when items don't add up, and the draft goes back to the form without keeping the photo."
+              caption="Receipt scanning, with the HTTP status of each error."
+            />
             <ul>
               <li>The route accepts JPEG, PNG or WebP up to 8 MB, and sends the photo to vision models with the caller’s category names.</li>
               <li>Models are tried in order: two free OpenRouter models, then two Gemini models. A model whose key isn’t set is skipped.</li>
@@ -329,6 +348,7 @@ export function HelpTrdPage() {
               <li>Each user gets 30 scans a day, counted in {c('scan_usage')} before any model is asked. A scan that fails still counts. Past the limit the route returns 429 and asks the user to try tomorrow or type it in.</li>
               <li>The scan keeps no photo or receipt data, only that count. The photo saved with a transaction is a WebP, or a JPEG from Safari, within the bucket’s 1 MB cap.</li>
             </ul>
+            </>
           ),
         },
         {
@@ -336,6 +356,14 @@ export function HelpTrdPage() {
           title: 'Backup and restore',
           body: (
             <>
+              <Figure
+                n={7}
+                name="restore"
+                width={760}
+                height={452}
+                alt="GET /backup downloads a JSON file, version 1, without photos. POST /backup/restore runs six steps in one database transaction: quiet the audit triggers, delete the user's records, give every row a new id and keep a photo path only if it's in the user's own folder, insert in key order, replace the budget history, and write one audit entry. All six done commits; any error rolls back and nothing changes."
+                caption="Restore runs in one transaction."
+              />
               <ul>
                 <li>{c('GET /backup')} returns one user’s wallets, categories, budgets, budget history and transactions, with their items and verdicts, as versioned JSON.</li>
                 <li>{c('POST /backup/restore')} runs in one transaction, so any failure undoes every step.</li>
