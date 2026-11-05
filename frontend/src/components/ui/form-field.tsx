@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Check, Eye, EyeOff } from 'lucide-react'
+import { Check, Eye, EyeClosed } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -62,7 +62,7 @@ export function FormField({
             onClick={() => setShowPassword((v) => !v)}
             aria-label={showPassword ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
           >
-            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            {showPassword ? <EyeClosed className="size-4" /> : <Eye className="size-4" />}
           </button>
         )}
       </div>
