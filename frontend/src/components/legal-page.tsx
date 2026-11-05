@@ -1,7 +1,9 @@
-// Shared frame for the public Privacy policy and Terms pages: logo, title, date, readable column, link back to sign-in.
+// Shared frame for the public Privacy policy and Terms pages: logo, title, date, readable column, link back.
 import { useEffect, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { useApp } from '@/app-state'
 import { LogoWithTagline } from '@/components/logo'
+import { useOrigin } from '@/hooks/use-origin'
 
 const CONTACT = 'anttipid.support@gmail.com'
 const SITE = 'https://ant-tipid-v2-frontend.vercel.app'
@@ -38,9 +40,11 @@ export function LegalPage({ title, path, updated, intro, children }: {
       ogUrl?.setAttribute('content', home)
     }
   }, [path])
+  const { user } = useApp()
+  const from = useOrigin()
   return (
     <main className="mx-auto grid w-full max-w-2xl gap-8 px-4 py-8 sm:gap-10 sm:px-6 sm:py-10 md:py-16">
-      <Link to="/sign-in" aria-label="AntTipid sign in" className="w-fit"><LogoWithTagline height={37} small /></Link>
+      <Link to="/sign-in" aria-label={user ? 'AntTipid home' : 'AntTipid sign in'} className="w-fit"><LogoWithTagline height={37} small /></Link>
 
       <header className="grid gap-2">
         <h1 className="text-2xl leading-tight font-semibold tracking-tight sm:text-3xl md:text-4xl">{title}</h1>
@@ -52,7 +56,7 @@ export function LegalPage({ title, path, updated, intro, children }: {
         {children}
       </div>
 
-      <Link to="/sign-in" className="w-fit text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">Back to sign in</Link>
+      <Link to={from ?? '/sign-in'} className="w-fit text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">{user ? 'Back to app' : 'Back to sign in'}</Link>
     </main>
   )
 }

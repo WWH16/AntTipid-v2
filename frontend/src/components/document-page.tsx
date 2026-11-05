@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { ArrowLeft, ClipboardCopy } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { useOrigin } from '@/hooks/use-origin'
 import { cn } from '@/lib/utils'
 import { version } from '../../package.json'
 
@@ -57,6 +58,7 @@ export function DocumentPage({ title, sections }: {
 }) {
   const article = useRef<HTMLElement>(null)
   useEffect(() => { document.title = `${title} | AntTipid` }, [title])
+  const from = useOrigin()
 
   function copy() {
     const el = article.current
@@ -69,7 +71,7 @@ export function DocumentPage({ title, sections }: {
     <div className="min-h-svh bg-neutral-100 print:bg-white">
       <div className="sticky top-0 z-10 bg-neutral-100 print:hidden">
         <div className="mx-auto flex max-w-[210mm] items-center justify-between gap-3 px-4 py-2 sm:px-0">
-          <Button variant="outline" nativeButton={false} render={<Link to="/" />}><ArrowLeft /> Back to app</Button>
+          <Button variant="outline" nativeButton={false} render={<Link to={from ?? '/'} />}><ArrowLeft /> Back to app</Button>
           <Button onClick={copy}><ClipboardCopy /> Copy for Word</Button>
         </div>
       </div>

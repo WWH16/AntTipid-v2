@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { ChartColumn, ChevronsUpDown, CircleHelp, FileCode2, FileText, House, ListOrdered, LogOut, PiggyBank, Plus, RefreshCw, Settings, WifiOff } from 'lucide-react'
-import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { createPath, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { MONTH_PAGES, monthLink, useApp, useCurrentMonth } from '@/app-state'
 import { refresh } from '@/api/use-query'
 import { AddTransactionSheet } from '@/components/add-transaction-sheet'
@@ -217,6 +217,7 @@ function PullToRefresh() {
 /** Tablet and laptop. Phones have no sidebar, so Settings lists the same two documents under Help. */
 function HelpMenu() {
   const navigate = useNavigate()
+  const state = { from: createPath(useLocation()) }
   return (
     <SidebarMenuItem>
       <DropdownMenu>
@@ -225,8 +226,8 @@ function HelpMenu() {
           <span>Help</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" align="start" className="w-72">
-          <DropdownMenuItem onClick={() => navigate('/help/prd')}><FileText /> Product Requirement Document</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/help/trd')}><FileCode2 /> Technical Requirement Document</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/help/prd', { state })}><FileText /> Product Requirement Document</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/help/trd', { state })}><FileCode2 /> Technical Requirement Document</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </SidebarMenuItem>

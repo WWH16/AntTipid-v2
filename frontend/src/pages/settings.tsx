@@ -1,7 +1,7 @@
 // Settings as a grouped list, the way phone apps lay it out. Phones: the list, and each row opens its own screen.
 // Tablet and up: the list on the left, the chosen section beside it. The section is kept in the URL (?tab=categories).
 import { useState, type ReactNode } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { createPath, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Archive, ArchiveRestore, Bell, ChevronLeft, ChevronRight, DatabaseBackup, FileCode2, FileText, History, Info, LogOut, MoreHorizontal, Pencil, Plus, ShieldCheck, Tags, Trash2, Wallet as WalletIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { BusyButton } from '@/components/busy-button'
@@ -51,6 +51,7 @@ export function SettingsPage() {
   const section: Section = picked ?? 'wallets' // tablet and up always show one section
   const isMobile = useIsMobile()
   const navigate = useNavigate()
+  const origin = { from: createPath(useLocation()) } // so a page outside the shell can come back here
   const [dlg, setDlg] = useState<Dlg>(null)
   const { user, signOut } = useApp()
   const { wallets, categories, loading } = useRefData()
@@ -88,12 +89,12 @@ export function SettingsPage() {
             </RowGroup>
 
             <RowGroup title="Help">
-              <SettingsRow to="/help/prd" media={<FileText />} label="Product Requirement Document" />
-              <SettingsRow to="/help/trd" media={<FileCode2 />} label="Technical Requirement Document" />
+              <SettingsRow to="/help/prd" state={origin} media={<FileText />} label="Product Requirement Document" />
+              <SettingsRow to="/help/trd" state={origin} media={<FileCode2 />} label="Technical Requirement Document" />
             </RowGroup>
 
             <RowGroup title="About">
-              <SettingsRow to="/privacy" media={<ShieldCheck />} label="Privacy policy" />
+              <SettingsRow to="/privacy" state={origin} media={<ShieldCheck />} label="Privacy policy" />
               <SettingsRow media={<Info />} label="Version" value={version} />
             </RowGroup>
 
@@ -134,9 +135,10 @@ function RowGroup({ title, children }: { title: string; children: ReactNode }) {
 }
 
 /** One row: a link with a chevron when it has somewhere to go (`to`), otherwise a plain label and value. */
-function SettingsRow({ to, replace, current, media, label, description, value }: {
+function SettingsRow({ to, replace, state, current, media, label, description, value }: {
   to?: string | { search: string }
   replace?: boolean
+  state?: { from: string }
   current?: boolean
   media: ReactNode
   label: string
@@ -145,7 +147,7 @@ function SettingsRow({ to, replace, current, media, label, description, value }:
 }) {
   return (
     <Item
-      render={to ? <Link to={to} replace={replace} aria-current={current ? 'page' : undefined} /> : undefined}
+      render={to ? <Link to={to} replace={replace} state={state} aria-current={current ? 'page' : undefined} /> : undefined}
       className={cn('rounded-none', to && 'hover:bg-muted md:aria-[current=page]:bg-muted md:aria-[current=page]:font-medium')}
     >
       <ItemMedia variant="icon" className="text-muted-foreground">{media}</ItemMedia>
