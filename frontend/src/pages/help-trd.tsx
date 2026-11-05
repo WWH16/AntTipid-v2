@@ -117,7 +117,8 @@ export function HelpTrdPage() {
                   [c('anomaly_checks'), 'Verdict on each purchase', <>Key is {c('transaction_id')}. {c('unusual')}, {c('decision')} (one_off or normal), {c('method')} (kmeans, simple or none), {c('usual_low')}, {c('usual_high')}. A decision needs {c('unusual')}.</>],
                   [c('audit_log'), 'Who changed what and when', <>Written only by triggers and restore. {c('action')}, {c('entity')}, {c('label')}, {c('changes')} as JSON of old and new values. No foreign key on {c('entity_id')}, because the row may be gone.</>],
                   [c('notifications'), 'What the bell lists and email sends', <>{c('kind')} is near, used, over, run_out, unusual or new_month. Unique on {c('(user_id, key)')}, so each warning fires once. {c('read_at')}, {c('emailed_at')}.</>],
-                  [c('notification_settings'), 'One switch per warning', <>Key is {c('user_id')}. A missing row means everything is on. {c('test_email_at')} limits test emails.</>],
+                  [c('notification_settings'), 'One switch per warning', <>Key is {c('user_id')}. A missing row means everything is on. {c('test_email_at')} limits test emails, and only the server’s own connection can write it.</>],
+                  [c('scan_usage'), 'Receipt scans per user per day', <>Key is {c('user_id')}. {c('day')}, {c('used')}. Only the server’s own connection can read or write it.</>],
                 ]}
               />
               <h3>Normalization</h3>
@@ -167,6 +168,8 @@ export function HelpTrdPage() {
                   [c('20261026040000_anomaly_checks'), 'Verdicts and decisions on each purchase'],
                   [c('20261104000000_audit_log'), 'Audit log table and triggers'],
                   [c('20261104010000_notifications'), 'Notifications and settings tables'],
+                  [c('20261105000000_scan_usage'), 'Daily receipt scan count per user'],
+                  [c('20261105010000_test_email_at_server_only'), 'Users can no longer write the test email limit'],
                 ]}
               />
             </>
@@ -184,7 +187,9 @@ export function HelpTrdPage() {
                   ['SSL and transport', 'Browser traffic to Vercel and Supabase uses HTTPS. Gmail SMTP uses STARTTLS.'],
                   ['Bots', 'Cloudflare Turnstile on sign-in, sign-up and auth emails, with a new token per attempt.'],
                   ['Tokens', <>Every route except the cron job needs a JWT. ES256 and RS256 are checked against the project’s JWKS, HS256 against a secret. {c('exp')}, {c('aud')}, {c('iss')} and {c('sub')} are required.</>],
-                  ['Row access', <>Row level security on all 10 tables: {c('user_id = auth.uid()')}. The anonymous role has no access. {c('audit_log')} and {c('budget_history')} are read-only to users.</>],
+                  ['Origins', <>CORS lets a browser call the API directly only from {c('APP_URL')} and {c('http://localhost:5173')}. The app itself goes through the same-origin rewrite, so it doesn’t depend on this.</>],
+                  ['Rate limits', <>30 receipt scans per user a day, counted in the database so the limit holds across Vercel instances. The day follows {c('APP_TIMEZONE')}. One test email a minute.</>],
+                  ['Row access', <>Row level security on all 11 tables: {c('user_id = auth.uid()')}, except {c('scan_usage')}, which users can’t reach at all. The anonymous role has no access. {c('audit_log')} and {c('budget_history')} are read-only to users.</>],
                   ['Receipt photos', 'Private bucket, own folder only, 1 MB cap, images only. File type is checked from the bytes. Links are signed for 10 minutes. The server uses the caller’s token and holds no service-role key.'],
                   ['Restore', 'New ids for every row, and a photo path is kept only if it’s in the caller’s own folder, so a file from another account can’t reach their data.'],
                   ['Injection', <>All SQL is parameterized. {c('LIKE')} wildcards in search are escaped. CSV text cells starting with {c('= + - @')} are prefixed, so spreadsheets don’t run them.</>],
@@ -194,8 +199,8 @@ export function HelpTrdPage() {
               />
               <h3>Known gaps</h3>
               <ul>
-                <li>CORS allows any origin. Calls authenticate with a bearer token and not a cookie, so another site can’t borrow a session.</li>
-                <li>The API has no rate limiter of its own, apart from one test email a minute.</li>
+                <li>Only receipt scans and test emails have a rate limit. Other routes have none of their own.</li>
+                <li>The scan limit is per user, so many accounts together can still use up the shared free model quota.</li>
                 <li>The session token sits in local storage, as is standard for Supabase in the browser, so cross-site scripting would expose it.</li>
               </ul>
             </>
@@ -208,7 +213,7 @@ export function HelpTrdPage() {
             <>
               <p>
                 All paths start with {c('/api')}, and bodies are JSON. Errors return {c('{"detail": "..."}')} with a readable message: 401 for
-                sign-in problems, 409 for conflicts, 422 for values the database rejects and 503 when the database is unreachable.
+                sign-in problems, 409 for conflicts, 422 for values the database rejects, 429 when a limit is reached and 503 when the database is unreachable.
               </p>
               <DocTable
                 head={['Method and path', 'Purpose']}
@@ -221,7 +226,7 @@ export function HelpTrdPage() {
                   [c('GET /transactions/export.csv'), 'The same filters as a CSV file'],
                   [c('GET, PATCH, DELETE /transactions/{id}'), 'Read, edit or delete one'],
                   [c('POST /transactions/{id}/receipt'), 'Attach a receipt photo'],
-                  [c('POST /receipts/scan'), 'Read a photo, up to 8 MB. Stores nothing'],
+                  [c('POST /receipts/scan'), 'Read a photo, up to 8 MB. 30 a day per user, then 429'],
                   [c('GET, POST /budgets'), 'Budgets with their spending; add one'],
                   [c('PUT, DELETE /budgets/{id}'), 'Change or remove a budget'],
                   [c('GET /reports/summary'), 'Month summary for Home'],
@@ -328,7 +333,8 @@ export function HelpTrdPage() {
               <li>The route accepts JPEG, PNG or WebP up to 8 MB, and sends the photo to vision models with the caller’s category names.</li>
               <li>Models are tried in order: two free OpenRouter models, then two Gemini models. A model whose key isn’t set is skipped.</li>
               <li>Each model gets 25 seconds. A bad reply moves to the next one, and a reply with no total means “not a receipt”.</li>
-              <li>The scan stores nothing. The photo saved with a transaction is a WebP, or a JPEG from Safari, within the bucket’s 1 MB cap.</li>
+              <li>Each user gets 30 scans a day, counted in {c('scan_usage')} before any model is asked. A scan that fails still counts. Past the limit the route returns 429 and asks the user to try tomorrow or type it in.</li>
+              <li>The scan keeps no photo or receipt data, only that count. The photo saved with a transaction is a WebP, or a JPEG from Safari, within the bucket’s 1 MB cap.</li>
             </ul>
           ),
         },
@@ -386,7 +392,7 @@ export function HelpTrdPage() {
                   [c('DATABASE_URL'), 'Backend', 'Transaction pooler connection'],
                   [c('SUPABASE_JWT_SECRET'), 'Backend', 'Only for older HS256 tokens'],
                   [<>{c('OPENROUTER_API_KEY')}, {c('GEMINI_API_KEY')}</>, 'Backend', 'Receipt reading. Either alone works'],
-                  [<>{c('SMTP_USER')}, {c('SMTP_APP_PASSWORD')}, {c('APP_URL')}</>, 'Backend', 'Email and its links. Without them the bell still works'],
+                  [<>{c('SMTP_USER')}, {c('SMTP_APP_PASSWORD')}, {c('APP_URL')}</>, 'Backend', <>Email and its links. Without them the bell still works. {c('APP_URL')} is also the frontend origin CORS allows</>],
                   [c('CRON_SECRET'), 'Backend', 'Guards the recap job'],
                   [c('APP_TIMEZONE'), 'Backend', 'Optional, defaults to Asia/Manila. Must match the budget history trigger'],
                 ]}
@@ -403,7 +409,7 @@ export function HelpTrdPage() {
                 head={['Suite', 'Size', 'Covers']}
                 rows={[
                   [<>Frontend, {c('node --test src/lib/*.test.ts')}</>, '27 tests in 6 files', 'Budget and pace maths, formatting, print report, audit, backup and notification helpers'],
-                  [<>Backend, {c('test_receipts.py')} and three more</>, '78 checks in 4 files', 'Receipt parsing, JWT verification, every route group, user A vs user B isolation, anomalies, audit, backup and notifications'],
+                  [<>Backend, {c('test_receipts.py')} and four more</>, '80 checks in 5 files', 'Receipt parsing, JWT verification, every route group, user A vs user B isolation, anomalies, audit, backup, notifications, CORS and the scan limit'],
                   [c('backend/paper_anomalies.py'), 'Evaluation script', 'K-means against the baseline, with elbow and silhouette charts'],
                 ]}
               />
