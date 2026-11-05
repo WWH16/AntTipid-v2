@@ -41,7 +41,7 @@ export function LegalPage({ title, path, updated, intro, children }: {
     }
   }, [path])
   const { user } = useApp()
-  const from = useOrigin()
+  const { from } = useOrigin()
   return (
     <main className="mx-auto grid w-full max-w-2xl gap-8 px-4 py-8 sm:gap-10 sm:px-6 sm:py-10 md:py-16">
       <Link to="/sign-in" aria-label={user ? 'AntTipid home' : 'AntTipid sign in'} className="w-fit"><LogoWithTagline height={37} small /></Link>
