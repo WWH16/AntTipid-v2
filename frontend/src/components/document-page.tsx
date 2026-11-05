@@ -9,12 +9,15 @@ import { toast } from 'sonner'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useOrigin } from '@/hooks/use-origin'
 import { cn } from '@/lib/utils'
 import { version } from '../../package.json'
 
 const UPDATED = 'November 5, 2026'
 const WORD_IMAGE_WIDTH = 600 // fits the text width of a Letter or A4 page with 1-inch margins
+const ZOOM_MAX = 4 // times the fitted size
+const ZOOM_STEP = 2
 
 const DOCUMENTS = [
   { to: '/help/prd', short: 'PRD', name: 'Product Requirement Document' },
@@ -219,7 +222,73 @@ export function DocTable({ head, rows, nowrapFirst }: { head: string[]; rows: Re
   )
 }
 
-/** Keeps its readable width on phones and scrolls sideways there, instead of shrinking the labels to nothing. */
+/**
+ * An open figure: only the picture, fitted to the screen. A click, tap or Enter zooms in, then back to fit from the top
+ * zoom. Ctrl + wheel and a trackpad pinch zoom too, and it scrolls to move around. Mounts on each open, so it always
+ * starts fitted.
+ */
+function FigureViewer({ src, width, height, alt }: {
+  src: string
+  width: number
+  height: number
+  alt: string
+}) {
+  const view = useRef<HTMLDivElement>(null)
+  const image = useRef<HTMLImageElement>(null)
+  const [scale, setScale] = useState(1)
+
+  // Keeps the spot under the pointer, or the middle of the view, where it is.
+  function zoom(factor: number, at?: { clientX: number; clientY: number }) {
+    const box = view.current!.getBoundingClientRect()
+    const x = at?.clientX ?? box.left + box.width / 2
+    const y = at?.clientY ?? box.top + box.height / 2
+    const before = image.current!.getBoundingClientRect()
+    flushSync(() => setScale((s) => Math.min(ZOOM_MAX, Math.max(1, s * factor))))
+    const after = image.current!.getBoundingClientRect()
+    const growth = after.width / before.width
+    view.current!.scrollLeft += after.left + (x - before.left) * growth - x
+    view.current!.scrollTop += after.top + (y - before.top) * growth - y
+  }
+
+  // Not React's onWheel: that one is passive, so it can't stop the browser zooming the whole page.
+  useEffect(() => {
+    const el = view.current!
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return // a plain wheel scrolls
+      e.preventDefault()
+      zoom(Math.exp(-e.deltaY * 0.004), e)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  })
+
+  return (
+    <div ref={view} className="max-h-[calc(100svh-2rem)] max-w-[calc(100svw-2rem)] overflow-auto">
+      <button
+        type="button"
+        // A key press has no pointer position (detail 0), so it zooms from the middle.
+        onClick={(e) => (scale < ZOOM_MAX ? zoom(ZOOM_STEP, e.detail ? e : undefined) : setScale(1))}
+        className={cn('block focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-ring/50', scale < ZOOM_MAX ? 'cursor-zoom-in' : 'cursor-zoom-out')}
+      >
+        <img
+          ref={image}
+          src={src}
+          width={width}
+          height={height}
+          alt={alt}
+          // Fits both ways, no wider than the PNG's own pixels (they are 2x), then scales from there.
+          style={{ width: `calc(min(100svw - 2rem, (100svh - 2rem) * ${width / height}, ${width * 2}px) * ${scale})` }}
+          className="max-w-none"
+        />
+      </button>
+    </div>
+  )
+}
+
+/**
+ * Keeps its readable width on phones and scrolls sideways there, instead of shrinking the labels to nothing.
+ * Opens in a viewer on click. The dialog sits in a portal, outside the sheet, so Copy for Word never sees it.
+ */
 export function Figure({ n, name, width, height, alt, caption }: {
   n: number
   name: string // public/help/{name}.png, drawn from docs/figures/{name}.html
@@ -228,11 +297,18 @@ export function Figure({ n, name, width, height, alt, caption }: {
   alt: string
   caption: string
 }) {
+  const src = `/help/${name}.png`
   return (
     <figure className="mt-4">
-      <div tabIndex={0} role="region" aria-label={`Figure ${n}`} className="overflow-x-auto">
-        <img src={`/help/${name}.png`} width={width} height={height} alt={alt} className="h-auto w-full min-w-[36rem] print:min-w-0" />
-      </div>
+      <Dialog>
+        <div className="overflow-x-auto">
+          <DialogTrigger nativeButton={false} render={<img src={src} width={width} height={height} alt={alt} className="h-auto w-full min-w-[36rem] cursor-zoom-in focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-ring/50 print:min-w-0" />} />
+        </div>
+        <DialogContent className="w-max max-w-none overflow-hidden p-0 sm:max-w-none">
+          <DialogTitle className="sr-only">Figure {n}. {caption}</DialogTitle>
+          <FigureViewer src={src} width={width} height={height} alt={alt} />
+        </DialogContent>
+      </Dialog>
       <figcaption className="mt-2 text-sm text-muted-foreground">Figure {n}. {caption}</figcaption>
     </figure>
   )
