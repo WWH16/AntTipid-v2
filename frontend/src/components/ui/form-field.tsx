@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Check, Eye, EyeClosed } from 'lucide-react'
+import { Check, EyeClosed } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -14,6 +14,21 @@ export interface FormFieldProps extends Omit<React.ComponentProps<typeof Input>,
   toggleVisibility?: boolean
   children?: ReactNode
   labelRight?: ReactNode
+}
+
+/** Lucide's EyeClosed mirrored into an open eye, because Lucide's Eye has no lashes to match it. */
+function EyeOpen() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="size-4">
+      <path d="M2 15a10.645 10.645 0 0 1 20 0" />
+      <path d="M2 15a14 14 0 0 0 20 0" />
+      <circle cx="12" cy="13.5" r="2.5" />
+      <path d="m15 5-.722 3.25" />
+      <path d="m20 8-1.726 2.05" />
+      <path d="m4 8 1.726 2.05" />
+      <path d="m9 5 .722 3.25" />
+    </svg>
+  )
 }
 
 export function FormField({
@@ -62,7 +77,7 @@ export function FormField({
             onClick={() => setShowPassword((v) => !v)}
             aria-label={showPassword ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
           >
-            {showPassword ? <EyeClosed className="size-4" /> : <Eye className="size-4" />}
+            {showPassword ? <EyeOpen /> : <EyeClosed className="size-4" />}
           </button>
         )}
       </div>
