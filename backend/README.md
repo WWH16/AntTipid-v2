@@ -60,4 +60,4 @@ Two Vercel projects from this repo:
 | POST / PUT / DELETE | `/budgets`, `/budgets/{id}` | Upserts by `(user_id, category_id)` on POST |
 | GET | `/reports/summary?month=YYYY-MM` | `MonthSummary` |
 | GET | `/reports/monthly?month=YYYY-MM` | `MonthlyReport` (by category, 6-month trend, daily spending) |
-| POST | `/receipts/scan` | Multipart `image`; returns `ReceiptScan` |
+| POST | `/receipts/scan` | Multipart `image`; returns `ReceiptScan`. 30 a day per user, then 429 |
