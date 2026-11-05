@@ -8,7 +8,9 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
+from psycopg import errors
 
 from db import connect, user_tx
 from main import app
@@ -393,11 +395,17 @@ def test_email_text_is_a_letter():
 
 @needs_db
 def test_test_email_limit_and_failures():
-    with users(3) as (client, _, (h1, h2, h3)), mail() as sent:
+    with users(3) as (client, ids, (h1, h2, h3)), mail() as sent:
         assert client.post("/api/notifications/test", headers=h1).status_code == 204
         assert [s.to for s in sent] == ["test@example.com"]
         assert client.post("/api/notifications/test", headers=h1).status_code == 429
         assert len(sent) == 1
+        # Users can't clear the limit through Supabase's REST API, and can still change their switches.
+        for sql in ("update notification_settings set test_email_at = null",
+                    "insert into notification_settings (user_id, test_email_at) values (auth.uid(), null)"):
+            with pytest.raises(errors.InsufficientPrivilege), user_tx(direct(ids[0])) as conn:
+                conn.execute(sql)
+        assert client.put("/api/notifications/settings", json=ALL_ON, headers=h1).status_code == 200
         with patch("notify.email_ready", return_value=False):
             assert client.post("/api/notifications/test", headers=h2).status_code == 503
         with patch("notify.send_email", side_effect=OSError("smtp down")):
