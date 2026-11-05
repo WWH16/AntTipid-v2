@@ -2,7 +2,7 @@
 // The hero runs Home's real "left to spend" card on numbers the visitor types; the previews below use sample data.
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { BatteryFull, ChartColumn, Check, ChartPie, ChevronDown, Download, Gauge, House, ListOrdered, Menu, PiggyBank, Plus, ReceiptText, Signal, Wallet, Wifi } from 'lucide-react'
+import { BatteryFull, Bell, CalendarCheck, CalendarClock, ChartColumn, Check, ChartPie, ChevronDown, CircleAlert, Download, Gauge, House, ListOrdered, Menu, PiggyBank, Plus, ReceiptText, Signal, TriangleAlert, Wallet, Wifi, type LucideIcon } from 'lucide-react'
 import { BudgetBadge, BudgetItem } from '@/components/budget'
 import { CategoryMedia } from '@/components/category-icon'
 import { HeroCard } from '@/components/hero-card'
@@ -17,8 +17,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuLinkItem, DropdownMenuSe
 import { Item, ItemActions, ItemContent, ItemDescription, ItemGroup, ItemTitle } from '@/components/ui/item'
 import { Label } from '@/components/ui/label'
 import { Progress, ProgressLabel } from '@/components/ui/progress'
-import { budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
-import { money } from '@/lib/format'
+import { budgetPercent, budgetRemaining, budgetState, numberLine } from '@/lib/budget'
+import { currentMonth, money } from '@/lib/format'
 import { monthTotals } from '@/lib/report'
 import type { BudgetStatus, Category } from '@/types'
 
@@ -27,33 +27,44 @@ const CONTACT = 'anttipid.support@gmail.com'
 
 const NAV = [
   { href: '#features', label: 'Features' },
+  { href: '#warnings', label: 'Warnings' },
   { href: '#how-it-works', label: 'How it works' },
   { href: '#preview', label: 'Preview' },
   { href: '#faq', label: 'FAQ' },
 ]
 
 const FEATURES = [
-  { icon: Wallet, title: 'Every wallet in one place', body: 'Cash, GCash, Maya, bank accounts and cards each keep their own balance. Move money between them with a transfer.' },
-  { icon: Gauge, title: 'Left to spend, at a glance', body: 'Home shows what’s left of this month’s budget, whether you’re ahead of the month, and how much a day keeps you on track.' },
-  { icon: PiggyBank, title: 'Budgets by category', body: 'Set a monthly limit for food, transport or bills. Budgets near the limit or over it rise to the top so you see them first.' },
+  { icon: Wallet, title: 'Every wallet in one place', body: 'Cash, e-wallets, bank accounts, savings and credit cards each keep their own balance. Move money between them with a transfer.' },
+  { icon: Gauge, title: 'Left to spend, at a glance', body: 'The Home screen shows what’s left of your monthly budget, how much you can spend each day to stay on track, and when your money runs out if you keep spending at the same pace.' },
+  { icon: PiggyBank, title: 'Budgets by category', body: 'Set a budget for food, transport or bills. Together, category budgets can’t go over your monthly budget. You also see when spending in categories with no budget goes past what your monthly budget has left for them.' },
   { icon: ReceiptText, title: 'Scan a receipt', body: 'Take a photo and AntTipid fills in the store, date, items and total. You check it, then save.' },
-  { icon: ChartPie, title: 'Reports that add up', body: 'See what you earned, spent and saved, where the money went by category, and six months of income against spending.' },
-  { icon: Download, title: 'Search and export', body: 'Find any transaction by month, wallet, category or name, and download the month as a CSV for your own spreadsheet.' },
+  { icon: ChartPie, title: 'Reports that add up', body: 'See what you earned, spent and saved, where the money went by category, and your income and spending over six months. After a month ends, see how it went against your budgets.' },
+  { icon: Download, title: 'Your records, your copy', body: 'Search any transaction, download a month as a CSV spreadsheet, print a report or save it as a PDF, and back up or restore your records. An audit log lists each sign-in and change.' },
+]
+
+const WARNINGS = [
+  { icon: CalendarClock, title: 'Run-out date', body: 'From the 5th of each month, AntTipid works out the date a budget runs out at your current pace, and how much you can spend each day to make it last.' },
+  { icon: TriangleAlert, title: 'Unusual purchases', body: 'AntTipid learns how much you usually spend in each category and flags a purchase far above that. You then mark it as a one-off or as normal for you.' },
+  { icon: CircleAlert, title: 'Budget limits', body: 'You get a warning when a budget nears its limit, is used up or goes over.' },
+  { icon: CalendarCheck, title: 'No false alarms from one big payment', body: 'Mark rent or tuition as paid once a month. Bills like these, and purchases you mark as one-offs, stay out of your daily spending pace.' },
+  { icon: Bell, title: 'You choose what you get', body: 'Warnings appear in the app and by email, and a recap of last month arrives on the 1st. In Settings, you can turn off email or any single warning.' },
 ]
 
 const STEPS = [
   { title: 'Create your free account', body: 'Sign up with your email or continue with Google. Common categories like food, transport and bills are ready for you.' },
   { title: 'Add wallets and budgets', body: 'Add the wallets you use and their current balances, then set a budget for the month and for the categories you want to watch.' },
-  { title: 'Log as you go', body: 'Type an amount and pick a category, or scan the receipt. Home updates what’s left to spend right away.' },
+  { title: 'Add transactions as you go', body: 'Type an amount and pick a category, or scan the receipt. The Home screen updates what’s left to spend right away, and AntTipid warns you when something needs attention.' },
 ]
 
 const FAQ = [
   { q: 'Is AntTipid free?', a: 'Yes. AntTipid is free to use, with no ads.' },
   { q: 'Does it connect to my bank, GCash or Maya?', a: 'No. AntTipid never asks for your bank or e-wallet login. You add transactions yourself or scan a receipt, and you set the starting balance of each wallet.' },
-  { q: 'Who can see my records?', a: 'Only you. Your records are private to your account, and AntTipid has no analytics or tracking tools and never sells your information.' },
+  { q: 'Who can see my records?', a: 'Only you. Your records are private to your account. AntTipid has no analytics or tracking tools and never sells your information.' },
   { q: 'What happens to a receipt photo when I scan it?', a: 'The photo is sent to an AI service that reads the store, date, items and total. AntTipid keeps only what you choose to save. Avoid scanning receipts that show information you’d rather not share.' },
+  { q: 'How does AntTipid know a purchase is unusual?', a: 'It compares the amount with your own purchases in that category over the last 6 months, and only flags amounts far above your usual. It needs at least 3 purchases in a category, and skips categories paid once a month. This check doesn’t use an AI service.' },
+  { q: 'Will AntTipid email me? Can I turn it off?', a: 'Yes, unless you turn it off. AntTipid emails only the address you sign in with, when something you add or change sets off a warning, and sends a recap on the 1st of the month. You can turn off email or any single warning in Settings. With email off, warnings still appear under the bell in the app. AntTipid doesn’t send phone push notifications.' },
   { q: 'Can I use it on my phone?', a: 'Yes. AntTipid works in your phone’s browser, and you can add it to your home screen so it opens like an app.' },
-  { q: 'Can I get my data out or delete it?', a: `Download any month of transactions as a CSV from Activity. To delete your account and everything in it, email ${CONTACT} from the address you sign in with.` },
+  { q: 'Can I get my data out or delete it?', a: `Download any month of transactions as a CSV from Activity, print a monthly report or save it as a PDF from Reports, or download a backup of your records from Settings (receipt photos aren’t included). To delete your account and everything in it, email ${CONTACT} from the address you sign in with.` },
 ]
 
 /** Stagger index for the landing's .rise / .log-in / step animations. */
@@ -71,8 +82,8 @@ const SAMPLE_BUDGETS: { b: BudgetStatus; category: Category }[] = [
 // Under the live card, so the phone screen reads as Home: recent activity, cut off by the screen edge like a list you'd scroll.
 const SAMPLE_ACTIVITY = [
   { title: 'Lunch at the carinderia', where: 'Food, Cash', amount: 95, category: cat('Food') },
-  { title: 'Grab to work', where: 'Transport, GCash', amount: 245, category: cat('Transport') },
-  { title: 'Meralco bill', where: 'Bills, Bank account', amount: 1650, category: cat('Bills') },
+  { title: 'Ride to work', where: 'Transport, E-wallet', amount: 245, category: cat('Transport') },
+  { title: 'Electric bill', where: 'Bills, Bank account', amount: 1650, category: cat('Bills') },
 ]
 
 // The whole-month budget the category spending adds up to: ₱5,760 of ₱12,000.
@@ -84,7 +95,7 @@ const SAMPLE_RECEIPT = [
   { name: 'Cooking oil', qty: 1, price: 135 },
 ]
 
-// Running total for the first 18 days of a 30-day month, ending at the ₱5,760 spent: the Meralco bill on day 5, groceries
+// Running total for the first 18 days of a 30-day month, ending at the ₱5,760 spent: the electric bill on day 5, groceries
 // on day 16. It stays under the on-budget pace, like the "On track" budget.
 const PACE_DAYS = 30
 const SAMPLE_RUNNING = [180, 420, 610, 760, 2410, 2560, 2790, 3010, 3150, 3380, 3700, 3840, 4060, 4280, 4520, 5210, 5450, 5760]
@@ -122,7 +133,7 @@ const footerLink = 'block rounded-sm py-2.5 underline-offset-4 transition-colors
 function TryIt() {
   const [today] = useState(() => {
     const now = new Date()
-    return { dayOfMonth: now.getDate(), daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() }
+    return { month: currentMonth(), dayOfMonth: now.getDate(), daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() }
   })
   const [budget, setBudget] = useState('12000')
   // Sample spending sits a little under the on-budget pace for today, so the first thing a visitor sees is "On track" on any day of the month.
@@ -196,7 +207,7 @@ function TryIt() {
           <span aria-hidden className="absolute bottom-2 left-1/2 h-1 w-28 -translate-x-1/2 rounded-full bg-foreground/80" />
         </div>
       </div>
-      <p style={stagger(8)} className="rise text-center text-sm text-muted-foreground">Try your own numbers. It uses today’s date and the same math as Home.</p>
+      <p style={stagger(8)} className="rise text-center text-sm text-muted-foreground">Try your own numbers. This is the card from the app’s Home screen, using today’s date.</p>
     </div>
   )
 }
@@ -295,6 +306,86 @@ function TrendBars() {
   )
 }
 
+/** The bell's panel on sample numbers, in the words the server writes. The same month as the preview: day 18, Food
+    at ₱2,180 of ₱3,000, Transport at ₱1,240 of ₱1,200, and last month's bars in the six-month chart. */
+function SampleNotifications() {
+  const now = new Date()
+  const month = now.toLocaleString('en', { month: 'short' })
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1).toLocaleString('en', { month: 'long' })
+  const rows = [
+    { title: 'Unusual purchase: ₱950 on Food', body: 'You usually spend ₱80 to ₱250 there.' },
+    { title: `Spending fast: Food budget runs out ${month} 25`, body: 'Keep to ₱63 a day to last the month.' },
+    { title: 'Transport budget is ₱40 over', body: 'You’ve spent ₱1,240 of ₱1,200.' },
+    { title: `Your ${lastMonth} recap`, body: `In ${lastMonth}, you earned ₱18,500 and spent ₱9,140, so you saved ₱9,360.` },
+  ]
+  return (
+    <Card size="sm">
+      <CardHeader>
+        <CardTitle>Notifications</CardTitle>
+        <CardDescription>Warnings about your budgets and purchases.</CardDescription>
+        <CardAction><Bell aria-hidden className="size-5" /></CardAction>
+      </CardHeader>
+      <CardContent>
+        <ItemGroup className="-mx-3">
+          {rows.map((n) => (
+            <Item key={n.title} size="sm">
+              <ItemContent>
+                <ItemTitle className="line-clamp-none break-words">{n.title}</ItemTitle>
+                <ItemDescription className="line-clamp-none break-words">{n.body}</ItemDescription>
+              </ItemContent>
+            </Item>
+          ))}
+        </ItemGroup>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** The add form's check on a purchase far above the usual, and the two saves that are the decision. Only a picture: inert, like the preview's screens. */
+function SampleUnusual() {
+  const line = numberLine(80, 250, 950)
+  return (
+    <Card size="sm" inert>
+      <CardContent className="grid gap-3">
+        <div className="grid gap-3 rounded-lg bg-destructive/5 p-3 text-sm">
+          <p className="flex items-start gap-2 font-medium text-destructive">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+            ₱950 is far above your usual Food (₱80 to ₱250).
+          </p>
+          <div className="grid gap-1.5">
+            <div className="relative h-2 rounded-full bg-muted">
+              <div className="absolute inset-y-0 rounded-full bg-primary/35" style={{ left: `${line.bandLeft}%`, width: `${line.bandWidth}%` }} />
+              <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-destructive ring-2 ring-card" style={{ left: `${line.marker}%` }} />
+            </div>
+            <div className="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums">
+              <span>Usual ₱80 to ₱250</span>
+              <span>This ₱950</span>
+            </div>
+          </div>
+          <p className="text-muted-foreground">A one-off is left out of your daily pace. Normal spending teaches AntTipid your habits.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button>Save as one-off</Button>
+          <Button variant="outline">It’s normal for me</Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** An icon beside a title and a line of text. Its icon drops in and its copy is written in as it scrolls into view. */
+function IconItem({ icon: Icon, title, body, i }: { icon: LucideIcon; title: string; body: string; i: number }) {
+  return (
+    <li style={stagger(i % 2)} className="feature grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+      <span className="row-span-2 flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+        <Icon className="size-5" aria-hidden />
+      </span>
+      <h3 className="text-item font-semibold">{title}</h3>
+      <p className="max-w-[60ch] text-item-body text-muted-foreground sm:leading-relaxed">{body}</p>
+    </li>
+  )
+}
+
 function SectionHeading({ id, title, body }: { id: string; title: string; body?: string }) {
   return (
     <div className="grid max-w-2xl gap-3">
@@ -316,7 +407,7 @@ export function LandingPage() {
           <Link to="/" aria-label="AntTipid home" className="shrink-0 rounded-sm focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none">
             <LogoWithTagline height={28} small />
           </Link>
-          <nav aria-label="Page sections" className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
+          <nav aria-label="Page sections" className="hidden items-center gap-5 text-sm font-medium whitespace-nowrap text-muted-foreground md:flex lg:gap-7">
             {NAV.map((n) => <a key={n.href} href={n.href} className={linkClass}>{n.label}</a>)}
           </nav>
           <div className="flex items-center gap-1 sm:gap-2">
@@ -357,20 +448,20 @@ export function LandingPage() {
             <h1 className="rise text-[2.25rem] leading-[1.05] font-bold tracking-[-0.04em] text-balance sm:text-[clamp(2.25rem,12cqi,4.5rem)]">
               <span className="sr-only">AntTipid: </span>Know where every peso goes.
             </h1>
-            <p style={stagger(1)} className="rise max-w-[34rem] leading-relaxed sm:text-lg md:text-base lg:text-lg text-muted-foreground">
-              <em className="font-medium text-foreground not-italic">Tipid</em> means spending carefully so your money lasts until the
-              next sahod. AntTipid is a free tracker that helps: log what you spend and earn across cash, GCash, Maya and your bank,
-              set a budget for each category, and see how much is left to spend this month.
+            <p style={stagger(1)} className="rise max-w-[34rem] leading-relaxed text-pretty sm:text-lg md:text-base lg:text-lg text-muted-foreground">
+              <em className="font-medium text-foreground not-italic">Tipid</em> means spending carefully so your money lasts until your
+              next payday. AntTipid is a free tracker that helps you do it: record what you spend and earn across cash, e-wallets and bank
+              accounts, set a budget for each category, and get a warning before your money runs out.
             </p>
             <div style={stagger(2)} className="rise flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button size="lg" className="cta-win" nativeButton={false} render={<Link to={SIGN_UP} />}>Start keeping more of your money</Button>
+              <Button size="lg" className="cta-win" nativeButton={false} render={<Link to={SIGN_UP} />}>Create your free account</Button>
               <Button size="lg" variant="outline" nativeButton={false} render={<a href="#how-it-works" />}>See how it works</Button>
             </div>
             <p style={stagger(3)} className="rise -mt-1 text-sm text-muted-foreground sm:-mt-2">
               Already have an account? <Link to="/sign-in" className="font-medium text-foreground underline underline-offset-4">Log in</Link>
             </p>
             <ul style={stagger(3)} className="rise flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-              {['Free, no ads', 'Never asks for your bank or GCash login', 'Works on your phone'].map((t) => (
+              {['Free, no ads', 'Never asks for your bank or e-wallet login', 'Works on your phone'].map((t) => (
                 <li key={t} className="flex items-center gap-1.5"><Check className="size-4 text-chart-1" aria-hidden />{t}</li>
               ))}
             </ul>
@@ -388,37 +479,50 @@ export function LandingPage() {
               body="Built around one question: how much can I still spend this month?"
             />
             <ul className="grid gap-x-12 gap-y-5 sm:grid-cols-2 sm:gap-y-10">
-              {FEATURES.map(({ icon: Icon, title, body }, i) => (
-                <li key={title} style={stagger(i % 2)} className="feature grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                  <span className="row-span-2 flex size-10 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-                    <Icon className="size-5" aria-hidden />
-                  </span>
-                  <h3 className="text-item font-semibold">{title}</h3>
-                  <p className="max-w-[60ch] text-item-body text-muted-foreground sm:leading-relaxed">{body}</p>
-                </li>
-              ))}
+              {FEATURES.map((f, i) => <IconItem key={f.title} {...f} i={i} />)}
             </ul>
           </div>
         </section>
 
+        {/* Warnings */}
+        <section id="warnings" aria-labelledby="warnings-title" className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10 sm:gap-12 sm:px-6 sm:py-20">
+          <SectionHeading
+            id="warnings-title"
+            title="AntTipid warns you before the money runs out"
+            body="Each time you add or change a transaction or budget, AntTipid checks your spending against your budgets and your own habits. If something needs attention, you see it in the app and by email."
+          />
+          <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-12">
+            <ul className="grid gap-y-5 sm:gap-y-8">
+              {WARNINGS.map((w, i) => <IconItem key={w.title} {...w} i={i} />)}
+            </ul>
+            <figure className="grid gap-3">
+              <SampleNotifications />
+              <SampleUnusual />
+              <figcaption className="text-sm text-muted-foreground">Sample numbers, worded as in the app.</figcaption>
+            </figure>
+          </div>
+        </section>
+
         {/* How it works */}
-        <section id="how-it-works" aria-labelledby="how-title" className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10 sm:gap-12 sm:px-6 sm:py-20">
-          <SectionHeading id="how-title" title="Set up in a few minutes" />
-          <ol className="steps grid gap-5 sm:gap-7 md:grid-cols-3 md:gap-8">
-            {STEPS.map((s, i) => (
-              <li key={s.title} style={stagger(i)} className="relative grid grid-cols-[2.5rem_1fr] content-start gap-x-4 gap-y-1 md:grid-cols-1 md:gap-3">
-                <span data-step-dot className="row-span-2 flex size-10 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground tabular-nums md:row-span-1" aria-hidden>{i + 1}</span>
-                {/* Connector to the next step: down the left on phones, across the top from md. */}
-                {i < STEPS.length - 1 && (
-                  <span data-step-link aria-hidden className="absolute top-12 -bottom-3 left-5 sm:-bottom-5 w-0.5 -translate-x-1/2 rounded-full bg-primary/15 md:top-5 md:-right-4 md:bottom-auto md:left-14 md:h-0.5 md:w-auto md:translate-x-0 md:-translate-y-1/2">
-                    <span className="block size-full rounded-full bg-primary" />
-                  </span>
-                )}
-                <h3 className="text-item font-semibold">{s.title}</h3>
-                <p className="text-item-body text-muted-foreground sm:leading-relaxed">{s.body}</p>
-              </li>
-            ))}
-          </ol>
+        <section id="how-it-works" aria-labelledby="how-title" className="border-y bg-card">
+          <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-10 sm:gap-12 sm:px-6 sm:py-20">
+            <SectionHeading id="how-title" title="Set up in a few minutes" />
+            <ol className="steps grid gap-5 sm:gap-7 md:grid-cols-3 md:gap-8">
+              {STEPS.map((s, i) => (
+                <li key={s.title} style={stagger(i)} className="relative grid grid-cols-[2.5rem_1fr] content-start gap-x-4 gap-y-1 md:grid-cols-1 md:gap-3">
+                  <span data-step-dot className="row-span-2 flex size-10 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground tabular-nums md:row-span-1" aria-hidden>{i + 1}</span>
+                  {/* Connector to the next step: down the left on phones, across the top from md. */}
+                  {i < STEPS.length - 1 && (
+                    <span data-step-link aria-hidden className="absolute top-12 -bottom-3 left-5 sm:-bottom-5 w-0.5 -translate-x-1/2 rounded-full bg-primary/15 md:top-5 md:-right-4 md:bottom-auto md:left-14 md:h-0.5 md:w-auto md:translate-x-0 md:-translate-y-1/2">
+                      <span className="block size-full rounded-full bg-primary" />
+                    </span>
+                  )}
+                  <h3 className="text-item font-semibold">{s.title}</h3>
+                  <p className="text-item-body text-muted-foreground sm:leading-relaxed">{s.body}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
         </section>
 
         {/* Preview */}
@@ -496,7 +600,7 @@ export function LandingPage() {
               >
                 <Card size="sm" className="relative">
                   <CardHeader>
-                    <CardTitle>Puregold</CardTitle>
+                    <CardTitle>Grocery store</CardTitle>
                     <CardDescription>3 items read</CardDescription>
                     <CardAction><Badge variant="secondary"><ReceiptText aria-hidden />Scanned</Badge></CardAction>
                   </CardHeader>
@@ -506,7 +610,7 @@ export function LandingPage() {
                       <FilledField label="Category" value="Groceries" />
                       <FilledField label="Paid from" value="Cash" />
                     </div>
-                    <FilledField label="Description" value="Puregold" />
+                    <FilledField label="Description" value="Grocery store" />
                     <ReceiptItems items={SAMPLE_RECEIPT} total={690} />
                   </CardContent>
                   <div className="scan-pass" />
@@ -516,7 +620,7 @@ export function LandingPage() {
               <PreviewPanel
                 step={3}
                 title="Reports"
-                body="Earned, spent and saved, spending against your budget’s pace, six months of income and spending, and where it went."
+                body="What you earned, spent and saved, your spending against your budget through the month, six months of income and spending, and where your money went."
                 headline="Food took 38% of your spending"
               >
                 <div className="grid grid-cols-3 gap-2">
@@ -580,7 +684,7 @@ export function LandingPage() {
           {/* px-8: while .panel-open clips the panel to a card 1rem in from each side, the text keeps 1rem of room inside it. */}
           <div className="panel-open grid justify-items-center gap-5 bg-primary canvas-dark px-8 py-14 text-center text-primary-foreground sm:gap-6 sm:py-20 md:py-28">
             <h2 id="cta-title" className="max-w-2xl text-statement font-semibold tracking-tight text-balance">
-              Make every sahod last the whole month.
+              Make your money last the whole month.
             </h2>
             <p className="max-w-md text-primary-foreground/70">Free, private to your account, and it never asks for your bank login. Set up on your phone in a few minutes.</p>
             <Button
@@ -589,10 +693,10 @@ export function LandingPage() {
               render={<Link to={SIGN_UP} />}
               className="cta-win cta-win-dark"
             >
-              Start keeping more of your money
+              Create your free account
             </Button>
             <p className="text-sm text-primary-foreground/70">
-              Already have one? <Link to="/sign-in" className="font-medium text-primary-foreground underline underline-offset-4">Log in</Link>
+              Already have an account? <Link to="/sign-in" className="font-medium text-primary-foreground underline underline-offset-4">Log in</Link>
             </p>
           </div>
         </section>

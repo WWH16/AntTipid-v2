@@ -13,7 +13,7 @@ import type { MonthSummary } from '@/types'
  * run on everyday spending without it, and `note` says what was left out.
  */
 export function SafeToSpendCard({ s, fixed, note }: {
-  s: Pick<MonthSummary, 'budget' | 'spent' | 'daysInMonth' | 'dayOfMonth'> & { month?: string }
+  s: Pick<MonthSummary, 'month' | 'budget' | 'spent' | 'daysInMonth' | 'dayOfMonth'>
   fixed?: ReturnType<typeof fixedPart>
   note?: string | null
 }) {
@@ -26,8 +26,8 @@ export function SafeToSpendCard({ s, fixed, note }: {
   const gap = (e.limit * s.dayOfMonth) / s.daysInMonth - e.spent
   const over = left < 0
   // From day 5 on, the same pace line Budgets shows ("On track. You should reach month-end with ₱1,450 to
-  // spare."). Before that, and on the landing page's sample card (no month), the plain on-budget pace instead.
-  const line = s.month && !over ? paceLine(e, s.month) : null
+  // spare."). Before that, the plain on-budget pace instead.
+  const line = over ? null : paceLine(e, s.month)
 
   return (
     <HeroCard>
