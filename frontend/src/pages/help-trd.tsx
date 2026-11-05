@@ -91,11 +91,11 @@ export function HelpTrdPage() {
             <>
               <Figure
                 n={3}
-                name="data-model"
-                width={760}
-                height={572}
-                alt="Entity relationships: wallets and categories each have many transactions. A transaction has many receipt items and at most one anomaly check. A category has at most one budget. Every table belongs to one auth user."
-                caption="Data model. Fields are selected, and the data dictionary below lists the rest."
+                name="schema"
+                width={1040}
+                height={1268}
+                alt="Database schema of all 11 tables and auth.users, with every column, SQL type and key. Every table's user_id references auth.users with on delete cascade: one user has zero or many rows in each table, and zero or one row in notification settings and scan usage. A wallet has zero or many transactions through wallet_id and through to_wallet_id, and a category has zero or many, all with no action on delete, so a wallet or category in use can't be deleted. A transaction has zero or many receipt items and zero or one anomaly check, and a category has zero or one budget and zero or many budget history rows, all deleted with their parent."
+                caption="Database schema. Lines end in crow’s feet for how many rows each side can have, and columns marked with ? can be null."
               />
               <h3>Conventions</h3>
               <ul>
