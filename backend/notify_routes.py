@@ -62,11 +62,12 @@ def save_settings(body: NotificationSettings, user: User):
 
 @router.post("/notifications/test", status_code=204)
 def send_test_email(user: User):
-    """Sends only to the signed-in user's own address. One a minute, so it can't eat the daily Gmail allowance."""
+    """Sends only to the signed-in user's own address. One a minute, so it can't eat the daily Gmail allowance. Uses the
+    server's connection because users can't write test_email_at: they could clear it through Supabase's REST API."""
     to = user.claims.get("email")
     if not to or not notify.email_ready():
         raise HTTPException(503, "Email isn't set up on this server yet.")
-    with user_tx(user) as conn:
+    with connect() as conn:
         allowed = conn.execute(
             """
             insert into notification_settings (user_id, test_email_at) values (%s, now())
