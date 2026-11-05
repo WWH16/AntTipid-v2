@@ -335,6 +335,7 @@ export function HelpTrdPage() {
               <li>The route accepts JPEG, PNG or WebP up to 8 MB, and sends the photo to vision models with the caller’s category names.</li>
               <li>Models are tried in order: two free OpenRouter models, then two Gemini models. A model whose key isn’t set is skipped.</li>
               <li>Each model gets 25 seconds. A bad reply moves to the next one, and a reply with no total means “not a receipt”.</li>
+              <li>A missing, impossible or future date becomes today in {c('APP_TIMEZONE')}, and {c('dateGuessed')} tells the form to ask the user to check it.</li>
               <li>Each user gets 30 scans a day, counted in {c('scan_usage')} before any model is asked. A scan that fails still counts. Past the limit the route returns 429 and asks the user to try tomorrow or type it in.</li>
               <li>The scan keeps no photo or receipt data, only that count. The photo saved with a transaction is a WebP, or a JPEG from Safari, within the bucket’s 1 MB cap.</li>
             </ul>

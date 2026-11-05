@@ -25,7 +25,7 @@ import storage  # noqa: E402
 from auth import verify_token  # noqa: E402
 from db import connect  # noqa: E402
 from main import app  # noqa: E402
-from months import current_month, shift_month  # noqa: E402
+from months import current_month, shift_month, today  # noqa: E402
 from receipts import NotAReceipt, normalize_scan  # noqa: E402
 
 TEST_SECRET = "test-jwt-secret-at-least-32-bytes-long!"
@@ -75,13 +75,26 @@ def test_receipt_normalization():
         "merchant": "  ", "date": "19/08/26", "total": "208.20", "category": "Snacks", "paymentMethod": "gcash",
         "items": [{"name": "Rice", "qty": "2", "price": "50"}, {"name": "", "price": 10}, {"name": "Free bag", "price": 0}, "junk"],
     })
-    assert (sloppy.merchant, sloppy.date, sloppy.total) == ("Receipt", date.today().isoformat(), 208.2)
+    assert (sloppy.merchant, sloppy.date, sloppy.total) == ("Receipt", today().isoformat(), 208.2)
     assert [(i.name, i.qty, i.price) for i in sloppy.items] == [("Rice", 2, 50)]
     assert (sloppy.suggested_category_id, sloppy.payment_method, sloppy.low_confidence) == (None, None, True)
 
-    # Misread dates (impossible or future) fall back to today; long item names are cut to what saving allows
-    for day in ("2026-02-30", "2999-01-01"):
-        assert normalize_scan({"total": 10, "date": day}).date == date.today().isoformat()
+    # A missing, impossible or future date becomes today and says so; a real date is kept as printed
+    for day in (None, "19/08/26", "2026-02-30", "2999-01-01"):
+        guessed = normalize_scan({"total": 10, "date": day})
+        assert (guessed.date, guessed.date_guessed) == (today().isoformat(), True)
+    for day in ("2026-08-19", today().isoformat()):
+        kept = normalize_scan({"total": 10, "date": day})
+        assert (kept.date, kept.date_guessed) == (day, False)
+
+    # "Future" follows APP_TIMEZONE, not the server's clock: the far east's today is still tomorrow in the far west
+    with patch.dict(os.environ, {"APP_TIMEZONE": "Pacific/Kiritimati"}):
+        east_today = today().isoformat()
+        assert normalize_scan({"total": 10, "date": east_today}).date_guessed is False
+    with patch.dict(os.environ, {"APP_TIMEZONE": "Pacific/Pago_Pago"}):
+        assert normalize_scan({"total": 10, "date": east_today}).date_guessed is True
+
+    # Long item names are cut to what saving allows
     assert len(normalize_scan({"total": 10, "items": [{"name": "x" * 300, "price": 10}]}).items[0].name) == 200
 
     # Unit prices keep 2 decimals, as saved; discount lines and misread negative quantities are dropped

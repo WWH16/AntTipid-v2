@@ -46,7 +46,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
   {
     title: 'Receipt scanning',
     items: [
-      'A JPEG, PNG or WebP photo up to 8 MB fills in the store, date, items, total, a suggested category and the payment method. The user checks the result, then saves.',
+      'A JPEG, PNG or WebP photo up to 8 MB fills in the store, date, items, total, a suggested category and the payment method. A missing, impossible or future date becomes today, with a message to check it. The user checks the result, then saves.',
       'The photo is kept privately with its transaction. Only its owner can open it.',
       'If reading fails, the app says so and the user can type the transaction instead.',
     ],
@@ -340,7 +340,7 @@ export function HelpPrdPage() {
             <ul>
               <li>Machine learning forecast of the run-out date, compared against the current pace method. Optional, since K-means already covers machine learning.</li>
               <li>A suggestion to mark a category as paid once a month (“Rent looks like a monthly bill”). On hold.</li>
-              <li>Small wording and edge-case fixes to the pace line and the Reports totals.</li>
+              <li>Updating the pace when the app stays open past midnight, and a test for the last day of the month.</li>
             </ul>
           ),
         },

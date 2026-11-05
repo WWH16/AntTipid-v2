@@ -98,6 +98,8 @@ function AddFlow() {
   // Checked against the items as they are now, so the warning goes once they're fixed.
   const subtotal = itemsTotal(items)
   const itemsOff = kind === 'expense' && subtotal > 0 && Math.abs(subtotal - value) >= 0.01
+  // Goes once the user picks a date themselves.
+  const dateGuessed = receipt?.dateGuessed && date === receipt.date
 
   // DSS feature 9: before saving, is this amount unusual for its category? Then the user decides, here.
   const check = useAnomalyCheck(kind === 'expense' && categoryId && value > 0 ? { categoryId, amount: value, date, exclude: editing?.id } : null)
@@ -277,7 +279,7 @@ function AddFlow() {
           )}
           <div className={kind === 'transfer' ? 'col-span-2 grid gap-2' : 'grid gap-2'}>
             <Label htmlFor="date">Date</Label>
-            <Input id="date" type="date" value={date} max={todayIso()} onChange={(e) => setDate(e.target.value)} />
+            <Input id="date" type="date" value={date} max={todayIso()} aria-describedby={dateGuessed ? 'date-guessed' : undefined} onChange={(e) => setDate(e.target.value)} />
             {/* Most spending is logged the same day or the day after: one tap instead of the date picker. */}
             <div className="flex gap-1">
               {([['Today', todayIso()], ['Yesterday', yesterdayIso()]] as const).map(([label, day]) => (
@@ -287,6 +289,7 @@ function AddFlow() {
               ))}
             </div>
           </div>
+          {dateGuessed && <p id="date-guessed" className="col-span-2 text-sm text-destructive">We couldn't read a valid date from this receipt, so this is today. Check it before saving.</p>}
         </div>
         <div className="grid gap-2">
           <Label htmlFor="title">Description (optional)</Label>
@@ -493,8 +496,7 @@ function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: ()
             <div className="grid gap-1 text-sm">
               <p className="font-medium">{result.merchant}</p>
               <p className="text-muted-foreground">{result.items.length} items, {money(result.total)}</p>
-              {result.lowConfidence && <p className="text-destructive">The items don't add up to the total. Check them on the next step.</p>}
-            </div>
+              {result.lowConfidence && <p className="text-destructive">The items don't add up to the total. Check them on the next step.</p>}            </div>
           </div>
           <ReceiptItems items={result.items} total={result.total} reveal />
         </div>

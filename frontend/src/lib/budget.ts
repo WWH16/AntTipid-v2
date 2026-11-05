@@ -90,8 +90,9 @@ export function paceLine(b: Pick<BudgetStatus, 'spent' | 'limit'>, month: string
   if (current && budgetState({ ...b, warnAt: 100 }) === 'used') return `All used up, with ${span}. Anything more this month goes over.`
   if (p && !p.lasts && p.perDay < 1) return `Almost used up: ${money(left, { whole: true })} left for ${span}.`
   if (!p) return null
-  if (p.lasts) return `On track. You should reach month-end with ${money(p.spare, { whole: true })} to spare.`
-  return `Spending fast. At this pace it runs out ${shortDate(p.runsOut)}, ${p.early} ${p.early === 1 ? 'day' : 'days'} before month-end. Keep to ${money(p.perDay, { whole: true })} a day to last the month.`
+  if (p.lasts) return p.spare < 0.5 ? "On track. You'll just make it to month-end." : `On track. You should reach month-end with ${money(p.spare, { whole: true })} to spare.`
+  const when = p.early === 0 ? `on ${shortDate(p.runsOut)}, the last day` : `${shortDate(p.runsOut)}, ${p.early} ${p.early === 1 ? 'day' : 'days'} before month-end`
+  return `Spending fast. At this pace it runs out ${when}. Keep to ${money(p.perDay, { whole: true })} a day to last the month.`
 }
 
 /**

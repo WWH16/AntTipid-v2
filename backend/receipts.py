@@ -12,6 +12,8 @@ import httpx
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from months import today
+
 log = logging.getLogger("receipts")
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
@@ -88,6 +90,7 @@ class ReceiptScan(CamelModel):
     payment_method: str | None = None
     payment_label: str | None = None
     low_confidence: bool = False
+    date_guessed: bool = False  # no usable date on the receipt, so `date` is today; ask the user to check
 
 
 class NotAReceipt(ValueError):
@@ -154,13 +157,13 @@ def _num(value, default: float = 0.0) -> float:
         return default
 
 
-def _purchase_date(value) -> str:
-    """The printed date if it's a real, past day; else today. A misread like 2026-02-30 would block saving."""
+def _purchase_date(value) -> date | None:
+    """The printed date if it's a real day, not after the user's today. A misread like 2026-02-30 would block saving."""
     try:
         day = date.fromisoformat(value)
     except (TypeError, ValueError):
-        return date.today().isoformat()
-    return min(day, date.today()).isoformat()
+        return None
+    return day if day <= today() else None
 
 
 def _category_id(raw: dict, categories: dict[str, str]) -> str | None:
@@ -185,9 +188,11 @@ def normalize_scan(raw: dict, categories: dict[str, str] = CATEGORIES) -> Receip
     # Free lines carry no money; a negative quantity is a misread.
     items = [i for i in items if i.name and i.price > 0 and i.qty > 0]
     label = raw.get("paymentLabel")
+    day = _purchase_date(raw.get("date"))
     return ReceiptScan(
         merchant=str(raw.get("merchant") or "").strip() or "Receipt",
-        date=_purchase_date(raw.get("date")),
+        date=(day or today()).isoformat(),
+        date_guessed=day is None,
         total=total,
         items=items,
         suggested_category_id=_category_id(raw, categories),

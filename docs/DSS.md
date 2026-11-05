@@ -81,12 +81,12 @@ One word per idea in everything the app says:
 - [x] Checks (`frontend/src/lib/budget.test.ts`, `backend/test_receipts.py`)
 
 ### Polish (feature 3, no effect on decisions)
-- [ ] "With ₱0 to spare": say "You'll just make it to month-end" when the leftover rounds to ₱0
+- [x] "With ₱0 to spare": say "You'll just make it to month-end" when the leftover rounds to ₱0
 - [ ] Page left open past midnight: recompute the pace when the app comes back into view
-- [ ] A scanned receipt with a misread future date: clamp it to today
+- [x] A scanned receipt with a missing, impossible or future date: today, with a message to check it
 - [ ] A check for the last day of the month
-- [ ] Running out on the last day reads "0 days before month-end": say "on Oct 31, the last day" instead
-- [ ] Reports totals: "Overspent" means spent more than earned, and reads like over budget (with no income it equals Spent)
+- [x] Running out on the last day reads "0 days before month-end": say "on Oct 31, the last day" instead
+- [x] Reports totals: "Overspent" means spent more than earned, and reads like over budget: now "Short by" (with no income it still equals Spent)
 
 ### 8. ML forecast
 - _To break down when we start._

@@ -107,6 +107,7 @@ export interface ReceiptScan {
   items: ReceiptItem[]
   suggestedCategoryId?: string
   lowConfidence?: boolean // items don't add up to the total; ask the user to double-check
+  dateGuessed?: boolean // no usable date on the receipt, so date is today; ask the user to check
   paymentMethod?: WalletType
   paymentLabel?: string // raw provider found, e.g. "GCash", "VISA", "Cash"
 }

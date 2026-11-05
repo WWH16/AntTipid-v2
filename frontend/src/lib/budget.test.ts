@@ -51,6 +51,10 @@ test('pace: run-out day and safe daily amount, or what is left over', () => {
   assert.equal(paceLine(monthly, '2026-10', monthly, '2026-10-15'), 'Spending fast. At this pace it runs out Oct 26, 5 days before month-end. Keep to ₱497 a day to last the month.')
   // Lasts the month: what's left over at month-end.
   assert.equal(paceLine({ spent: 10000, limit: 20000 }, '2026-10', undefined, '2026-10-25'), 'On track. You should reach month-end with ₱7,600 to spare.')
+  // Lasts with nothing over: ₱100 a day uses all of ₱3,100, so no "₱0 to spare".
+  assert.equal(paceLine({ spent: 1500, limit: 3100 }, '2026-10', undefined, '2026-10-15'), "On track. You'll just make it to month-end.")
+  // Runs out during the last day: no "0 days before month-end". ₱1,550 at ₱100 a day lasts to day 30.5.
+  assert.equal(paceLine({ spent: 1500, limit: 3050 }, '2026-10', undefined, '2026-10-15'), 'Spending fast. At this pace it runs out on Oct 31, the last day. Keep to ₱91 a day to last the month.')
   // Nothing spent yet: what the budget allows a day, from day 1 (₱20,000 over Oct 1-31).
   assert.equal(paceLine({ spent: 0, limit: 20000 }, '2026-10', undefined, '2026-10-01'), "Nothing spent yet. That's ₱645 a day for the rest of the month.")
   // A new category with nothing spent still hears first that the monthly budget runs out.
