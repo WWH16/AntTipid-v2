@@ -25,6 +25,7 @@ import storage  # noqa: E402
 from auth import verify_token  # noqa: E402
 from db import connect  # noqa: E402
 from main import app  # noqa: E402
+from months import current_month, shift_month  # noqa: E402
 from receipts import NotAReceipt, normalize_scan  # noqa: E402
 
 TEST_SECRET = "test-jwt-secret-at-least-32-bytes-long!"
@@ -147,6 +148,7 @@ def test_routes_and_user_isolation():
         print("Skipping live DB route tests (set DATABASE_URL in backend/.env to run them)")
         return
 
+    month = current_month()  # a new budget starts in the real current month (budget_history's trigger), so the test does too
     user_a = str(uuid.uuid4())
     user_b = str(uuid.uuid4())
     with connect() as conn:
@@ -187,16 +189,16 @@ def test_routes_and_user_isolation():
 
             # 3. Transactions: income, expense with receipt items, transfer, filters, CSV, receipt photo
             inc = client.post("/api/transactions", headers=ha, json={
-                "kind": "income", "amount": 5000, "title": "Payroll", "date": "2026-10-01",
+                "kind": "income", "amount": 5000, "title": "Payroll", "date": f"{month}-01",
                 "walletId": w1["id"], "categoryId": salary_id, "note": "", "source": "manual",
             }).json()
             exp = client.post("/api/transactions", headers=ha, json={
-                "kind": "expense", "amount": 250, "title": "Jollibee", "date": "2026-10-15",
+                "kind": "expense", "amount": 250, "title": "Jollibee", "date": f"{month}-15",
                 "walletId": w1["id"], "categoryId": food_id, "note": "Lunch", "source": "receipt",
                 "items": [{"name": "Chickenjoy", "qty": 1, "price": 250}],
             }).json()
             xfr = client.post("/api/transactions", headers=ha, json={
-                "kind": "transfer", "amount": 300, "title": "Withdraw", "date": "2026-10-16",
+                "kind": "transfer", "amount": 300, "title": "Withdraw", "date": f"{month}-16",
                 "walletId": w1["id"], "toWalletId": w2["id"], "note": "", "source": "manual",
             }).json()
             assert exp["items"] == [{"name": "Chickenjoy", "qty": 1, "price": 250}]
@@ -214,17 +216,17 @@ def test_routes_and_user_isolation():
             assert next(w["balance"] for w in client.get("/api/wallets", headers=ha).json() if w["id"] == w2["id"]) == 1250.5
 
             # Search finds receipt line items; category in use cannot be deleted (409)
-            found = client.get("/api/transactions", params={"month": "2026-10", "search": "chickenjoy"}, headers=ha).json()
+            found = client.get("/api/transactions", params={"month": month, "search": "chickenjoy"}, headers=ha).json()
             assert [t["id"] for t in found] == [exp["id"]]
-            # since is inclusive: the 10-15 expense and 10-16 transfer, not the 10-01 income
-            since = client.get("/api/transactions", params={"since": "2026-10-15"}, headers=ha).json()
+            # since is inclusive: the expense on the 15th and transfer on the 16th, not the income on the 1st
+            since = client.get("/api/transactions", params={"since": f"{month}-15"}, headers=ha).json()
             assert {t["id"] for t in since} == {exp["id"], xfr["id"]}
             assert client.get("/api/transactions", params={"since": "not-a-date"}, headers=ha).status_code == 422
             assert client.delete(f"/api/categories/{food_id}", headers=ha).status_code == 409
             assert client.delete(f"/api/wallets/{w1['id']}", headers=ha).status_code == 409
 
             # CSV export
-            csv_res = client.get("/api/transactions/export.csv", params={"month": "2026-10"}, headers=ha)
+            csv_res = client.get("/api/transactions/export.csv", params={"month": month}, headers=ha)
             assert csv_res.status_code == 200 and "Jollibee" in csv_res.text and "Pocket Cash" in csv_res.text
 
             # Receipt photo validation (415 non-image, 413 >1MB) + upload + signed URL + delete cleanup
@@ -265,54 +267,54 @@ def test_routes_and_user_isolation():
             assert too_many.status_code == 422 and "₱8,000" in too_many.json()["detail"]
             too_low = client.post("/api/budgets", json={"categoryId": None, "limit": 1999, "warnAt": 80}, headers=ha)
             assert too_low.status_code == 422 and "can't be less" in too_low.json()["detail"]
-            b_list = client.get("/api/budgets", params={"month": "2026-10"}, headers=ha).json()
+            b_list = client.get("/api/budgets", params={"month": month}, headers=ha).json()
             assert len(b_list) == 2 and b_list[0]["categoryId"] is None and b_list[0]["spent"] == 250
             assert b_list[1]["categoryId"] == food_id and b_list[1]["spent"] == 250
 
-            rep_sum = client.get("/api/reports/summary", params={"month": "2026-10"}, headers=ha).json()
+            rep_sum = client.get("/api/reports/summary", params={"month": month}, headers=ha).json()
             assert rep_sum["income"] == 5000 and rep_sum["spent"] == 250 and rep_sum["budget"] == 10000
             assert rep_sum["fixed"] == []  # no category is paid once a month yet
             # Paid once a month: Food switched on shows its spending in the summary; income categories can't be.
             assert client.patch(f"/api/categories/{food_id}", json={"onceAMonth": True}, headers=ha).json()["onceAMonth"] is True
             assert client.patch(f"/api/categories/{salary_id}", json={"onceAMonth": True}, headers=ha).status_code == 422
-            fixed = client.get("/api/reports/summary", params={"month": "2026-10"}, headers=ha).json()["fixed"]
+            fixed = client.get("/api/reports/summary", params={"month": month}, headers=ha).json()["fixed"]
             assert fixed == [{"categoryId": food_id, "total": 250}]
             assert client.patch(f"/api/categories/{food_id}", json={"onceAMonth": False}, headers=ha).json()["onceAMonth"] is False
-            rep_mon = client.get("/api/reports/monthly", params={"month": "2026-10"}, headers=ha).json()
+            rep_mon = client.get("/api/reports/monthly", params={"month": month}, headers=ha).json()
             assert rep_mon["byCategory"] == [{"categoryId": food_id, "total": 250}]
             assert sorted(rep_mon["budgets"], key=lambda b: b["categoryId"] or "") == [
                 {"categoryId": None, "limit": 10000}, {"categoryId": food_id, "limit": 2000},
             ]
-            # Budget history: a past month reads the budgets it had, not today's. August had a 6,000 monthly budget
-            # and no Food one; September has no row of its own, so it keeps August's.
+            # Budget history: a past month reads the budgets it had, not today's. Two months ago had a 6,000 monthly budget
+            # and no Food one; last month has no row of its own, so it keeps that one.
             with connect() as conn:
                 conn.execute(
-                    "insert into budget_history (user_id, category_id, month, limit_amount) values (%s, null, '2026-08-01', 6000)",
-                    (user_a,),
+                    "insert into budget_history (user_id, category_id, month, limit_amount) values (%s, null, %s::date, 6000)",
+                    (user_a, f"{shift_month(month, -2)}-01"),
                 )
-            for m in ("2026-08", "2026-09"):
+            for m in (shift_month(month, -2), shift_month(month, -1)):
                 assert client.get("/api/reports/monthly", params={"month": m}, headers=ha).json()["budgets"] == [{"categoryId": None, "limit": 6000}]
                 assert client.get("/api/reports/summary", params={"month": m}, headers=ha).json()["budget"] == 6000
             # A budget removed this month is gone from this month on.
             food_budget = next(b for b in b_list if b["categoryId"] == food_id)
             assert client.delete(f"/api/budgets/{food_budget['id']}", headers=ha).status_code == 204
-            assert client.get("/api/reports/monthly", params={"month": "2026-10"}, headers=ha).json()["budgets"] == [{"categoryId": None, "limit": 10000}]
+            assert client.get("/api/reports/monthly", params={"month": month}, headers=ha).json()["budgets"] == [{"categoryId": None, "limit": 10000}]
             # Deleting an unused category with a budget takes its budget and its history with it.
             gone = client.post("/api/categories", json={"name": "Hobbies", "kind": "expense", "icon": "other"}, headers=ha).json()
             assert client.post("/api/budgets", json={"categoryId": gone["id"], "limit": 500, "warnAt": 80}, headers=ha).status_code == 204
             assert client.delete(f"/api/categories/{gone['id']}", headers=ha).status_code == 204
             with connect() as conn:
                 assert conn.execute("select count(*) as n from budget_history where category_id = %s", (gone["id"],)).fetchone()["n"] == 0
-            assert len(rep_mon["trend"]) == 6 and rep_mon["trend"][-1] == {"month": "2026-10", "income": 5000, "spent": 250}
+            assert len(rep_mon["trend"]) == 6 and rep_mon["trend"][-1] == {"month": month, "income": 5000, "spent": 250}
             # Month picker: only months with transactions, oldest first; spent counts expenses only
             rep_months = client.get("/api/reports/months", headers=ha).json()
-            assert rep_months == {"budget": 10000, "months": [{"month": "2026-10", "spent": 250}]}
+            assert rep_months == {"budget": 10000, "months": [{"month": month, "spent": 250}]}
 
             # 6. User isolation: User B cannot see or touch any of User A's rows
             assert client.get("/api/wallets", headers=hb).json() == []
             assert client.get("/api/transactions", headers=hb).json() == []
             assert client.get("/api/reports/months", headers=hb).json() == {"budget": 0, "months": []}
-            assert client.get("/api/budgets", params={"month": "2026-10"}, headers=hb).json() == []
+            assert client.get("/api/budgets", params={"month": month}, headers=hb).json() == []
             assert client.get(f"/api/transactions/{exp['id']}", headers=hb).status_code == 404
             assert client.patch(f"/api/wallets/{w1['id']}", json={"name": "Hacked"}, headers=hb).status_code == 404
             assert client.delete(f"/api/wallets/{w2['id']}", headers=hb).status_code == 204
@@ -323,7 +325,7 @@ def test_routes_and_user_isolation():
             # User B cannot record a transaction against User A's wallet
             cats_b = client.get("/api/categories", headers=hb).json()
             assert client.post("/api/transactions", headers=hb, json={
-                "kind": "expense", "amount": 50, "title": "Sneak", "date": "2026-10-15",
+                "kind": "expense", "amount": 50, "title": "Sneak", "date": f"{month}-15",
                 "walletId": w1["id"], "categoryId": cats_b[0]["id"], "note": "", "source": "manual",
             }).status_code == 422
 
@@ -528,8 +530,9 @@ def test_live_supabase_end_to_end():
         assert wallet["balance"] == 3000
 
         # 3. Scan a receipt (with the signed-in user's UUID categories) & save receipt transaction + upload photo to Storage
+        month = current_month()  # a new budget starts in the real current month (budget_history's trigger)
         fake_model_reply = {
-            "merchant": "SM Supermarket", "date": "2026-10-20", "total": 209.2, "category": "Groceries",
+            "merchant": "SM Supermarket", "date": f"{month}-01", "total": 209.2, "category": "Groceries",
             "paymentMethod": "e_wallet", "paymentLabel": "GCash",
             "items": [{"name": "Cheese Buns", "qty": 1, "price": 57.25}, {"name": "Butter Cream", "qty": 2, "price": 75.975}],
         }
@@ -560,15 +563,15 @@ def test_live_supabase_end_to_end():
         # 5. Monthly report and budgets
         assert client.post("/api/budgets", headers=headers, json={"categoryId": None, "limit": 15000, "warnAt": 80}).status_code == 204
         assert client.post("/api/budgets", headers=headers, json={"categoryId": groc_id, "limit": 4000, "warnAt": 80}).status_code == 204
-        budgets = client.get("/api/budgets", params={"month": "2026-10"}, headers=headers).json()
+        budgets = client.get("/api/budgets", params={"month": month}, headers=headers).json()
         assert len(budgets) == 2 and budgets[0]["spent"] == 209.2 and budgets[1]["spent"] == 209.2
-        summary = client.get("/api/reports/summary", params={"month": "2026-10"}, headers=headers).json()
-        monthly = client.get("/api/reports/monthly", params={"month": "2026-10"}, headers=headers).json()
+        summary = client.get("/api/reports/summary", params={"month": month}, headers=headers).json()
+        monthly = client.get("/api/reports/monthly", params={"month": month}, headers=headers).json()
         assert summary["spent"] == 209.2 and summary["budget"] == 15000
         assert monthly["byCategory"] == [{"categoryId": groc_id, "total": 209.2}]
 
         # 6. Export CSV
-        csv_res = client.get("/api/transactions/export.csv", params={"month": "2026-10"}, headers=headers)
+        csv_res = client.get("/api/transactions/export.csv", params={"month": month}, headers=headers)
         assert csv_res.status_code == 200 and "SM Supermarket" in csv_res.text and "209.20" in csv_res.text
 
         # 7. Delete transaction & confirm the photo is gone from Supabase Storage
