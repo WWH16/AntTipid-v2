@@ -6,7 +6,7 @@ import { LogoWithTagline } from '@/components/logo'
 import { useOrigin } from '@/hooks/use-origin'
 
 const CONTACT = 'support@anttipid.com'
-const SITE = 'https://ant-tipid-v2-frontend.vercel.app'
+const SITE = 'https://anttipid.com'
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

@@ -126,7 +126,7 @@ export function HelpPrdPage() {
                 head={['Item', 'Detail']}
                 rows={[
                   ['Product', 'AntTipid'],
-                  ['Web address', 'https://ant-tipid-v2-frontend.vercel.app'],
+                  ['Web address', 'https://anttipid.com'],
                   ['Promise', 'Know where every peso goes.'],
                   ['Core question', 'How much can I still spend this month?'],
                   ['Price', 'Free, with no ads'],
