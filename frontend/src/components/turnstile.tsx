@@ -1,6 +1,6 @@
 // Cloudflare Turnstile, so bots can't hammer sign-in, sign-up and the email endpoints.
 // Supabase Auth checks the token (Authentication > Attack Protection > CAPTCHA); the backend never sees it.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 /** Unset means no widget and no token, which works only while CAPTCHA is off in Supabase. */
 export const TURNSTILE_SITE_KEY: string | undefined = import.meta.env.VITE_TURNSTILE_SITE_KEY
@@ -26,14 +26,13 @@ const loadScript = () => (script ??= new Promise<void>((resolve, reject) => {
 }))
 
 /**
- * Hidden unless Cloudflare wants the visitor to click a challenge. Reports '' while there's no usable token.
+ * Always visible. Reports '' while there's no usable token.
  * A token works for one auth call: change the key after each call to get a fresh widget and token.
  * An expired token (after 5 minutes) is cleared, and the widget fetches a new one by itself.
- * Takes no space until a challenge shows; put it in a gap-free wrapper with the submit button.
+ * Reserves the widget's height so the form doesn't jump; put it in a gap-free wrapper with the submit button.
  */
 export function Turnstile({ onToken }: { onToken: (token: string) => void }) {
   const el = useRef<HTMLDivElement>(null)
-  const [challenge, setChallenge] = useState(false)
 
   useEffect(() => {
     if (!TURNSTILE_SITE_KEY) return
@@ -44,14 +43,11 @@ export function Turnstile({ onToken }: { onToken: (token: string) => void }) {
         if (gone || !el.current || !window.turnstile) return
         widgetId = window.turnstile.render(el.current, {
           sitekey: TURNSTILE_SITE_KEY,
-          appearance: 'interaction-only',
           theme: 'light',
           size: 'flexible',
           callback: onToken,
           'expired-callback': () => onToken(''),
           'error-callback': () => onToken(''),
-          'before-interactive-callback': () => setChallenge(true),
-          'after-interactive-callback': () => setChallenge(false),
         })
       })
       .catch(() => onToken(''))
@@ -62,5 +58,5 @@ export function Turnstile({ onToken }: { onToken: (token: string) => void }) {
     }
   }, [onToken])
 
-  return TURNSTILE_SITE_KEY ? <div ref={el} className={challenge ? 'pb-4' : undefined} /> : null
+  return TURNSTILE_SITE_KEY ? <div ref={el} className="mb-4 min-h-[65px]" /> : null
 }

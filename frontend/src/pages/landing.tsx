@@ -23,7 +23,7 @@ import { monthTotals } from '@/lib/report'
 import type { BudgetStatus, Category } from '@/types'
 
 const SIGN_UP = '/sign-in?mode=signup'
-const CONTACT = 'anttipid.support@gmail.com'
+const CONTACT = 'support@anttipid.com'
 
 const NAV = [
   { href: '#features', label: 'Features' },

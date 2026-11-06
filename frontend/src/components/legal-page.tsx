@@ -5,7 +5,7 @@ import { useApp } from '@/app-state'
 import { LogoWithTagline } from '@/components/logo'
 import { useOrigin } from '@/hooks/use-origin'
 
-const CONTACT = 'anttipid.support@gmail.com'
+const CONTACT = 'support@anttipid.com'
 const SITE = 'https://ant-tipid-v2-frontend.vercel.app'
 
 export function Section({ title, children }: { title: string; children: ReactNode }) {
