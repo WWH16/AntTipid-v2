@@ -36,18 +36,20 @@ export function HelpTrdPage() {
                 name="architecture"
                 width={760}
                 height={556}
-                alt="Four layers. The browser runs the React app, loads the frontend from Vercel over HTTPS, signs in with Supabase Auth and completes a Cloudflare Turnstile challenge. The frontend passes API calls with a bearer JWT to the FastAPI backend on Vercel functions in Singapore, which checks tokens against the Auth keys, queries Postgres, stores photos in Storage, sends photos to OpenRouter and Gemini vision models and sends email through Gmail SMTP."
+                alt="Four layers. The browser runs the React app, loads the frontend from Vercel at anttipid.com over HTTPS, signs in with Supabase Auth and completes a Cloudflare Turnstile challenge. The frontend passes API calls with a bearer JWT to the FastAPI backend on Vercel functions in Singapore, which checks tokens against the Auth keys, queries Postgres, stores photos in Storage, sends photos to OpenRouter and Gemini vision models and sends email through Gmail SMTP."
                 caption="System components in four layers, and the calls between them."
               />
               <DocTable
                 head={['Component', 'Role']}
                 rows={[
-                  ['Frontend', 'Static React app on Vercel. Rewrites /api/* to the backend, so the browser sees one origin.'],
+                  ['Frontend', 'Static React app on Vercel at anttipid.com. Rewrites /api/* to the backend, so the browser sees one origin.'],
                   ['Backend', 'FastAPI on Vercel functions. All data access and all decision support rules run here.'],
                   ['Supabase Auth', 'Accounts, passwords, Google sign-in and JWT access tokens. The browser talks to it directly.'],
                   ['Supabase Postgres', '10 application tables with row level security, reached through the transaction pooler on port 6543.'],
                   ['Supabase Storage', 'Private receipts bucket, one folder per user.'],
                   ['Cloudflare Turnstile', 'CAPTCHA on sign-in, sign-up and auth emails, checked by Supabase Auth.'],
+                  ['Cloudflare domain and DNS', 'Registers anttipid.com and answers its DNS. Records are DNS only, so traffic goes straight to Vercel.'],
+                  ['Cloudflare Email Routing', 'Forwards support@anttipid.com to a Gmail inbox. It only receives, so app email still goes through Gmail SMTP.'],
                   ['OpenRouter and Gemini', 'Vision models that read receipt photos.'],
                   ['Gmail SMTP', 'Notification and recap email.'],
                   ['Vercel Cron', 'Calls the new-month recap job at 00:00 UTC on the 1st, which is 08:00 in Manila.'],
@@ -75,7 +77,7 @@ export function HelpTrdPage() {
                 name="stack"
                 width={760}
                 height={352}
-                alt="Four layers, top to bottom, each resting on the next. Frontend: React 19, TypeScript 6, Vite 8, React Router 7, Tailwind CSS 4, shadcn/ui, Base UI 1, lucide-react, Recharts 3, Sonner 2, Geist and auth-js 2. Backend, highlighted: Python 3, FastAPI 0.115, Uvicorn 0.34, httpx 0.28, psycopg 3.2 with psycopg-pool, and PyJWT 2.10. Database: PostgreSQL with row level security, and SQL migrations. Hosting: Vercel with two projects in region sin1, Singapore, and Supabase."
+                alt="Four layers, top to bottom, each resting on the next. Frontend: React 19, TypeScript 6, Vite 8, React Router 7, Tailwind CSS 4, shadcn/ui, Base UI 1, lucide-react, Recharts 3, Sonner 2, Geist and auth-js 2. Backend, highlighted: Python 3, FastAPI 0.115, Uvicorn 0.34, httpx 0.28, psycopg 3.2 with psycopg-pool, and PyJWT 2.10. Database: PostgreSQL with row level security, and SQL migrations. Hosting: Vercel with two projects in region sin1, Singapore, Supabase, and a Cloudflare domain."
                 caption="Technology stack, each layer resting on the one below, with versions. The backend is where the rules run."
               />
               <p>
@@ -187,7 +189,7 @@ export function HelpTrdPage() {
                 head={['Area', 'How it’s handled']}
                 rows={[
                   ['Passwords', <>Supabase Auth stores a one-way hash in {c('auth.users.encrypted_password')}. The browser sends passwords to Supabase, and AntTipid’s API never receives one.</>],
-                  ['SSL and transport', 'Browser traffic to Vercel and Supabase uses HTTPS. Gmail SMTP uses STARTTLS.'],
+                  ['SSL and transport', 'Browser traffic to Vercel and Supabase uses HTTPS. Vercel holds Let’s Encrypt certificates for anttipid.com and www, renews them, redirects HTTP to HTTPS and sends HSTS. Gmail SMTP uses STARTTLS.'],
                   ['Bots', 'Cloudflare Turnstile on sign-in, sign-up and auth emails, with a new token per attempt.'],
                   ['Tokens', <>Every route except the cron job needs a JWT. ES256 and RS256 are checked against the project’s JWKS, HS256 against a secret. {c('exp')}, {c('aud')}, {c('iss')} and {c('sub')} are required.</>],
                   ['Origins', <>CORS lets a browser call the API directly only from {c('APP_URL')} and {c('http://localhost:5173')}. The app itself goes through the same-origin rewrite, so it doesn’t depend on this.</>],
@@ -406,6 +408,7 @@ export function HelpTrdPage() {
           body: (
             <>
               <p>Two Vercel projects deploy from one repository, with root directories {c('frontend')} and {c('backend')}. Migrations are applied in name order in the Supabase SQL Editor.</p>
+              <p>The public address is {c('https://anttipid.com')}. Its domain and DNS are on Cloudflare, with records set to DNS only. Vercel redirects {c('www.anttipid.com')} and the old {c('ant-tipid-v2-frontend.vercel.app')} address to it with a 308.</p>
               <DocTable
                 head={['Variable', 'Where', 'Purpose']}
                 rows={[

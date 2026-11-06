@@ -127,6 +127,7 @@ export function HelpPrdPage() {
                 rows={[
                   ['Product', 'AntTipid'],
                   ['Web address', 'https://anttipid.com'],
+                  ['Support email', 'support@anttipid.com'],
                   ['Promise', 'Know where every peso goes.'],
                   ['Core question', 'How much can I still spend this month?'],
                   ['Price', 'Free, with no ads'],
