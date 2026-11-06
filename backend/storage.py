@@ -57,10 +57,18 @@ def upload(user: AuthUser, path: str, data: bytes, content_type: str) -> None:
     _check(res, "upload")
 
 
-def remove(user: AuthUser, path: str) -> None:
-    """Delete one object. A missing object is not an error, so a retry after a partial failure is safe."""
-    res = httpx.request("DELETE", f"{_base()}/object/{BUCKET}", headers=_headers(user), json={"prefixes": [path]}, timeout=15)
+def remove(user: AuthUser, *paths: str) -> None:
+    """Delete objects. A missing object is not an error, so a retry after a partial failure is safe."""
+    res = httpx.request("DELETE", f"{_base()}/object/{BUCKET}", headers=_headers(user), json={"prefixes": list(paths)}, timeout=15)
     _check(res, "delete")
+
+
+def list_folder(user: AuthUser) -> list[dict]:
+    """Objects in the caller's own folder: name (inside the folder), id, updated_at."""
+    # ponytail: first 1,000 only; past that, leftovers just stay. Page with "offset" if anyone keeps that many photos.
+    res = httpx.post(f"{_base()}/object/list/{BUCKET}", headers=_headers(user), json={"prefix": user.id, "limit": 1000}, timeout=15)
+    _check(res, "list")
+    return res.json()
 
 
 def signed_url(user: AuthUser, path: str) -> str | None:

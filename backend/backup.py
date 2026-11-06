@@ -1,24 +1,48 @@
 """Back up one user's records to a JSON file and restore them from one."""
 
+import logging
 import re
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Response
 
 import months
-from auth import User
+import storage
+from auth import AuthUser, User
 from db import user_tx
 from models import BackupFile
 
 router = APIRouter()
+log = logging.getLogger("backup")
 
 # ponytail: Vercel caps a request and a response at 4.5 MB, roughly 12,000 transactions. Stream or gzip if anyone gets there.
-# ponytail: photos of transactions not in the file stay in the bucket, unlinked until the account is deleted. Clean up by listing the folder if storage matters.
 
 
 def own_receipt(path: str | None, user_id: str) -> str | None:
     """The photo path if it is one of this user's own, else None: a file from another account must not point at their photos."""
     return path if path and re.fullmatch(rf"{re.escape(user_id)}/[0-9a-fA-F-]{{36}}\.(webp|jpg|png)", path) else None
+
+
+def leftover_photos(user_id: str, files: list[dict], kept: set[str], started: datetime) -> list[str]:
+    """Photos in the user's folder that no transaction uses. One saved since the restore began is kept: its save may not
+    have committed yet. Folder markers have no id."""
+    paths = (f"{user_id}/{f['name']}" for f in files if f.get("id") and datetime.fromisoformat(f["updated_at"]) < started)
+    return [p for p in paths if p not in kept]
+
+
+def clear_leftover_photos(user: AuthUser, started: datetime) -> None:
+    """After a restore, delete photos of transactions that aren't in the file. Photos aren't in backups, so restoring a newer
+    file later brings those transactions back without them. A failure only leaves them in storage, so it's logged."""
+    try:
+        files = storage.list_folder(user)  # before reading what's kept, so a photo saved in between is never listed unkept
+        with user_tx(user) as conn:
+            kept = {r["receipt_path"] for r in conn.execute(
+                "select receipt_path from transactions where user_id = %s and receipt_path is not null", (user.id,))}
+        if doomed := leftover_photos(user.id, files, kept, started):
+            storage.remove(user, *doomed)
+    except Exception:
+        log.exception("couldn't clear leftover photos after a restore")
 
 
 @router.get("/backup")
@@ -55,6 +79,7 @@ def export_backup(user: User):
 
 @router.post("/backup/restore", status_code=204)
 def restore_backup(body: BackupFile, user: User):
+    started = datetime.now(timezone.utc)
     # One transaction: any failure, including one in the last insert, undoes every step.
     with user_tx(user) as conn:
         conn.execute("select set_config('anttipid.restoring', 'on', true)")  # the audit triggers stay quiet
@@ -115,3 +140,4 @@ def restore_backup(body: BackupFile, user: User):
             "insert into audit_log (user_id, action, entity, label) values (%s, 'restore', 'account', %s)",
             (user.id, f"{len(body.transactions)} transaction{'' if len(body.transactions) == 1 else 's'}"),
         )
+    clear_leftover_photos(user, started)  # only once the restore has committed

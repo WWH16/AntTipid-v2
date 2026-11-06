@@ -46,4 +46,4 @@ npm run dev
 | Reports | Earned/spent/saved, spending by category, 6-month income vs spending (chart or table) |
 | Settings | Wallets, categories, account, backup and restore, audit log |
 
-The app's backup (`GET /api/backup`, restored with `POST /api/backup/restore`) covers one user's records, not receipt photos. Whole-project backups come from the Supabase plan. Restoring leaves photos of transactions not in the file in storage, so deleting an account by hand must also clear that user's `{user_id}/` folder in the `receipts` bucket.
+The app's backup (`GET /api/backup`, restored with `POST /api/backup/restore`) covers one user's records, not receipt photos. Whole-project backups come from the Supabase plan. Restoring deletes photos of transactions that aren't in the file. Deleting an account by hand must also clear that user's `{user_id}/` folder in the `receipts` bucket.

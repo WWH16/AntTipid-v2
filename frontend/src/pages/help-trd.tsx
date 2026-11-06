@@ -370,6 +370,7 @@ export function HelpTrdPage() {
                 <li>{c('POST /backup/restore')} runs in one transaction, so any failure undoes every step.</li>
                 <li>Restore deletes the user’s records and inserts the file’s with new ids. The audit triggers stay quiet through {c('anttipid.restoring')}, and one audit entry records the restore.</li>
                 <li>Receipt photos aren’t in the file. Whole-project backups come from the Supabase plan.</li>
+                <li>Once the restore commits, photos in the user’s folder that no transaction uses are deleted, except any saved since the restore began. Restoring a newer backup afterwards brings those transactions back without their photos.</li>
               </ul>
             </>
           ),
@@ -450,7 +451,6 @@ export function HelpTrdPage() {
                 ['Backup of about 12,000 transactions', 'Vercel caps a request and a response at 4.5 MB', 'Stream or gzip the file'],
                 ['About 500 emails a day', 'Gmail’s allowance, with one connection per recap', 'Move to a mail service'],
                 ['Free receipt models change', 'Model names and quotas change without notice', 'Update the list in receipts.py'],
-                ['Restored accounts can leave unlinked photos', 'Photos of transactions not in the file stay in storage', 'List the folder and clean up'],
                 ['One timezone', 'Months are counted in one configured zone', 'Store a timezone per user'],
               ]}
             />

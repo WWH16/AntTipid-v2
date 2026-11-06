@@ -53,7 +53,7 @@ export function BackupSection() {
         // The dialog also closes itself after the download; by then the step is 2, so that close changes nothing.
         onOpenChange={(o) => { if (!o) setStep((now) => (now === 1 ? 0 : now)) }}
         title="Replace everything with this backup?"
-        description={s ? `From ${longDate(s.exportedOn)}: ${counts(s)}. Everything in your account now is replaced. First, download a copy of your current records.` : ''}
+        description={s ? `From ${longDate(s.exportedOn)}: ${counts(s)}. Everything in your account now is replaced, and receipt photos of transactions not in this backup are deleted. First, download a copy of your current records.` : ''}
         confirm="Download my records"
         cancel="Keep my records"
         onConfirm={async () => {

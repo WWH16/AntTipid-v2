@@ -7,6 +7,7 @@ import os
 import time
 import uuid
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,7 +20,7 @@ from pydantic import ValidationError
 load_dotenv(Path(__file__).with_name(".env"))
 
 from auth import AuthUser  # noqa: E402
-from backup import own_receipt  # noqa: E402
+from backup import leftover_photos, own_receipt  # noqa: E402
 from db import connect, user_tx  # noqa: E402
 from main import app  # noqa: E402
 from models import BackupFile  # noqa: E402
@@ -242,6 +243,18 @@ def _file(wallet_id, cat_id):
 
 def _audit_count(client, h):
     return len(client.get("/api/audit?limit=1000", headers=h).json())
+
+
+def test_leftover_photos():
+    """After a restore: photos no transaction uses go, but not one saved since the restore began, nor folder markers."""
+    started = datetime(2026, 11, 6, 10, 0, tzinfo=timezone.utc)
+    files = [
+        {"id": "1", "name": "kept.webp", "updated_at": "2026-11-05T09:00:00Z"},
+        {"id": "2", "name": "gone.webp", "updated_at": "2026-11-05T09:00:00Z"},
+        {"id": "3", "name": "new.webp", "updated_at": "2026-11-06T10:00:01Z"},
+        {"id": None, "name": ".emptyFolderPlaceholder", "updated_at": None},
+    ]
+    assert leftover_photos("u1", files, {"u1/kept.webp"}, started) == ["u1/gone.webp"]
 
 
 def test_own_receipt():
