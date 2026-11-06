@@ -342,17 +342,6 @@ export function HelpPrdPage() {
           ),
         },
         {
-          id: 'future',
-          title: 'Not built yet',
-          body: (
-            <ul>
-              <li>Machine learning forecast of the run-out date, compared against the current pace method. Optional, since K-means already covers machine learning.</li>
-              <li>A suggestion to mark a category as paid once a month (“Rent looks like a monthly bill”). On hold.</li>
-              <li>Updating the pace when the app stays open past midnight, and a test for the last day of the month.</li>
-            </ul>
-          ),
-        },
-        {
           id: 'glossary',
           title: 'Glossary',
           body: (
