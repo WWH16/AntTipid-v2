@@ -34,6 +34,15 @@ const manilaDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' })
 export const todayIso = () => manilaDate.format(new Date())
 export const currentMonth = () => todayIso().slice(0, 7)
 
+/** Calls onNewDay when the page comes back into view on a later date than it last saw (left open past midnight).
+ *  Returns the unsubscribe. */
+export function watchDay(onNewDay: (day: string) => void, today = todayIso, page: EventTarget = document) {
+  let last = today()
+  const check = () => { const now = today(); if (now !== last) { last = now; onNewDay(now) } }
+  page.addEventListener('visibilitychange', check)
+  return () => page.removeEventListener('visibilitychange', check)
+}
+
 const parse = (iso: string) => new Date(`${iso.length === 7 ? iso + '-01' : iso}T12:00:00`)
 export const yesterdayIso = () => new Date(parse(todayIso()).getTime() - 864e5).toISOString().slice(0, 10)
 

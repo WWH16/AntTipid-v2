@@ -1,7 +1,22 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanMoneyInput, dayLabel, fieldError, formatMoneyInput, todayIso } from './format.ts'
+import { cleanMoneyInput, dayLabel, fieldError, formatMoneyInput, todayIso, watchDay } from './format.ts'
 import { cleanReceiptItems, itemProblem, itemsTotal, lineTotal, toDraftItems } from './receipt.ts'
+
+test('watchDay: an app left open past midnight reloads once, when it comes back into view', () => {
+  const page = new EventTarget()
+  let day = '2026-11-14'
+  const seen: string[] = []
+  const stop = watchDay((d) => seen.push(d), () => day, page)
+  page.dispatchEvent(new Event('visibilitychange')) // same day: nothing to redo
+  day = '2026-11-15'
+  page.dispatchEvent(new Event('visibilitychange')) // a new day
+  page.dispatchEvent(new Event('visibilitychange')) // still that day: once only
+  stop()
+  day = '2026-11-16'
+  page.dispatchEvent(new Event('visibilitychange')) // stopped
+  assert.deepEqual(seen, ['2026-11-15'])
+})
 
 test('cleanMoneyInput strips commas, currency symbols, and extra decimal points', () => {
   assert.equal(cleanMoneyInput('₱15,000.50'), '15000.50')

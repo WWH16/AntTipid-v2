@@ -82,9 +82,9 @@ One word per idea in everything the app says:
 
 ### Polish (feature 3, no effect on decisions)
 - [x] "With ₱0 to spare": say "You'll just make it to month-end" when the leftover rounds to ₱0
-- [ ] Page left open past midnight: recompute the pace when the app comes back into view
+- [x] Page left open past midnight: recompute the pace when the app comes back into view (`watchDay`, 2026-11-06)
 - [x] A scanned receipt with a missing, impossible or future date: today, with a message to check it
-- [ ] A check for the last day of the month
+- [x] A check for the last day of the month (`frontend/src/lib/budget.test.ts`, 2026-11-06)
 - [x] Running out on the last day reads "0 days before month-end": say "on Oct 31, the last day" instead
 - [x] Reports totals: "Overspent" means spent more than earned, and reads like over budget: now "Short by" (with no income it still equals Spent)
 

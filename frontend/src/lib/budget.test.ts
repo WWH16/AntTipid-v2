@@ -64,6 +64,15 @@ test('pace: run-out day and safe daily amount, or what is left over', () => {
   assert.equal(paceLine({ spent: 57, limit: 60 }, '2026-10', undefined, '2026-10-25'), 'Almost used up: ₱3 left for 7 days to month-end.')
 })
 
+test('pace on the last day of the month: today is the one day left', () => {
+  // Nov 30: ₱9,600 of ₱10,000 spent. No days are left to project, so it lasts with ₱400 over, not "0 days".
+  assert.deepEqual(pace({ spent: 9600, limit: 10000 }, '2026-11', '2026-11-30'), { lasts: true, spare: 400 })
+  assert.equal(paceLine({ spent: 9600, limit: 10000 }, '2026-11', undefined, '2026-11-30'), 'On track. You should reach month-end with ₱400 to spare.')
+  assert.equal(paceLine({ spent: 10000, limit: 10000 }, '2026-11', undefined, '2026-11-30'), 'All used up, with 1 day to month-end. Anything more this month goes over.')
+  // A short month ends on its own last day: Feb 28, 2027.
+  assert.deepEqual(pace({ spent: 2800, limit: 3000 }, '2027-02', '2027-02-28'), { lasts: true, spare: 200 })
+})
+
 test('budgetState: exactly at the limit is used up, not near it', () => {
   assert.equal(budgetState({ spent: 200, limit: 200, warnAt: 80 }), 'used')
   assert.equal(budgetState({ spent: 199.999999, limit: 200, warnAt: 80 }), 'used')

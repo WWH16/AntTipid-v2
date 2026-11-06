@@ -2,8 +2,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/endpoints'
-import { setCacheUser, useQuery } from '@/api/use-query'
-import { currentMonth } from '@/lib/format'
+import { invalidate, setCacheUser, useQuery } from '@/api/use-query'
+import { currentMonth, watchDay } from '@/lib/format'
 import { supabase, toUser } from '@/lib/supabase'
 import type { Transaction, TransactionKind, User } from '@/types'
 
@@ -98,14 +98,11 @@ export function monthLink(path: string, month: string, more: Record<string, stri
   return q.size ? `${path}?${q}` : path
 }
 
-/** The current month, checked again whenever the app comes back into view, so a new month is picked up on return. */
+/** The current month. An app left open past midnight reloads every screen when it comes back into view, so the pace and
+ *  daily amounts count from the new date; a new month also restarts the page (the app shell keys on this). */
 export function useCurrentMonth() {
   const [month, setMonth] = useState(currentMonth)
-  useEffect(() => {
-    const check = () => setMonth(currentMonth())
-    document.addEventListener('visibilitychange', check)
-    return () => document.removeEventListener('visibilitychange', check)
-  }, [])
+  useEffect(() => watchDay((day) => { invalidate(); setMonth(day.slice(0, 7)) }), [])
   return month
 }
 
