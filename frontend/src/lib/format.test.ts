@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanMoneyInput, dayLabel, fieldError, formatMoneyInput, todayIso, watchDay } from './format.ts'
+import { cleanMoneyInput, dayLabel, fieldError, formatMoneyInput, pesoTick, todayIso, watchDay } from './format.ts'
 import { cleanReceiptItems, itemProblem, itemsTotal, lineTotal, toDraftItems } from './receipt.ts'
+
+test('pesoTick: short axis labels that keep the real value', () => {
+  assert.deepEqual([0, 250, 1000, 1250, 12000].map(pesoTick), ['₱0', '₱250', '₱1k', '₱1.25k', '₱12k'])
+})
 
 test('watchDay: an app left open past midnight reloads once, when it comes back into view', () => {
   const page = new EventTarget()

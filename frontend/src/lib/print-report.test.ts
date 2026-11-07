@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { categoryRows, printDate, signedAmount } from './print-report.ts'
+import { bulletRows, categoryRows, printDate, signedAmount } from './print-report.ts'
+
+test('bulletRows: bars and budget ticks share one peso scale, without the monthly budget', () => {
+  const rows = bulletRows({
+    byCategory: [{ categoryId: 'food', total: 750 }, { categoryId: 'load', total: 250 }],
+    budgets: [{ categoryId: null, limit: 2000 }, { categoryId: 'food', limit: 500 }, { categoryId: 'gas', limit: 1000 }],
+  }, String)
+  assert.deepEqual(rows.map((r) => [r.id, r.bar, r.tick]), [['food', 75, 50], ['load', 25, null], ['gas', 0, 100]])
+  assert.deepEqual(bulletRows({ byCategory: [], budgets: [] }, String), [])
+})
 
 test('categoryRows: spending first, then budgets with no spending', () => {
   const rows = categoryRows({

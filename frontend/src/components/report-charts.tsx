@@ -3,7 +3,7 @@
 import { memo } from 'react'
 import { Area, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Line, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
-import { money, monthLabel } from '@/lib/format'
+import { money, monthLabel, pesoTick } from '@/lib/format'
 import type { MonthlyReport } from '@/types'
 
 const trendConfig = {
@@ -37,13 +37,14 @@ export const PaceChart = memo(function PaceChart({ data, onDay }: { data: { day:
   const hasBudget = data.some((d) => d.pace !== undefined)
   return (
     <ChartContainer config={paceConfig} className="aspect-auto h-56 w-full cursor-pointer sm:h-64">
-      <ComposedChart accessibilityLayer data={data} margin={{ left: 4, right: 8 }} onClick={(s: ChartClick) => onDay(Number(s?.activeLabel))}>
+      <ComposedChart accessibilityLayer data={data} margin={{ top: 8, left: 4, right: 8 }} onClick={(s: ChartClick) => onDay(Number(s?.activeLabel))}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} interval="preserveStartEnd" minTickGap={16} />
-        <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={(v: number) => `₱${(v / 1000).toFixed(v % 1000 ? 1 : 0)}k`} />
+        <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={pesoTick} />
         <ChartTooltip content={<ChartTooltipContent labelFormatter={(d) => `Day ${d}`} formatter={moneyTooltip(paceConfig)} />} />
         <ChartLegend content={<ChartLegendContent />} />
-        <Area dataKey="spent" type="monotone" stroke="var(--color-spent)" strokeWidth={2} fill="var(--color-spent)" fillOpacity={0.15} connectNulls={false} />
+        {/* Steps, not a curve: a running total only changes when something is spent, and a curve draws amounts that never were. */}
+        <Area dataKey="spent" type="stepAfter" stroke="var(--color-spent)" strokeWidth={2} fill="var(--color-spent)" fillOpacity={0.15} connectNulls={false} />
         {hasBudget ? <Line dataKey="pace" type="linear" stroke="var(--color-pace)" strokeWidth={2} strokeDasharray="4 4" dot={false} activeDot={false} /> : null}
       </ComposedChart>
     </ChartContainer>
@@ -54,13 +55,14 @@ export const PaceChart = memo(function PaceChart({ data, onDay }: { data: { day:
 export const TrendChart = memo(function TrendChart({ data, onMonth }: { data: MonthlyReport['trend']; onMonth: (month: string) => void }) {
   return (
     <ChartContainer config={trendConfig} className="aspect-auto h-64 w-full cursor-pointer">
-      <BarChart accessibilityLayer data={data} onClick={(s: ChartClick) => { if (s?.activeLabel) onMonth(String(s.activeLabel)) }}>
+      <BarChart accessibilityLayer data={data} margin={{ top: 8, left: 4, right: 8 }} onClick={(s: ChartClick) => { if (s?.activeLabel) onMonth(String(s.activeLabel)) }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="month" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(m) => monthLabel(m, 'short')} />
+        <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={pesoTick} />
         <ChartTooltip content={<ChartTooltipContent labelFormatter={(m) => monthLabel(String(m))} formatter={moneyTooltip(trendConfig)} />} />
         <ChartLegend content={<ChartLegendContent />} />
-        <Bar dataKey="income" fill="var(--color-income)" radius={4} />
-        <Bar dataKey="spent" fill="var(--color-spent)" radius={4} />
+        <Bar dataKey="income" fill="var(--color-income)" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="spent" fill="var(--color-spent)" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ChartContainer>
   )
@@ -70,11 +72,12 @@ export const TrendChart = memo(function TrendChart({ data, onMonth }: { data: Mo
 export function HistoryChart({ data, month }: { data: { month: string; spent: number }[]; month: string }) {
   return (
     <ChartContainer config={historyConfig} className="aspect-auto h-40 w-full">
-      <BarChart accessibilityLayer data={data}>
+      <BarChart accessibilityLayer data={data} margin={{ top: 8, left: 4, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(m) => monthLabel(m, 'short')} />
+        <YAxis tickLine={false} axisLine={false} width={44} tickCount={3} tickFormatter={pesoTick} />
         <ChartTooltip content={<ChartTooltipContent labelFormatter={(m) => monthLabel(String(m))} formatter={moneyTooltip(historyConfig)} />} />
-        <Bar dataKey="spent" radius={4}>
+        <Bar dataKey="spent" radius={[4, 4, 0, 0]}>
           {data.map((h) => <Cell key={h.month} fill="var(--color-spent)" fillOpacity={h.month === month ? 1 : 0.4} />)}
         </Bar>
       </BarChart>

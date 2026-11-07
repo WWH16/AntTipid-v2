@@ -76,7 +76,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
   {
     title: 'Reports',
     items: [
-      'Reports shows earned, spent and saved, spending through the month, spending by category, and 6 months of income and spending as a chart or a table.',
+      'Reports shows earned, spent and saved, spending through the month, spending by category against each budget, and 6 months of income and spending as a chart or a table.',
       'Print preview gives a paper copy of one month: totals, categories, the 6-month trend and every transaction. The browser can print it or save it as a PDF.',
     ],
   },

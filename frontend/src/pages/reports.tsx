@@ -14,7 +14,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { currentMonth, dateInMonth, dayIso, dayLabel, money, monthLabel } from '@/lib/format'
-import { budgetRemaining, endLine, monthBudgets, outsideBudgets } from '@/lib/budget'
+import { endLine, monthBudgets, outsideBudgets } from '@/lib/budget'
 import { monthTotals } from '@/lib/report'
 import { cn } from '@/lib/utils'
 
@@ -60,7 +60,6 @@ export function ReportsPage() {
   // one with nothing recorded (it wasn't tracked, not saved).
   const ended = data?.byCategory.length && month < currentMonth() ? budgets : undefined
   const monthly = ended?.find((b) => b.categoryId === null)
-  const categoryEnds = ended?.filter((b) => b.categoryId !== null)
   const thisMonth = data?.trend.at(-1)
   // Nothing this month, or nothing in all 6: totals, "tap a chart" and an axis-only chart have nothing behind them.
   const monthEmpty = !!thisMonth && !thisMonth.income && !thisMonth.spent
@@ -167,26 +166,13 @@ export function ReportsPage() {
               </CardHeader>
               <CardContent className="grid gap-4">
                 {monthly && <p className="text-sm font-medium tabular-nums">{endLine(monthly)}</p>}
-                {!!categoryEnds?.length && (
-                  <div className="grid gap-1.5 text-sm">
-                    <h3 className="text-muted-foreground">Category budgets</h3>
-                    <ul className="grid gap-1 tabular-nums">
-                      {categoryEnds.map((b) => (
-                        <li key={b.categoryId} className="flex justify-between gap-4">
-                          <span className="truncate">{category(b.categoryId)?.name ?? 'Other'}</span>
-                          <span className={cn('shrink-0', b.spent > b.limit && 'text-destructive')}>{budgetRemaining(b)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
                 {outside && outside.spent > 0 && (
                   <p className="text-sm text-muted-foreground tabular-nums">
                     {money(outside.spent, { whole: true })} of {money(outside.total, { whole: true })} ({Math.round((outside.spent / outside.total) * 100)}%) went to categories without a budget.
                   </p>
                 )}
                 {data.byCategory.length ? (
-                  <CategoryBreakdown items={data.byCategory} onSelect={(categoryId) => setDetail({ type: 'category', categoryId })} />
+                  <CategoryBreakdown items={data.byCategory} budgets={data.budgets} onSelect={(categoryId) => setDetail({ type: 'category', categoryId })} />
                 ) : (
                   <EmptyState icon={ChartPie} title={`No spending in ${monthLabel(month)}`} body="Expenses you add for this month are broken down here by category." action={<Button variant="outline" onClick={() => openAdd({ kind: 'expense', date: dateInMonth(month) })}>Add expense</Button>} />
                 )}

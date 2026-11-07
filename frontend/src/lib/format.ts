@@ -6,6 +6,9 @@ const pesoCompact = new Intl.NumberFormat('en-PH', { style: 'currency', currency
 export const money = (n: number, opts: { whole?: boolean; compact?: boolean } = {}) =>
   (opts.compact ? pesoCompact : opts.whole ? pesoWhole : peso).format(n)
 
+/** A chart axis label: "₱250", "₱1.25k", "₱12k". Never rounded, so a tick can't name a value it isn't. */
+export const pesoTick = (n: number) => (n < 1000 ? `₱${n}` : `₱${n / 1000}k`)
+
 /** Keeps digits, one decimal point (later ones are dropped), a leading minus when allowNegative is set, and at most 10 whole-peso digits (₱9,999,999,999), so numbers stay exact. */
 export function cleanMoneyInput(v: string, allowNegative = false): string {
   const sign = allowNegative && v.trimStart().startsWith('-') ? '-' : ''

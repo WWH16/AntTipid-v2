@@ -16,6 +16,13 @@ export function categoryRows(report: Pick<MonthlyReport, 'byCategory' | 'budgets
   ]
 }
 
+/** categoryRows for the Reports bullet chart: bar and budget tick as % of one peso scale, so rows compare with each other. */
+export function bulletRows(report: Pick<MonthlyReport, 'byCategory' | 'budgets'>, nameOf: (id: string) => string) {
+  const rows = categoryRows(report, nameOf)
+  const scale = Math.max(...rows.flatMap((r) => [r.spent, r.limit ?? 0]))
+  return rows.map((r) => ({ ...r, bar: (r.spent / scale) * 100, tick: r.limit === null ? null : (r.limit / scale) * 100 }))
+}
+
 /** Income up, expense down, a transfer neither. */
 export const signedAmount = (kind: TransactionKind, amount: number) =>
   `${kind === 'income' ? '+' : kind === 'expense' ? '−' : ''}${money(amount)}`

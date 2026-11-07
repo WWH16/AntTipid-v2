@@ -15,8 +15,10 @@ import { Item, ItemContent, ItemGroup } from '@/components/ui/item'
 import { Progress, ProgressLabel } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { dayIso, dayLabel, money, monthLabel, shiftMonth } from '@/lib/format'
+import { bulletRows } from '@/lib/print-report'
 import { sumOf } from '@/lib/transactions'
 import { monthTotals } from '@/lib/report'
+import { cn } from '@/lib/utils'
 import type { MonthlyReport } from '@/types'
 
 export type ReportDetail =
@@ -36,31 +38,43 @@ export function TotalAmount({ value }: { value: number }) {
   )
 }
 
-/** Spending per category as bars. Rows are buttons when onSelect is given. */
-export function CategoryBreakdown({ items, onSelect }: { items: MonthlyReport['byCategory']; onSelect?: (categoryId: string) => void }) {
+/**
+ * A bullet chart: spending per category as bars on one peso scale, each with its budget as a tick. No track behind the
+ * bar, since a track reads as a whole and these are amounts. Rows are buttons when onSelect is given.
+ */
+export function CategoryBreakdown({ items, budgets = [], onSelect }: { items: MonthlyReport['byCategory']; budgets?: MonthlyReport['budgets']; onSelect?: (categoryId: string) => void }) {
   const { category } = useRefData()
-  const total = items.reduce((s, c) => s + c.total, 0)
-  const top = items[0]?.total ?? 1
+  const rows = bulletRows({ byCategory: items, budgets }, (id) => category(id)?.name ?? 'Other')
   return (
-    <div className="grid gap-1 [&_[data-slot=progress-indicator]]:bg-chart-2">
-      {items.map(({ categoryId, total: amount }) => {
-        const cat = category(categoryId)
-        const bar = (
-          <Progress value={Math.round((amount / top) * 100)} className="items-center">
-            <ProgressLabel className="flex items-center gap-2"><CategoryMedia category={cat} />{cat?.name ?? 'Other'}</ProgressLabel>
-            <span className="ml-auto text-sm tabular-nums">
-              {money(amount, { whole: true })} <span className="text-muted-foreground">({Math.round((amount / total) * 100)}%)</span>
-            </span>
-          </Progress>
-        )
+    <div className="grid gap-1">
+      {rows.some((r) => r.tick !== null) && (
+        <p aria-hidden className="flex gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5"><span className="h-2 w-3 rounded-r-sm bg-chart-2" />Spent</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-foreground" />Budget</span>
+        </p>
+      )}
+      {rows.map(({ id, name, spent, share, limit, left, bar, tick }) => {
+        const over = left !== null && left < 0
+        const budgetLine = limit !== null && `${budgetRemaining({ spent, limit })} of ${money(limit, { whole: true })}`
         return (
           <Item
-            key={categoryId}
+            key={id}
             size="xs"
             className={onSelect ? '-mx-3 text-left hover:bg-muted' : '-mx-3'}
-            render={onSelect ? <button type="button" onClick={() => onSelect(categoryId)} aria-label={`${cat?.name ?? 'Other'}: ${money(amount, { whole: true })}. Show details`} /> : undefined}
+            render={onSelect ? <button type="button" onClick={() => onSelect(id)} aria-label={`${name}: ${money(spent, { whole: true })}, ${share}% of spending. ${budgetLine || 'No budget'}. Show details`} /> : undefined}
           >
-            <ItemContent>{bar}</ItemContent>
+            <ItemContent>
+              <div className="flex items-center gap-2 text-sm">
+                <CategoryMedia category={category(id)} />
+                <span className="font-medium">{name}</span>
+                <span className="ml-auto shrink-0 tabular-nums">{money(spent, { whole: true })} <span className="text-muted-foreground">({share}%)</span></span>
+              </div>
+              <div aria-hidden className="relative mt-1 h-4">
+                <div className={cn('absolute inset-y-1 left-0 rounded-r-sm', over ? 'bg-destructive' : 'bg-chart-2')} style={{ width: `${bar}%` }} />
+                {tick !== null && <div className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-foreground ring-2 ring-card" style={{ left: `${tick}%` }} />}
+              </div>
+              {budgetLine && <p className={cn('text-xs tabular-nums', over ? 'text-destructive' : 'text-muted-foreground')}>{budgetLine}</p>}
+            </ItemContent>
           </Item>
         )
       })}
@@ -194,7 +208,7 @@ export function MonthDetail({ month, onClose, onOpen }: { month: string; onClose
             ))}
           </dl>
           {data.byCategory.length
-            ? <CategoryBreakdown items={data.byCategory} />
+            ? <CategoryBreakdown items={data.byCategory} budgets={data.budgets} />
             : <p className="text-sm text-muted-foreground">No spending this month.</p>}
         </div>
       )}
