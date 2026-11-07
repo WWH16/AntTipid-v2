@@ -179,7 +179,7 @@ export interface NotificationSettings {
   newMonth: boolean
 }
 
-/** One row of the audit log. Keys inside `changes` are the database column names, each with [old, new]. */
+/** One row of the audit log. Keys inside `changes` are the database column names, each with [old, new]: null on the side that didn't exist when added or deleted. */
 export interface AuditEntry {
   id: number
   action: 'create' | 'update' | 'delete' | 'sign_in' | 'restore'

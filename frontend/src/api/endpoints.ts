@@ -105,7 +105,7 @@ export const api = {
     decide: (id: string, decision: AnomalyDecision | null, alsoEarlier = false) =>
       http<SimilarOneOff[]>(`/anomalies/${id}/decision`, json('PUT', { decision, alsoEarlier })),
   },
-  audit: { list: (limit: number) => http<AuditEntry[]>('/audit', { query: { limit } }) },
+  audit: { list: (limit: number, entity?: string) => http<AuditEntry[]>('/audit', { query: { limit, entity } }) },
   notifications: {
     list: () => http<NotificationList>('/notifications'),
     read: () => http<null>('/notifications/read', { method: 'POST' }),

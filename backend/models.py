@@ -232,7 +232,7 @@ class AuditEntry(CamelModel):
     action: Literal["create", "update", "delete", "sign_in", "restore"]
     entity: Literal["transaction", "wallet", "category", "budget", "account"]
     label: str
-    changes: dict[str, list] | None  # updates only: column name -> [before, after]; keys stay snake_case
+    changes: dict[str, list] | None  # column name -> [before, after], null on the side that didn't exist; keys stay snake_case
     created_at: datetime
 
 

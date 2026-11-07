@@ -120,7 +120,7 @@ export function HelpTrdPage() {
                   [c('budgets'), 'Current limits', <>{c('limit_amount')} above 0. {c('warn_at')} 1 to 100, default 80. {c('category_id')} empty is the monthly budget. Unique on {c('(user_id, category_id)')}, nulls not distinct.</>],
                   [c('budget_history'), 'The limit each month had', <>Written only by a trigger. {c('month')} is the first day of the month. Empty {c('limit_amount')} means removed that month. Goes with its category on delete.</>],
                   [c('anomaly_checks'), 'Verdict on each purchase', <>Key is {c('transaction_id')}. {c('unusual')}, {c('decision')} (one_off or normal), {c('method')} (kmeans, simple or none), {c('usual_low')}, {c('usual_high')}. A decision needs {c('unusual')}.</>],
-                  [c('audit_log'), 'Who changed what and when', <>Written only by triggers and restore. {c('action')}, {c('entity')}, {c('label')}, {c('changes')} as JSON of old and new values. No foreign key on {c('entity_id')}, because the row may be gone.</>],
+                  [c('audit_log'), 'Who changed what and when', <>Written only by triggers and restore. {c('action')}, {c('entity')}, {c('label')}, {c('changes')} as JSON of old and new values, naming wallets and categories as they were called at the time. No foreign key on {c('entity_id')}, because the row may be gone.</>],
                   [c('notifications'), 'What the bell lists and email sends', <>{c('kind')} is near, used, over, run_out, unusual or new_month. Unique on {c('(user_id, key)')}, so each warning fires once. {c('read_at')}, {c('emailed_at')}.</>],
                   [c('notification_settings'), 'One switch per warning', <>Key is {c('user_id')}. A missing row means everything is on. {c('test_email_at')} limits test emails, and only the server’s own connection can write it.</>],
                   [c('scan_usage'), 'Receipt scans per user per day', <>Key is {c('user_id')}. {c('day')}, {c('used')}. Only the server’s own connection can read or write it.</>],
@@ -153,7 +153,7 @@ export function HelpTrdPage() {
                 rows={[
                   [c('on_auth_user_created_seed_categories'), <>Insert on {c('auth.users')}</>, 'Adds the 11 default categories.'],
                   [c('on_budget_change_record_history'), <>Change to {c('budgets')}</>, 'Writes the month’s limit to budget_history. The last edit in a month wins.'],
-                  [<>{c('audit_transactions')}, {c('audit_wallets')}, {c('audit_categories')}, {c('audit_budgets')}</>, 'Insert, update or delete', 'Writes one audit entry per direct change, with a diff on updates. Skips nested trigger writes and restores.'],
+                  [<>{c('audit_transactions')}, {c('audit_wallets')}, {c('audit_categories')}, {c('audit_budgets')}</>, 'Insert, update or delete', 'Writes one audit entry per direct change, with a diff on updates and what the row held on inserts and deletes. Skips nested trigger writes and restores.'],
                   [c('on_session_created_audit'), <>Insert on {c('auth.sessions')}</>, 'Logs a sign-in. A failure here never blocks the sign-in.'],
                 ]}
               />
@@ -175,6 +175,7 @@ export function HelpTrdPage() {
                   [c('20261104010000_notifications'), 'Notifications and settings tables'],
                   [c('20261105000000_scan_usage'), 'Daily receipt scan count per user'],
                   [c('20261105010000_test_email_at_server_only'), 'Users can no longer write the test email limit'],
+                  [c('20261107000000_audit_details'), 'Audit log keeps what was added or deleted, and names wallets and categories'],
                 ]}
               />
             </>
@@ -244,7 +245,7 @@ export function HelpTrdPage() {
                   [c('POST /notifications/read'), 'Mark all as read'],
                   [c('GET, PUT /notifications/settings'), 'Read or save the switches'],
                   [c('POST /notifications/test'), 'Send a test email to the caller, one a minute'],
-                  [c('GET /audit'), 'Latest audit entries, up to 1,000'],
+                  [c('GET /audit'), 'Latest audit entries, up to 1,000, optionally for one kind of record'],
                   [c('GET /backup'), 'Download the backup file'],
                   [c('POST /backup/restore'), 'Replace the caller’s records from a backup'],
                   [c('GET /cron/new-month'), 'Recap job. Needs CRON_SECRET, not a user token'],
@@ -435,8 +436,8 @@ export function HelpTrdPage() {
               <DocTable
                 head={['Suite', 'Size', 'Covers']}
                 rows={[
-                  [<>Frontend, {c('node --test src/lib/*.test.ts')}</>, '47 tests in 7 files', 'Budget and pace maths, formatting, reports, print report, audit, backup and notification helpers'],
-                  [<>Backend, {c('test_receipts.py')} and four more</>, '81 checks in 5 files', 'Receipt parsing, JWT verification, every route group, user A vs user B isolation, anomalies, audit, backup, notifications, CORS and the scan limit'],
+                  [<>Frontend, {c('node --test src/lib/*.test.ts')}</>, '51 tests in 7 files', 'Budget and pace maths, formatting, reports, print report, audit, backup and notification helpers'],
+                  [<>Backend, {c('test_receipts.py')} and four more</>, '84 checks in 5 files', 'Receipt parsing, JWT verification, every route group, user A vs user B isolation, anomalies, audit, backup, notifications, CORS and the scan limit'],
                   [c('backend/paper_anomalies.py'), 'Evaluation script', 'K-means against the baseline, with elbow and silhouette charts'],
                 ]}
               />

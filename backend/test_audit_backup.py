@@ -118,6 +118,39 @@ def test_audit_limit():
 
 
 @needs_db
+def test_audit_keeps_what_was_added_and_deleted():
+    with users() as (client, _, (ha,)):
+        food = food_id(client, ha)
+        txn = expense(client, ha, wallet(client, ha, "GCash"), food)
+        assert client.delete(f"/api/transactions/{txn}", headers=ha).status_code == 204
+        deleted, added = client.get("/api/audit", headers=ha).json()[:2]
+        kept = {"kind": "expense", "amount": 250, "date": "2026-10-15", "wallet_id": "GCash", "category_id": "Food & dining"}
+        assert added["changes"] == {k: [None, v] for k, v in kept.items()}
+        assert deleted["changes"] == {k: [v, None] for k, v in kept.items()}
+        # A budget's label already names its category.
+        assert client.post("/api/budgets", json={"categoryId": food, "limit": 2000, "warnAt": 80}, headers=ha).status_code == 204
+        assert client.get("/api/audit", headers=ha).json()[0]["changes"] == {"limit_amount": [None, 2000], "warn_at": [None, 80]}
+
+
+@needs_db
+def test_audit_names_a_changed_wallet_and_category():
+    with users() as (client, _, (ha,)):
+        gcash, maya = wallet(client, ha, "GCash"), wallet(client, ha, "Maya")
+        txn = expense(client, ha, gcash, food_id(client, ha))
+        assert client.patch(f"/api/transactions/{txn}", json={"walletId": maya}, headers=ha).status_code == 200
+        assert client.get("/api/audit", headers=ha).json()[0]["changes"] == {"wallet_id": ["GCash", "Maya"]}
+
+
+@needs_db
+def test_audit_filter():
+    with users() as (client, _, (ha,)):
+        expense(client, ha, wallet(client, ha, "GCash"), food_id(client, ha))
+        assert [e["entity"] for e in client.get("/api/audit?entity=wallet", headers=ha).json()] == ["wallet"]
+        assert [e["entity"] for e in client.get("/api/audit", headers=ha).json()] == ["transaction", "wallet"]
+        assert client.get("/api/audit?entity=nope", headers=ha).status_code == 422
+
+
+@needs_db
 def test_audit_is_private_and_append_only():
     with users(2) as (client, (user_a, _), (ha, hb)):
         wallet(client, ha, "Cash")

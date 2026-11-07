@@ -93,7 +93,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
     items: [
       'A user can download a backup of their records as a JSON file.',
       'A user can restore a backup. It replaces their records in one step, and a failure changes nothing.',
-      'The audit log lists each sign-in and each change to transactions, wallets, categories and budgets, with old and new values. It can’t be edited.',
+      'The audit log lists each sign-in and each change to transactions, wallets, categories and budgets by day, with old and new values and what was added or deleted. It can be filtered by type and can’t be edited.',
       'The Help menu opens this document and the Technical Requirement Document, and each can be copied for Word.',
     ],
   },
