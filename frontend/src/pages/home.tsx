@@ -60,6 +60,9 @@ export function HomePage() {
       { title: 'Where it went', content: <CategoriesSlide transactions={recent.data} /> },
     ] : []),
   ]
+  const hasAttention = attention.length > 0 || toReview.length > 0
+  // No wallets during setup: the setup card's first step just said the same thing, so it waits.
+  const showWallets = !(showSetup && !setup.hasWallet)
 
   return (
     <>
@@ -69,10 +72,14 @@ export function HomePage() {
         description={longDate(todayIso())}
       />
 
-      {/* minmax(0, …) tracks: the carousel scrolls inside its column instead of widening the page. */}
-      <div className="grid grid-cols-1 gap-5 md:gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="contents lg:grid lg:grid-cols-1 lg:content-start lg:gap-6">
-          {showSetup && (
+      {/* The bento, in reading order on a phone. On a wide grid: the hero beside what needs attention, then recent activity
+          beside wallets. With nothing needing attention, wallets move up beside the hero (dense fills that gap) and recent
+          activity takes the row below. Breakpoints follow the grid's own width, since the sidebar can collapse. */}
+      <div className="@container relative grid grid-flow-dense grid-cols-12 gap-3 md:gap-4">
+        {/* The honeypot ant stands on the top edge of whichever card is at the grid's top right, without adding height. */}
+        <BrandMark mark="ant" className="pointer-events-none absolute right-6 bottom-full hidden w-16 @4xl:block" />
+        {showSetup && (
+          <div className="col-span-12">
             <SetupSteps
               {...setup}
               budgets={budgets.data ?? []}
@@ -81,15 +88,15 @@ export function HomePage() {
                 try { localStorage.setItem(SETUP_HIDDEN, '1') } catch { /* private mode */ }
               }}
             />
-          )}
-          <div className="order-1 grid grid-cols-1 gap-3 lg:order-none">
-            {slides.length > 0 && (
-              <Carousel
-                key={String(noLeftSlide)} // starts again on "Left to spend" the moment setup finishes
-                label="Your month so far"
-                slides={slides}
-              />
-            )}
+          </div>
+        )}
+        {slides.length > 0 && (
+          <div className={cn('col-span-12 grid grid-cols-1 gap-3', (hasAttention || showWallets) && '@4xl:col-span-8')}>
+            <Carousel
+              key={String(noLeftSlide)} // starts again on "Left to spend" the moment setup finishes
+              label="Your month so far"
+              slides={slides}
+            />
             {/* While setup shows, its steps lead (and its own Add expense step); the + button still adds. */}
             {!showSetup && (
               <div className="grid grid-cols-2 gap-2">
@@ -98,55 +105,51 @@ export function HomePage() {
               </div>
             )}
           </div>
+        )}
 
-          <Card className="order-3 lg:order-none">
+        {/* Only when a budget is near or over its limit: nothing to look at means no card at all
+            (and no loading placeholder, so a card never flashes in and back out). */}
+        {hasAttention && (
+          <Card className="col-span-12 @4xl:col-span-4">
             <CardHeader>
-              <CardTitle role="heading" aria-level={2}>Recent activity</CardTitle>
-              <CardDescription>Your latest transactions</CardDescription>
-              <CardAction>
-                <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/activity" />}>See all</Button>
-              </CardAction>
+              <CardTitle role="heading" aria-level={2}>Needs attention</CardTitle>
+              <CardDescription>
+                {[attention.length && 'Budgets near or over their limit', toReview.length && `${toReview.length} unusual ${toReview.length === 1 ? 'purchase' : 'purchases'} to review`].filter(Boolean).join(' · ')}
+              </CardDescription>
+              {attention.length > 0 && (
+                <CardAction>
+                  <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/budgets" />}>All budgets</Button>
+                </CardAction>
+              )}
             </CardHeader>
             <CardContent>
-              {recent.loading ? <LoadingItems rows={5} /> : recent.data?.length ? (
-                <ItemGroup>{recent.data.slice(0, 6).map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
-              ) : (
-                <p className="text-sm text-muted-foreground">Nothing recorded yet. Your expenses and income show up here.</p>
-              )}
+              <ItemGroup>
+                {attention.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} />)}
+                {toReview.map((t) => <TransactionItem key={t.id} t={t} />)}
+              </ItemGroup>
             </CardContent>
           </Card>
-        </div>
+        )}
 
-        <div className="contents lg:relative lg:grid lg:grid-cols-1 lg:content-start lg:gap-6">
-          {/* The honeypot ant stands on the top edge of this column's first card, whichever that is, without adding height. */}
-          <BrandMark mark="ant" className="pointer-events-none absolute right-6 bottom-full hidden w-16 lg:block" />
-          {/* Only when a budget is near or over its limit: nothing to look at means no card at all
-              (and no loading placeholder, so a card never flashes in and back out). */}
-          {(attention.length > 0 || toReview.length > 0) && (
-            <Card className="order-2 lg:order-none">
-              <CardHeader>
-                <CardTitle role="heading" aria-level={2}>Needs attention</CardTitle>
-                <CardDescription>
-                  {[attention.length && 'Budgets near or over their limit', toReview.length && `${toReview.length} unusual ${toReview.length === 1 ? 'purchase' : 'purchases'} to review`].filter(Boolean).join(' · ')}
-                </CardDescription>
-                {attention.length > 0 && (
-                  <CardAction>
-                    <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/budgets" />}>All budgets</Button>
-                  </CardAction>
-                )}
-              </CardHeader>
-              <CardContent>
-                <ItemGroup>
-                  {attention.map((b) => <BudgetItem key={b.id} b={b} category={category(b.categoryId)} />)}
-                  {toReview.map((t) => <TransactionItem key={t.id} t={t} />)}
-                </ItemGroup>
-              </CardContent>
-            </Card>
-          )}
+        <Card className={cn('col-span-12', hasAttention ? '@4xl:col-span-7' : slides.length === 0 && showWallets && '@4xl:col-span-8')}>
+          <CardHeader>
+            <CardTitle role="heading" aria-level={2}>Recent activity</CardTitle>
+            <CardDescription>Your latest transactions</CardDescription>
+            <CardAction>
+              <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/activity" />}>See all</Button>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            {recent.loading ? <LoadingItems rows={5} /> : recent.data?.length ? (
+              <ItemGroup>{recent.data.slice(0, 6).map((t) => <TransactionItem key={t.id} t={t} />)}</ItemGroup>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nothing recorded yet. Your expenses and income show up here.</p>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* No wallets during setup: on phones the setup card's first step just said the same thing, so it waits. On wide
-              screens it stays, beside the setup card, so the right column isn't left empty. */}
-          <Card className={cn('order-4 lg:order-none', showSetup && !setup.hasWallet && 'max-lg:hidden')}>
+        {showWallets && (
+          <Card className={cn('col-span-12', hasAttention ? '@4xl:col-span-5' : '@4xl:col-span-4')}>
             <CardHeader>
               <CardTitle role="heading" aria-level={2}>Wallets</CardTitle>
               <CardDescription className="tabular-nums">{refLoading ? 'Loading balances' : `${money(total)} across ${activeWallets.length} ${activeWallets.length === 1 ? 'wallet' : 'wallets'}`}</CardDescription>
@@ -164,7 +167,7 @@ export function HomePage() {
               )}
             </CardContent>
           </Card>
-        </div>
+        )}
       </div>
     </>
   )
