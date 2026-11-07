@@ -44,9 +44,9 @@ export const TotalLabel = ({ label, swatch }: { label: string; swatch: string })
 )
 
 /**
- * A bullet chart: spending per category as bars on one peso scale, each with its budget as a tick, and a small line of
- * its last six months when trends are given. No track behind the bar, since a track reads as a whole and these are
- * amounts. Rows are buttons when onSelect is given.
+ * A bullet chart: spending per category as bars on one peso scale, each over a band as long as its budget, and a small
+ * line of its last six months when trends are given. The band stops at the budget, not the row's end, so an unused budget
+ * reads as room to spend rather than a stray mark. Rows are buttons when onSelect is given.
  */
 export function CategoryBreakdown({ items, budgets = [], trends = [], onSelect }: { items: MonthlyReport['byCategory']; budgets?: MonthlyReport['budgets']; trends?: MonthlyReport['categoryTrend']; onSelect?: (categoryId: string) => void }) {
   const { category } = useRefData()
@@ -59,7 +59,7 @@ export function CategoryBreakdown({ items, budgets = [], trends = [], onSelect }
       {(hasBudgets || hasSparks) && (
         <p aria-hidden className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="h-2 w-3 rounded-r-sm bg-chart-2" />Spent</span>
-          {hasBudgets && <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-foreground" />Budget</span>}
+          {hasBudgets && <span className="flex items-center gap-1.5"><span className="flex h-3 items-center"><span className="h-2 w-3 bg-foreground/10" /><span className="h-3 w-0.5 bg-foreground" /></span>Budget</span>}
           {hasSparks && <span className="flex items-center gap-1.5"><svg viewBox="0 0 12 8" className="h-2 w-3"><polyline points="0,7 4,3 8,5 12,1" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>Last 6 months</span>}
         </p>
       )}
@@ -82,6 +82,7 @@ export function CategoryBreakdown({ items, budgets = [], trends = [], onSelect }
                 <span className="ml-auto shrink-0 tabular-nums">{money(spent, { whole: true })} <span className="text-muted-foreground">({share}%)</span></span>
               </div>
               <div aria-hidden className="relative mt-1 h-4">
+                {tick !== null && <div className="absolute inset-y-1 left-0 bg-foreground/10" style={{ width: `${tick}%` }} />}
                 <div className={cn('absolute inset-y-1 left-0 rounded-r-sm', over ? 'bg-destructive' : 'bg-chart-2')} style={{ width: `${bar}%` }} />
                 {tick !== null && <div className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-foreground ring-2 ring-card" style={{ left: `${tick}%` }} />}
               </div>
