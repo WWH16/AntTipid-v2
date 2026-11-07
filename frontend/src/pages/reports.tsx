@@ -9,7 +9,7 @@ import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
 import { CategoryBreakdown, CategoryDetail, DayDetail, MonthDetail, SpendingCalendar, TotalAmount, TotalLabel, type ReportDetail } from '@/components/report-details'
 import { HeroCard } from '@/components/hero-card'
-import { EmptyState, ErrorState, LoadingCard, LoadingItems } from '@/components/states'
+import { EmptyState, ErrorState, LoadingReport } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -32,25 +32,6 @@ const BENTO = '@container/report grid grid-cols-12 gap-3 md:gap-4'
 const tile = (i: number) => cn(i === 2 ? 'col-span-12' : 'col-span-6', '@md:col-span-4')
 // Fixed in place, so the totals stack in the columns it leaves free.
 const BESIDE_TOTALS = '@4xl:col-span-8 @4xl:col-start-5 @4xl:row-span-3 @4xl:row-start-1'
-
-/** The bento's shape, like the loaded report. */
-function LoadingReport() {
-  return (
-    <div className={BENTO}>
-      {[0, 1, 2].map((i) => (
-        <Card key={i} aria-busy className={tile(i)}>
-          <CardHeader>
-            <Skeleton className="h-4 w-14" />
-            <Skeleton className="h-7 w-20 sm:w-28" />
-          </CardHeader>
-        </Card>
-      ))}
-      <LoadingCard className={cn('col-span-12', BESIDE_TOTALS)}><Skeleton className="h-56 w-full sm:h-64 @4xl:h-80" /></LoadingCard>
-      <LoadingCard className="col-span-12 @4xl:col-span-8"><LoadingItems rows={4} amount={false} progress /></LoadingCard>
-      <LoadingCard className="col-span-12 @4xl:col-span-4"><Skeleton className="h-64 w-full" /></LoadingCard>
-    </div>
-  )
-}
 
 export function ReportsPage() {
   const [month, setMonth] = useMonth()

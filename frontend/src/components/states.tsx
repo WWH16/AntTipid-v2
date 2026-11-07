@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
-import { CircleAlert, type LucideIcon } from 'lucide-react'
+import { CircleAlert, Plus, type LucideIcon } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { HeroCard } from '@/components/hero-card'
 import { LogoWithTagline } from '@/components/logo'
@@ -96,15 +98,166 @@ export function LoadingCard({ children, className }: { children: ReactNode; clas
   )
 }
 
-/** Whole page while its code downloads or the session is read: header, then a list card. */
-export function LoadingPage() {
+/** Budgets while its data loads: the compact hero beside the budget list. */
+export function LoadingBudgets() {
   return (
-    <div aria-busy className="grid gap-6">
+    <div aria-busy className="grid items-start gap-5 md:gap-6 lg:grid-cols-[2fr_3fr]">
+      <LoadingHero compact />
+      <LoadingCard><LoadingItems rows={3} progress /></LoadingCard>
+    </div>
+  )
+}
+
+/** The report bento's shape, like the loaded report: totals stacked beside the month chart, then breakdown and calendar. */
+export function LoadingReport() {
+  return (
+    <div aria-busy className="@container/report grid grid-cols-12 gap-3 md:gap-4">
+      {[0, 1, 2].map((i) => (
+        <Card key={i} className={cn(i === 2 ? 'col-span-12' : 'col-span-6', '@md:col-span-4')}>
+          <CardHeader>
+            <Skeleton className="h-4 w-14" />
+            <Skeleton className="h-7 w-20 sm:w-28" />
+          </CardHeader>
+        </Card>
+      ))}
+      <LoadingCard className="col-span-12 @4xl:col-span-8 @4xl:col-start-5 @4xl:row-span-3 @4xl:row-start-1"><Skeleton className="h-56 w-full sm:h-64 @4xl:h-80" /></LoadingCard>
+      <LoadingCard className="col-span-12 @4xl:col-span-8"><LoadingItems rows={4} amount={false} progress /></LoadingCard>
+      <LoadingCard className="col-span-12 @4xl:col-span-4"><Skeleton className="h-64 w-full" /></LoadingCard>
+    </div>
+  )
+}
+
+/** Activity's list: two day groups, like the loaded list. */
+export function LoadingDays() {
+  return (
+    <Card aria-busy>
+      <CardContent className="grid gap-2 md:gap-4">
+        {[3, 2].map((rows, i) => (
+          <div key={rows} className="grid gap-1">
+            {i > 0 && <Separator className="mb-2 md:mb-3" />}
+            <div className="flex justify-between gap-4">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+            <LoadingItems rows={rows} />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  )
+}
+
+/** A signed-in page while its code downloads, shaped like that page loading its data, so the code arriving swaps in
+ *  without a jump. Fills the shell's main area, so it brings no padding. */
+export function LoadingPage() {
+  const page = useLocation().pathname.split('/')[1]
+  const month = ['activity', 'budgets', 'reports'].includes(page)
+  return (
+    <div aria-busy className="contents">
+      {/* PageHeader: sidebar toggle and divider on wider screens, headline and its line, the phone's avatar on the right. */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <Skeleton className="mt-1 hidden size-7 md:block" />
+          <div className="mt-2 hidden h-6 w-px bg-border md:block" />
+          <div className="grid min-w-0 flex-1 gap-2.5 pt-1">
+            <Skeleton className="h-6 w-56 max-w-full sm:h-7 md:h-8 md:w-72" />
+            <Skeleton className="h-4 w-40 max-w-full" />
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {month && <Skeleton className="h-8 w-8 sm:w-28" />}
+          <Skeleton className="size-9 rounded-full md:hidden" />
+        </div>
+      </div>
+      {/* MonthSwitcher's pill, at its row height. */}
+      {month && <div className="py-2"><Skeleton className="h-10 w-48 rounded-full" /></div>}
+      {page === 'activity' ? (
+        <div className="grid gap-5 md:gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+          <div className="grid gap-4 lg:order-2">
+            <Skeleton className="h-8 w-full rounded-lg" />
+            <Skeleton className="h-8 w-full rounded-lg md:w-80 lg:w-full" />
+          </div>
+          <div className="lg:order-1"><LoadingDays /></div>
+        </div>
+      ) : page === 'budgets' ? <LoadingBudgets /> : page === 'reports' ? <LoadingReport /> : page === 'settings' ? (
+        <div className="grid max-w-5xl items-start gap-4 md:grid-cols-[16rem_minmax(0,1fr)] lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <Card className="gap-0 py-2"><LoadingItems rows={6} amount={false} /></Card>
+          <Card className="max-md:hidden md:p-6"><LoadingItems rows={4} amount={false} /></Card>
+        </div>
+      ) : (
+        // Home: the month so far beside wallets, then recent activity.
+        <div className="@container grid grid-cols-12 gap-3 md:gap-4">
+          <div className="col-span-12 grid gap-3 @4xl:col-span-8">
+            <LoadingHero />
+            <div className="grid grid-cols-2 gap-2">
+              <Skeleton className="h-8 rounded-lg" />
+              <Skeleton className="h-8 rounded-lg" />
+            </div>
+          </div>
+          <LoadingCard className="col-span-12 @4xl:col-span-4"><LoadingItems rows={3} /></LoadingCard>
+          <LoadingCard className="col-span-12"><LoadingItems rows={5} /></LoadingCard>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** A page outside the shell (print preview, help documents) while its code downloads: header, then a text card. */
+export function LoadingDocument() {
+  return (
+    <div aria-busy className="mx-auto grid w-full max-w-3xl gap-6 p-4 md:p-6">
       <div className="grid gap-2">
         <Skeleton className="h-8 w-64 max-w-full md:h-9" />
         <Skeleton className="h-4 w-48" />
       </div>
-      <LoadingCard><LoadingItems rows={5} /></LoadingCard>
+      <LoadingCard><div className="grid gap-2.5">{W.concat(W).map((w, i) => <Skeleton key={i} className={cn('h-4', i % 3 === 2 ? w : 'w-full')} />)}</div></LoadingCard>
+    </div>
+  )
+}
+
+const SIDEBAR_BAR = 'bg-sidebar-foreground/12'
+
+/** The signed-in shell before its code or the session is ready: the same dark sidebar (tablet and laptop) or bottom bar
+ *  (phone), and the current page's shape in the same main area, so the real shell lands on top of it. */
+export function LoadingShell() {
+  return (
+    <div aria-busy className="flex min-h-svh w-full">
+      <div className="hidden w-64 shrink-0 md:block">
+        <div className="fixed inset-y-0 left-0 flex w-64 flex-col border-r border-sidebar-border bg-sidebar canvas-dark-flat text-sidebar-foreground">
+          <div className="px-4 py-3"><LogoWithTagline tone="dark" height={37} small /></div>
+          <div className="flex flex-col gap-2 p-2">
+            {/* The Add button is the same on every page, so it shows as itself (it works once the shell lands). */}
+            <div className="flex h-8 items-center justify-center gap-1.5 rounded-lg bg-sidebar-primary text-sm font-medium text-sidebar-primary-foreground"><Plus className="size-4" /> Add transaction</div>
+            {Array.from({ length: 7 }, (_, i) => (
+              <div key={i} className="flex h-8 items-center gap-2 px-2">
+                <Skeleton className={cn('size-4', SIDEBAR_BAR)} />
+                <Skeleton className={cn('h-3.5', SIDEBAR_BAR, W[i % 3])} />
+              </div>
+            ))}
+          </div>
+          <div className="m-2 mt-auto grid h-12 content-center gap-1.5 px-2">
+            <Skeleton className={cn('h-3.5 w-28', SIDEBAR_BAR)} />
+            <Skeleton className={cn('h-3 w-40', SIDEBAR_BAR)} />
+          </div>
+        </div>
+      </div>
+      <div data-slot="sidebar-inset" className="relative flex w-full min-w-0 flex-1 flex-col bg-background">
+        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:gap-6 md:p-6">
+          <LoadingPage />
+        </div>
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-sidebar-border bg-sidebar canvas-dark pb-[env(safe-area-inset-bottom)] md:hidden">
+        <div className="grid grid-cols-5 items-center gap-1 p-2">
+          {[0, 1, 2, 3, 4].map((i) => i === 2
+            ? <div key={i} className="flex size-14 -translate-y-4 items-center justify-center justify-self-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-black/30 ring-4 ring-sidebar"><Plus className="size-6" /></div>
+            : (
+              <div key={i} className="flex flex-col items-center gap-1 py-1.5">
+                <Skeleton className={cn('size-4', SIDEBAR_BAR)} />
+                <Skeleton className={cn('h-3 w-10', SIDEBAR_BAR)} />
+              </div>
+            ))}
+        </div>
+      </div>
     </div>
   )
 }

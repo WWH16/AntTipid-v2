@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useApp } from '@/app-state'
-import { LoadingAuth, LoadingPage } from '@/components/states'
+import { LoadingAuth, LoadingDocument, LoadingPage, LoadingShell } from '@/components/states'
 import { hasSavedSession } from '@/lib/supabase'
 
 // Each page is its own file. The signed-in pages are fetched in the background once the app is up (see
@@ -36,7 +36,8 @@ if (hasSavedSession()) {
 
 const page = (el: ReactNode) => <Suspense fallback={<LoadingPage />}>{el}</Suspense>
 
-function RequireUser({ children }: { children: ReactNode }) {
+/** `loading` stands in while the session is read: the shell's shape for shell pages, a plain document otherwise. */
+function RequireUser({ children, loading = <LoadingDocument /> }: { children: ReactNode; loading?: ReactNode }) {
   const { user, ready } = useApp()
   const { pathname } = useLocation()
   useEffect(() => {
@@ -48,7 +49,7 @@ function RequireUser({ children }: { children: ReactNode }) {
   // Signed-out visitors to / get the public page about the app; every other page asks them to sign in.
   // With no saved session there's nothing to wait for, so / skips the app skeleton and shows the landing page at once.
   const landing = <Suspense fallback={null}><LandingPage /></Suspense>
-  if (!ready) return pathname === '/' && !hasSavedSession() ? landing : <LoadingPage />
+  if (!ready) return pathname === '/' && !hasSavedSession() ? landing : loading
   if (user) return children
   return pathname === '/' ? landing : <Navigate to="/sign-in" replace />
 }
@@ -59,10 +60,10 @@ export default function App() {
       <Route path="/privacy" element={<Suspense fallback={null}><PrivacyPage /></Suspense>} />
       <Route path="/terms" element={<Suspense fallback={null}><TermsPage /></Suspense>} />
       <Route path="/sign-in" element={<Suspense fallback={<LoadingAuth />}><SignInPage /></Suspense>} />
-      <Route path="/reports/print" element={<RequireUser><Suspense fallback={<LoadingPage />}><PrintReportPage /></Suspense></RequireUser>} />
-      <Route path="/help/prd" element={<RequireUser><Suspense fallback={<LoadingPage />}><HelpPrdPage /></Suspense></RequireUser>} />
-      <Route path="/help/trd" element={<RequireUser><Suspense fallback={<LoadingPage />}><HelpTrdPage /></Suspense></RequireUser>} />
-      <Route element={<RequireUser><Suspense fallback={<LoadingPage />}><AppShell /></Suspense></RequireUser>}>
+      <Route path="/reports/print" element={<RequireUser><Suspense fallback={<LoadingDocument />}><PrintReportPage /></Suspense></RequireUser>} />
+      <Route path="/help/prd" element={<RequireUser><Suspense fallback={<LoadingDocument />}><HelpPrdPage /></Suspense></RequireUser>} />
+      <Route path="/help/trd" element={<RequireUser><Suspense fallback={<LoadingDocument />}><HelpTrdPage /></Suspense></RequireUser>} />
+      <Route element={<RequireUser loading={<LoadingShell />}><Suspense fallback={<LoadingShell />}><AppShell /></Suspense></RequireUser>}>
         <Route index element={page(<HomePage />)} />
         <Route path="activity" element={page(<ActivityPage />)} />
         <Route path="budgets" element={page(<BudgetsPage />)} />

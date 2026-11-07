@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/page-header'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { SimpleSelect } from '@/components/simple-select'
 import { HeroCard } from '@/components/hero-card'
-import { EmptyState, ErrorState, LoadingCard, LoadingHero, LoadingItems } from '@/components/states'
+import { EmptyState, ErrorState, LoadingBudgets } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { ItemGroup } from '@/components/ui/item'
@@ -64,12 +64,7 @@ export function BudgetsPage() {
       />
       <MonthSwitcher month={month} onChange={setMonth} />
 
-      {error ? <ErrorState error={error} /> : loading && !data ? (
-        <div className="grid items-start gap-5 md:gap-6 lg:grid-cols-[2fr_3fr]">
-          <LoadingHero compact />
-          <LoadingCard><LoadingItems rows={3} progress /></LoadingCard>
-        </div>
-      ) : (
+      {error ? <ErrorState error={error} /> : loading && !data ? <LoadingBudgets /> : (
         <div className="grid items-start gap-5 md:gap-6 lg:grid-cols-[2fr_3fr]">
           {overall ? (
             <HeroCard>

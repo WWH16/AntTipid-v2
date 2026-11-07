@@ -9,14 +9,13 @@ import { useQuery } from '@/api/use-query'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
 import { SimpleSelect } from '@/components/simple-select'
-import { EmptyState, ErrorState, LoadingItems } from '@/components/states'
+import { EmptyState, ErrorState, LoadingDays } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { ItemGroup } from '@/components/ui/item'
 import { Separator } from '@/components/ui/separator'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { dateInMonth, dayLabel, money, monthLabel } from '@/lib/format'
 import { shouldHintSwipe, sumOf } from '@/lib/transactions'
@@ -186,26 +185,6 @@ const DayList = memo(function DayList({ list, hint }: { list: Transaction[]; hin
     </CardContent>
   )
 })
-
-/** Two day groups, like the loaded list. */
-function LoadingDays() {
-  return (
-    <Card aria-busy>
-      <CardContent className="grid gap-2 md:gap-4">
-        {[3, 2].map((rows, i) => (
-          <div key={rows} className="grid gap-1">
-            {i > 0 && <Separator className="mb-2 md:mb-3" />}
-            <div className="flex justify-between gap-4">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-4 w-20" />
-            </div>
-            <LoadingItems rows={rows} />
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  )
-}
 
 function exportCsv(filters: TransactionFilters) {
   api.transactions.exportCsv(filters).catch((e: Error) => toast.error("Couldn't export the CSV", { description: e.message }))
