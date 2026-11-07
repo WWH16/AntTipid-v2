@@ -40,7 +40,7 @@ export function NotificationSettingsSection() {
 
   const row = (key: keyof NotificationSettings, label: string, help: string) => (
     // The whole row is the tap target: the label turns the switch on and off.
-    <label key={key} className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+    <label key={key} className="flex cursor-pointer items-center justify-between gap-3 py-3 text-sm">
       <span className="grid min-w-0 gap-0.5">
         <span className="font-medium">{label}</span>
         <span className="break-words text-muted-foreground">{help}</span>
@@ -54,20 +54,21 @@ export function NotificationSettingsSection() {
       <SectionHeader title="Notifications" description="Choose what AntTipid tells you about." />
       {error ? <ErrorState error={error} /> : loading ? <LoadingItems rows={6} amount={false} /> : (
         <div className="grid gap-3">
-          {row('emailEnabled', 'Email me', `New notifications also go to ${user?.email ?? 'your email'}.`)}
-          {TRIGGERS.map((t) => row(t.key, t.label, t.help))}
-          <div className="pt-2">
-            <BusyButton
-              variant="outline"
-              busy={busy}
-              onClick={() => run(async () => {
-                await api.notifications.testEmail()
-                toast.success('Test email sent', { description: user?.email })
-              })}
-            >
-              Send test email
-            </BusyButton>
+          <div className="divide-y">
+            {row('emailEnabled', 'Email me', `New notifications also go to ${user?.email ?? 'your email'}.`)}
+            {TRIGGERS.map((t) => row(t.key, t.label, t.help))}
           </div>
+          <BusyButton
+            variant="outline"
+            className="justify-self-start"
+            busy={busy}
+            onClick={() => run(async () => {
+              await api.notifications.testEmail()
+              toast.success('Test email sent', { description: user?.email })
+            })}
+          >
+            Send test email
+          </BusyButton>
         </div>
       )}
     </section>

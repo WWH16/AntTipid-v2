@@ -152,10 +152,12 @@ export interface AnomalyCheck {
 /** One thing the bell lists. Named so it can't be mistaken for the browser's own Notification. */
 export interface AppNotification {
   id: number
+  kind: 'near' | 'used' | 'over' | 'run_out' | 'unusual' | 'new_month'
   title: string
   body: string
   link: string // an app path
   createdAt: string
+  read: boolean
 }
 
 export interface NotificationList {

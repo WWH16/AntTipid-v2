@@ -285,7 +285,7 @@ export function HelpPrdPage() {
                   ['Print preview', 'A paper copy of one month.'],
                   ['Settings', 'Account, wallets, categories, notifications, backup and restore, audit log, and help.'],
                   ['Landing, Privacy, Terms', 'Public pages about the app and how it treats data.'],
-                  ['Sign-in', 'Sign in, sign up, forgotten password and new password on one card.'],
+                  ['Sign-in', 'Sign in, sign up, forgotten password and new password on one card. Sign in also shows the demo account login.'],
                 ]}
               />
             </>

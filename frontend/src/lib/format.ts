@@ -30,7 +30,7 @@ export const isoDate = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 // "Today" and "this month" follow the server's calendar (APP_TIMEZONE, Manila), so the app and its totals
 // flip to a new day or month at the same moment wherever the phone is.
-const manilaDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' })
+export const manilaDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' })
 export const todayIso = () => manilaDate.format(new Date())
 export const currentMonth = () => todayIso().slice(0, 7)
 

@@ -240,7 +240,7 @@ export function HelpTrdPage() {
                   [c('GET /anomalies'), 'Unusual purchases in a month'],
                   [c('GET /anomalies/check'), 'Verdict on an amount before saving'],
                   [c('PUT /anomalies/{transaction_id}/decision'), 'Record one-off or normal'],
-                  [c('GET /notifications'), 'Latest 50 and the unread count'],
+                  [c('GET /notifications'), 'Latest 50, each with its kind and whether it’s read, and the unread count'],
                   [c('POST /notifications/read'), 'Mark all as read'],
                   [c('GET, PUT /notifications/settings'), 'Read or save the switches'],
                   [c('POST /notifications/test'), 'Send a test email to the caller, one a minute'],
@@ -414,6 +414,7 @@ export function HelpTrdPage() {
                 rows={[
                   [<>{c('VITE_SUPABASE_URL')}, {c('VITE_SUPABASE_ANON_KEY')}</>, 'Frontend', 'Supabase Auth from the browser'],
                   [c('VITE_TURNSTILE_SITE_KEY'), 'Frontend', 'CAPTCHA widget'],
+                  [<>{c('VITE_DEMO_EMAIL')}, {c('VITE_DEMO_PASSWORD')}</>, 'Frontend', 'Demo login shown on the sign-in page'],
                   [<>{c('SUPABASE_URL')}, {c('SUPABASE_ANON_KEY')}</>, 'Backend', 'Token checks and Storage calls'],
                   [c('DATABASE_URL'), 'Backend', 'Transaction pooler connection'],
                   [c('SUPABASE_JWT_SECRET'), 'Backend', 'Only for older HS256 tokens'],
