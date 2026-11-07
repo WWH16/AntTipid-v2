@@ -63,6 +63,8 @@ export function CategoryBreakdown({ items, budgets = [], trends = [], onSelect }
           {hasSparks && <span className="flex items-center gap-1.5"><svg viewBox="0 0 12 8" className="h-2 w-3"><polyline points="0,7 4,3 8,5 12,1" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>Last 6 months</span>}
         </p>
       )}
+      {/* Two columns when the Reports grid is wide: each still reads down from most to least spent, on one peso scale. */}
+      <div className="gap-x-6 *:mb-1 *:break-inside-avoid @4xl:columns-2">
       {rows.map(({ id, name, spent, share, limit, left, bar, tick, spark }) => {
         const over = left !== null && left < 0
         const budgetLine = limit !== null && remainingOfLimit({ spent, limit })
@@ -93,6 +95,7 @@ export function CategoryBreakdown({ items, budgets = [], trends = [], onSelect }
           </Item>
         )
       })}
+      </div>
     </div>
   )
 }
@@ -104,8 +107,9 @@ export function SpendingCalendar({ month, daily, onDay }: { month: string; daily
   const firstColumn = ((new Date(`${month}-01T12:00:00`).getDay() + 6) % 7) + 1
   const levels = heatLevels(daily)
   return (
-    <div className="grid gap-3">
-      <div className="grid grid-cols-7 gap-1">
+    <div className="flex flex-1 flex-col">
+      {/* The first row fits the weekday names. The weeks share whatever height the card has to spare, up to a limit. */}
+      <div className="grid max-h-96 flex-1 auto-rows-fr grid-cols-7 grid-rows-[auto] gap-1">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => <span key={d} aria-hidden className="text-center text-xs text-muted-foreground">{d}</span>)}
         {Array.from({ length: daysIn(month) }, (_, i) => {
           const day = i + 1
@@ -124,7 +128,7 @@ export function SpendingCalendar({ month, daily, onDay }: { month: string; daily
               aria-current={iso === todayIso() ? 'date' : undefined}
               style={day === 1 ? { gridColumnStart: firstColumn } : undefined}
               className={cn(
-                'h-11 rounded-md text-xs tabular-nums hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:opacity-70 disabled:text-muted-foreground/50 disabled:hover:opacity-100',
+                'min-h-11 rounded-md text-xs tabular-nums hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:opacity-70 disabled:text-muted-foreground/50 disabled:hover:opacity-100',
                 HEAT[levels[i]],
                 iso === todayIso() && 'ring-2 ring-foreground ring-inset',
               )}
@@ -134,7 +138,7 @@ export function SpendingCalendar({ month, daily, onDay }: { month: string; daily
           )
         })}
       </div>
-      <p aria-hidden className="flex items-center gap-1 text-xs text-muted-foreground">
+      <p aria-hidden className="mt-3 flex items-center gap-1 text-xs text-muted-foreground">
         Less
         {HEAT.slice(1).map((h) => <span key={h} className={cn('size-3 rounded-[2px]', h)} />)}
         More

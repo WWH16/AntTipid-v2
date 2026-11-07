@@ -84,9 +84,9 @@ export function LoadingHero({ compact }: { compact?: boolean }) {
 }
 
 /** A titled card with placeholder content. */
-export function LoadingCard({ children }: { children: ReactNode }) {
+export function LoadingCard({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <Card aria-busy>
+    <Card aria-busy className={className}>
       <CardHeader>
         <Skeleton className="h-5 w-40" />
         <Skeleton className="h-4 w-56 max-w-full" />

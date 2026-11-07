@@ -70,7 +70,7 @@ export const PaceChart = memo(function PaceChart({ data, markers, onDay }: {
   const budgetBelow = budget !== undefined && other !== undefined && other >= budget && budget > floor
   const otherBelow = budget !== undefined && other !== undefined && other < budget && other > floor
   return (
-    <ChartContainer config={paceConfig} className="aspect-auto h-56 w-full cursor-pointer sm:h-64">
+    <ChartContainer config={paceConfig} className="aspect-auto h-56 w-full cursor-pointer sm:h-64 @4xl:h-80">
       <ComposedChart accessibilityLayer data={data} margin={{ top: 22, left: 4, right: 8 }} onClick={(s: ChartClick) => onDay(Number(s?.activeLabel))}>
         <CartesianGrid vertical={false} />
         {/* Every 7 days from the 1st, the same in every month, so the labels sit evenly on a phone. */}
@@ -122,7 +122,7 @@ export const TrendChart = memo(function TrendChart({ data, onMonth }: { data: Mo
 /** Income minus spending per month, up from zero when saved, down when short. onMonth gets the tapped month. */
 export const SavedChart = memo(function SavedChart({ data, onMonth }: { data: { month: string; saved: number | null }[]; onMonth: (month: string) => void }) {
   return (
-    <ChartContainer config={savedConfig} className="aspect-auto h-48 w-full cursor-pointer">
+    <ChartContainer config={savedConfig} className="aspect-auto h-48 w-full cursor-pointer @2xl:h-64">
       <BarChart accessibilityLayer data={data} margin={{ top: 8, left: 4, right: 8 }} onClick={(s: ChartClick) => { if (s?.activeLabel) onMonth(String(s.activeLabel)) }}>
         <CartesianGrid vertical={false} />
         <XAxis dataKey="month" tickLine={false} tickMargin={10} axisLine={false} tickFormatter={(m) => monthLabel(m, 'short')} />

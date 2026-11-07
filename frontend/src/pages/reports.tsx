@@ -8,6 +8,7 @@ import { useQuery } from '@/api/use-query'
 import { MonthSwitcher } from '@/components/month-switcher'
 import { PageHeader } from '@/components/page-header'
 import { CategoryBreakdown, CategoryDetail, DayDetail, MonthDetail, SpendingCalendar, TotalAmount, TotalLabel, type ReportDetail } from '@/components/report-details'
+import { HeroCard } from '@/components/hero-card'
 import { EmptyState, ErrorState, LoadingCard, LoadingItems } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,26 +25,30 @@ const PaceChart = lazy(() => import('@/components/report-charts').then((m) => ({
 const TrendChart = lazy(() => import('@/components/report-charts').then((m) => ({ default: m.TrendChart })))
 const SavedChart = lazy(() => import('@/components/report-charts').then((m) => ({ default: m.SavedChart })))
 
-/** Totals, the month chart, then breakdown and trend side by side, like the loaded report. */
+// The bento. Breakpoints follow the grid's own width (container queries), since the sidebar takes part of the screen and
+// can collapse. Narrow: earned and spent side by side over saved, then one column. Wide: the totals stacked beside the
+// month chart, the breakdown beside the calendar, then the two six-month charts.
+const BENTO = '@container/report grid grid-cols-12 gap-3 md:gap-4'
+const tile = (i: number) => cn(i === 2 ? 'col-span-12' : 'col-span-6', '@md:col-span-4')
+// Fixed in place, so the totals stack in the columns it leaves free.
+const BESIDE_TOTALS = '@4xl:col-span-8 @4xl:col-start-5 @4xl:row-span-3 @4xl:row-start-1'
+
+/** The bento's shape, like the loaded report. */
 function LoadingReport() {
   return (
-    <>
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {[0, 1, 2].map((i) => (
-          <Card key={i} aria-busy>
-            <CardHeader>
-              <Skeleton className="h-4 w-14" />
-              <Skeleton className="h-5 w-20 sm:h-7 sm:w-28" />
-            </CardHeader>
-          </Card>
-        ))}
-      </div>
-      <LoadingCard><Skeleton className="h-56 w-full sm:h-64" /></LoadingCard>
-      <div className="grid items-start gap-5 md:gap-6 lg:grid-cols-2">
-        <LoadingCard><LoadingItems rows={4} amount={false} progress /></LoadingCard>
-        <LoadingCard><Skeleton className="h-64 w-full" /></LoadingCard>
-      </div>
-    </>
+    <div className={BENTO}>
+      {[0, 1, 2].map((i) => (
+        <Card key={i} aria-busy className={tile(i)}>
+          <CardHeader>
+            <Skeleton className="h-4 w-14" />
+            <Skeleton className="h-7 w-20 sm:w-28" />
+          </CardHeader>
+        </Card>
+      ))}
+      <LoadingCard className={cn('col-span-12', BESIDE_TOTALS)}><Skeleton className="h-56 w-full sm:h-64 @4xl:h-80" /></LoadingCard>
+      <LoadingCard className="col-span-12 @4xl:col-span-8"><LoadingItems rows={4} amount={false} progress /></LoadingCard>
+      <LoadingCard className="col-span-12 @4xl:col-span-4"><Skeleton className="h-64 w-full" /></LoadingCard>
+    </div>
   )
 }
 
@@ -109,6 +114,9 @@ export function ReportsPage() {
   const saved = useMemo(() => data && savedMonths(data.trend), [data])
   const notes = data ? totalNotes(data.trend, finished) : []
   const biggest = data?.daily.reduce((a, b) => (b.spent > a.spent ? b : a), data.daily[0])
+  // The day table is too long to sit beside the totals.
+  const totalsBeside = spentTotal > 0 && !paceAsTable
+  const showSaved = !asTable && !!saved && saved.count >= 2
   // Any day up to today opens; a day with nothing spent says so in its panel. Taps past the plot (NaN) do nothing.
   const openDay = useCallback((day: number) => { if (day >= 1 && day <= lastDay) setDetail({ type: 'day', day }) }, [lastDay])
   const openMonth = useCallback((m: string) => setDetail({ type: 'month', month: m }), [])
@@ -128,157 +136,154 @@ export function ReportsPage() {
       <MonthSwitcher month={month} onChange={setMonth} />
 
       {error ? <ErrorState error={error} /> : loading && !data ? <LoadingReport /> : data && (
-        <>
-          <div className={cn('grid grid-cols-3 gap-2 sm:gap-4', monthEmpty && 'hidden')}>
-            {monthTotals(thisMonth?.income ?? 0, thisMonth?.spent ?? 0).map(([label, value, tone, swatch], i) => (
-              <Card key={label}>
+        <div className={BENTO}>
+          {!monthEmpty && monthTotals(thisMonth?.income ?? 0, thisMonth?.spent ?? 0).map(([label, value, tone, swatch], i) => {
+            const Tile = i === 2 ? HeroCard : Card
+            return (
+              <Tile key={label} className={tile(i)}>
                 <CardHeader>
                   <CardDescription><TotalLabel label={label} swatch={swatch} /></CardDescription>
-                  <CardTitle className={`text-base font-semibold tabular-nums sm:text-2xl ${tone}`}>
+                  <CardTitle className={cn('text-xl font-semibold tabular-nums sm:text-2xl @4xl/report:text-3xl', tone && 'text-destructive-on-primary')}>
                     <TotalAmount value={value} />
                   </CardTitle>
                   {notes[i] && <p className="text-xs text-muted-foreground tabular-nums">{notes[i]}</p>}
                 </CardHeader>
-              </Card>
-            ))}
-          </div>
+              </Tile>
+            )
+          })}
 
           {spentTotal > 0 && (
-          <Card>
+            <Card className={cn('col-span-12', totalsBeside && BESIDE_TOTALS)}>
+              <CardHeader>
+                <CardTitle id="pace-title" role="heading" aria-level={2}>{paceTitle}</CardTitle>
+                <CardDescription>
+                  {budget ? 'Running total against your monthly budget. ' : 'Running total for the month. '}
+                  Tap a day to see what you spent.
+                </CardDescription>
+                <CardAction>
+                  <Button variant="ghost" size="sm" aria-describedby="pace-title" onClick={() => setPaceAsTable((v) => !v)}>{paceAsTable ? 'Show chart' : 'Show as table'}</Button>
+                </CardAction>
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                {paceAsTable ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow><TableHead>Day</TableHead><TableHead className="text-right">Spent</TableHead><TableHead className="text-right">So far</TableHead></TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.daily.map((d) => (
+                        <TableRow key={d.day}>
+                          <TableCell>
+                            <Button variant="link" className="h-auto p-0" onClick={() => openDay(d.day)}>{dayLabel(dayIso(month, d.day))}</Button>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">{money(d.spent, { whole: true })}</TableCell>
+                          <TableCell className="text-right tabular-nums">{money(pace[d.day - 1]?.spent ?? 0, { whole: true })}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <Suspense fallback={<Skeleton className="h-56 w-full sm:h-64 @4xl:h-80" />}>
+                    <PaceChart data={pace} markers={markers} onDay={openDay} />
+                  </Suspense>
+                )}
+                {paceNote && <p className="text-sm font-medium tabular-nums">{paceNote}</p>}
+                {fixedNote && <p className="text-xs text-muted-foreground">{fixedNote}</p>}
+                {markers.map((m) => (
+                  <p key={m.id} className="flex items-baseline gap-2 text-sm text-muted-foreground tabular-nums">
+                    <span aria-hidden className="size-2.5 shrink-0 translate-y-px rounded-full bg-foreground" />
+                    <span>Unusual purchase: {m.title}, {money(m.amount, { whole: true })} on {printDate(m.date)}.</span>
+                  </p>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className={cn('col-span-12', spentTotal > 0 && '@4xl:col-span-8')}>
             <CardHeader>
-              <CardTitle id="pace-title" role="heading" aria-level={2}>{paceTitle}</CardTitle>
-              <CardDescription>
-                {budget ? 'Running total against your monthly budget. ' : 'Running total for the month. '}
-                Tap a day to see what you spent.
-              </CardDescription>
-              <CardAction>
-                <Button variant="ghost" size="sm" aria-describedby="pace-title" onClick={() => setPaceAsTable((v) => !v)}>{paceAsTable ? 'Show chart' : 'Show as table'}</Button>
-              </CardAction>
+              <CardTitle role="heading" aria-level={2}>Where your money went</CardTitle>
+              {data.byCategory.length > 0 && <CardDescription>Spending by category in {monthLabel(month)}. Select one for details.</CardDescription>}
             </CardHeader>
-            <CardContent className="grid gap-3">
-              {paceAsTable ? (
-                <Table>
+            <CardContent className="grid gap-4">
+              {outside && outside.spent > 0 && (
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  {money(outside.spent, { whole: true })} of {money(outside.total, { whole: true })} ({Math.round((outside.spent / outside.total) * 100)}%) went to categories without a budget.
+                </p>
+              )}
+              {data.byCategory.length ? (
+                <CategoryBreakdown items={data.byCategory} budgets={data.budgets} trends={data.categoryTrend} onSelect={(categoryId) => setDetail({ type: 'category', categoryId })} />
+              ) : (
+                <EmptyState icon={ChartPie} title={`No spending in ${monthLabel(month)}`} body="Expenses you add for this month are broken down here by category." action={<Button variant="outline" onClick={() => openAdd({ kind: 'expense', date: dateInMonth(month) })}>Add expense</Button>} />
+              )}
+            </CardContent>
+          </Card>
+
+          {spentTotal > 0 && biggest && (
+            <Card className="col-span-12 @4xl:col-span-4">
+              <CardHeader>
+                <CardTitle role="heading" aria-level={2}>Biggest day: {dayLabel(dayIso(month, biggest.day))}</CardTitle>
+                <CardDescription>{money(biggest.spent, { whole: true })} spent. Darker days cost more. Tap a day to see what you spent.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col">
+                <SpendingCalendar month={month} daily={data.daily} onDay={openDay} />
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className={cn('col-span-12', showSaved && '@2xl:col-span-7')}>
+            <CardHeader>
+              <CardTitle id="trend-title" role="heading" aria-level={2}>Income and spending</CardTitle>
+              <CardDescription>
+                {historyEmpty ? 'Your income and spending over the last 6 months show here once you add some.' : 'Last 6 months. Tap a month for its breakdown.'}
+              </CardDescription>
+              {!historyEmpty && (
+                <CardAction>
+                  <Button variant="ghost" size="sm" aria-describedby="trend-title" onClick={() => setAsTable((v) => !v)}>{asTable ? 'Show chart' : 'Show as table'}</Button>
+                </CardAction>
+              )}
+            </CardHeader>
+            <CardContent className={cn(historyEmpty && 'hidden')}>
+              {asTable ? (
+                <Table className="[&_td]:px-1 [&_th]:px-1 sm:[&_td]:px-2 sm:[&_th]:px-2">
                   <TableHeader>
-                    <TableRow><TableHead>Day</TableHead><TableHead className="text-right">Spent</TableHead><TableHead className="text-right">So far</TableHead></TableRow>
+                    <TableRow><TableHead>Month</TableHead><TableHead className="text-right">Income</TableHead><TableHead className="text-right">Spending</TableHead><TableHead className="text-right">Saved</TableHead></TableRow>
                   </TableHeader>
                   <TableBody>
-                    {data.daily.map((d) => (
-                      <TableRow key={d.day}>
+                    {data.trend.map((m) => (
+                      <TableRow key={m.month}>
                         <TableCell>
-                          <Button variant="link" className="h-auto p-0" onClick={() => openDay(d.day)}>{dayLabel(dayIso(month, d.day))}</Button>
+                          <Button variant="link" className="h-auto p-0" onClick={() => setDetail({ type: 'month', month: m.month })}>{monthLabel(m.month, 'short')}</Button>
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{money(d.spent, { whole: true })}</TableCell>
-                        <TableCell className="text-right tabular-nums">{money(pace[d.day - 1]?.spent ?? 0, { whole: true })}</TableCell>
+                        <TableCell className="text-right tabular-nums">{money(m.income, { whole: true })}</TableCell>
+                        <TableCell className="text-right tabular-nums">{money(m.spent, { whole: true })}</TableCell>
+                        <TableCell className={cn('text-right tabular-nums', m.income < m.spent && 'text-destructive')}>{money(m.income - m.spent, { whole: true })}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               ) : (
-                <Suspense fallback={<Skeleton className="h-56 w-full sm:h-64" />}>
-                  <PaceChart data={pace} markers={markers} onDay={openDay} />
+                <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+                  <TrendChart data={data.trend} onMonth={openMonth} />
                 </Suspense>
               )}
-              {paceNote && <p className="text-sm font-medium tabular-nums">{paceNote}</p>}
-              {fixedNote && <p className="text-xs text-muted-foreground">{fixedNote}</p>}
-              {markers.map((m) => (
-                <p key={m.id} className="flex items-baseline gap-2 text-sm text-muted-foreground tabular-nums">
-                  <span aria-hidden className="size-2.5 shrink-0 translate-y-px rounded-full bg-foreground" />
-                  <span>Unusual purchase: {m.title}, {money(m.amount, { whole: true })} on {printDate(m.date)}.</span>
-                </p>
-              ))}
             </CardContent>
           </Card>
-          )}
 
-          <div className="grid items-start gap-5 md:gap-6 lg:grid-cols-2">
-            <Card>
+          {/* In table view, the Saved column above shows this. */}
+          {showSaved && (
+            <Card className="col-span-12 @2xl:col-span-5">
               <CardHeader>
-                <CardTitle role="heading" aria-level={2}>Where your money went</CardTitle>
-                {data.byCategory.length > 0 && <CardDescription>Spending by category in {monthLabel(month)}. Select one for details.</CardDescription>}
+                <CardTitle role="heading" aria-level={2}>{saved.line}</CardTitle>
+                <CardDescription>Income minus spending per month. Tap a month for its breakdown.</CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4">
-                {outside && outside.spent > 0 && (
-                  <p className="text-sm text-muted-foreground tabular-nums">
-                    {money(outside.spent, { whole: true })} of {money(outside.total, { whole: true })} ({Math.round((outside.spent / outside.total) * 100)}%) went to categories without a budget.
-                  </p>
-                )}
-                {data.byCategory.length ? (
-                  <CategoryBreakdown items={data.byCategory} budgets={data.budgets} trends={data.categoryTrend} onSelect={(categoryId) => setDetail({ type: 'category', categoryId })} />
-                ) : (
-                  <EmptyState icon={ChartPie} title={`No spending in ${monthLabel(month)}`} body="Expenses you add for this month are broken down here by category." action={<Button variant="outline" onClick={() => openAdd({ kind: 'expense', date: dateInMonth(month) })}>Add expense</Button>} />
-                )}
+              <CardContent>
+                <Suspense fallback={<Skeleton className="h-48 w-full @2xl:h-64" />}>
+                  <SavedChart data={saved.rows} onMonth={openMonth} />
+                </Suspense>
               </CardContent>
             </Card>
-
-            <div className="grid min-w-0 gap-5 md:gap-6">
-              {spentTotal > 0 && biggest && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle role="heading" aria-level={2}>Biggest day: {dayLabel(dayIso(month, biggest.day))}</CardTitle>
-                    <CardDescription>{money(biggest.spent, { whole: true })} spent. Darker days cost more. Tap a day to see what you spent.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <SpendingCalendar month={month} daily={data.daily} onDay={openDay} />
-                  </CardContent>
-                </Card>
-              )}
-
-              <Card>
-                <CardHeader>
-                  <CardTitle id="trend-title" role="heading" aria-level={2}>Income and spending</CardTitle>
-                  <CardDescription>
-                    {historyEmpty ? 'Your income and spending over the last 6 months show here once you add some.' : 'Last 6 months. Tap a month for its breakdown.'}
-                  </CardDescription>
-                  {!historyEmpty && (
-                    <CardAction>
-                      <Button variant="ghost" size="sm" aria-describedby="trend-title" onClick={() => setAsTable((v) => !v)}>{asTable ? 'Show chart' : 'Show as table'}</Button>
-                    </CardAction>
-                  )}
-                </CardHeader>
-                <CardContent className={cn(historyEmpty && 'hidden')}>
-                  {asTable ? (
-                    <Table className="[&_td]:px-1 [&_th]:px-1 sm:[&_td]:px-2 sm:[&_th]:px-2">
-                      <TableHeader>
-                        <TableRow><TableHead>Month</TableHead><TableHead className="text-right">Income</TableHead><TableHead className="text-right">Spending</TableHead><TableHead className="text-right">Saved</TableHead></TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.trend.map((m) => (
-                          <TableRow key={m.month}>
-                            <TableCell>
-                              <Button variant="link" className="h-auto p-0" onClick={() => setDetail({ type: 'month', month: m.month })}>{monthLabel(m.month, 'short')}</Button>
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">{money(m.income, { whole: true })}</TableCell>
-                            <TableCell className="text-right tabular-nums">{money(m.spent, { whole: true })}</TableCell>
-                            <TableCell className={cn('text-right tabular-nums', m.income < m.spent && 'text-destructive')}>{money(m.income - m.spent, { whole: true })}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-                      <TrendChart data={data.trend} onMonth={openMonth} />
-                    </Suspense>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* In table view, the Saved column above shows this. */}
-              {!asTable && saved && saved.count >= 2 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle role="heading" aria-level={2}>{saved.line}</CardTitle>
-                    <CardDescription>Income minus spending per month. Tap a month for its breakdown.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Suspense fallback={<Skeleton className="h-48 w-full" />}>
-                      <SavedChart data={saved.rows} onMonth={openMonth} />
-                    </Suspense>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
-        </>
+          )}
+        </div>
       )}
 
       {detail?.type === 'day' && <DayDetail month={month} day={detail.day} onClose={() => setDetail(null)} />}
