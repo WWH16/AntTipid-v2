@@ -295,6 +295,7 @@ def test_routes_and_user_isolation():
             assert client.patch(f"/api/categories/{food_id}", json={"onceAMonth": False}, headers=ha).json()["onceAMonth"] is False
             rep_mon = client.get("/api/reports/monthly", params={"month": month}, headers=ha).json()
             assert rep_mon["byCategory"] == [{"categoryId": food_id, "total": 250}]
+            assert rep_mon["categoryTrend"] == [{"categoryId": food_id, "totals": [0, 0, 0, 0, 0, 250]}]
             assert sorted(rep_mon["budgets"], key=lambda b: b["categoryId"] or "") == [
                 {"categoryId": None, "limit": 10000}, {"categoryId": food_id, "limit": 2000},
             ]
@@ -399,7 +400,7 @@ def test_anomalies_route():
             spend(130, "2026-10-21")
             assert list(flagged().values()) == [{
                 "transactionId": dinner, "categoryId": food, "amount": 4500, "decision": None,
-                "method": "kmeans", "usualLow": 85, "usualHigh": 450,
+                "method": "kmeans", "usualLow": 85, "usualHigh": 450, "date": "2026-10-20", "title": "x",
             }]
             # The loophole: a second big one is judged on the history before it, which leaves the first out (not a
             # habit), so both stay flagged.

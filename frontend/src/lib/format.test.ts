@@ -5,6 +5,7 @@ import { cleanReceiptItems, itemProblem, itemsTotal, lineTotal, toDraftItems } f
 
 test('pesoTick: short axis labels that keep the real value', () => {
   assert.deepEqual([0, 250, 1000, 1250, 12000].map(pesoTick), ['₱0', '₱250', '₱1k', '₱1.25k', '₱12k'])
+  assert.deepEqual([-500, -1500].map(pesoTick), ['−₱500', '−₱1.5k'])
 })
 
 test('watchDay: an app left open past midnight reloads once, when it comes back into view', () => {

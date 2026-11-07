@@ -285,7 +285,7 @@ def month_unusual(conn, user_id, start, end) -> list[dict]:
     record_unchecked(conn, user_id, [r["id"] for r in unchecked])
     return conn.execute(
         """
-        select t.id, t.category_id, t.amount, a.decision, a.method, a.usual_low, a.usual_high
+        select t.id, t.category_id, t.amount, t.date, t.title, a.decision, a.method, a.usual_low, a.usual_high
         from transactions t
         join categories c on c.id = t.category_id and not c.once_a_month
         join anomaly_checks a on a.transaction_id = t.id and a.unusual and a.decision is distinct from 'normal'

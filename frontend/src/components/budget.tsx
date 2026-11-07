@@ -3,9 +3,8 @@ import { Badge } from '@/components/ui/badge'
 import { BrandMark } from '@/components/brand-icons'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemFooter, ItemTitle } from '@/components/ui/item'
 import { Progress } from '@/components/ui/progress'
-import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, type BudgetState } from '@/lib/budget'
+import { OVER_BAR, budgetPercent, budgetState, remainingOfLimit, type BudgetState } from '@/lib/budget'
 import { cn } from '@/lib/utils'
-import { money } from '@/lib/format'
 import type { BudgetStatus, Category } from '@/types'
 
 const BADGE = {
@@ -35,7 +34,7 @@ export function BudgetItem({ b, category, onSelect, pace }: { b: BudgetStatus; c
       <CategoryMedia category={category} />
       <ItemContent>
         <ItemTitle>{category?.name}</ItemTitle>
-        <ItemDescription className="tabular-nums">{budgetRemaining(b)} of {money(b.limit, { whole: true })}</ItemDescription>
+        <ItemDescription className="tabular-nums">{remainingOfLimit(b)}</ItemDescription>
       </ItemContent>
       <ItemActions><BudgetBadge state={budgetState(b)} /></ItemActions>
       <ItemFooter className="flex-col items-stretch gap-2">

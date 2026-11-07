@@ -235,9 +235,9 @@ export function HelpTrdPage() {
                   [c('GET, POST /budgets'), 'Budgets with their spending; add one'],
                   [c('PUT, DELETE /budgets/{id}'), 'Change or remove a budget'],
                   [c('GET /reports/summary'), 'Month summary for Home'],
-                  [c('GET /reports/monthly'), 'Full month report'],
+                  [c('GET /reports/monthly'), 'Full month report, with six months per category'],
                   [c('GET /reports/months'), 'Months with data'],
-                  [c('GET /anomalies'), 'Unusual purchases in a month'],
+                  [c('GET /anomalies'), 'Unusual purchases in a month, with their dates and titles'],
                   [c('GET /anomalies/check'), 'Verdict on an amount before saving'],
                   [c('PUT /anomalies/{transaction_id}/decision'), 'Record one-off or normal'],
                   [c('GET /notifications'), 'Latest 50, each with its kind and whether it’s read, and the unread count'],
@@ -435,8 +435,8 @@ export function HelpTrdPage() {
               <DocTable
                 head={['Suite', 'Size', 'Covers']}
                 rows={[
-                  [<>Frontend, {c('node --test src/lib/*.test.ts')}</>, '27 tests in 6 files', 'Budget and pace maths, formatting, print report, audit, backup and notification helpers'],
-                  [<>Backend, {c('test_receipts.py')} and four more</>, '80 checks in 5 files', 'Receipt parsing, JWT verification, every route group, user A vs user B isolation, anomalies, audit, backup, notifications, CORS and the scan limit'],
+                  [<>Frontend, {c('node --test src/lib/*.test.ts')}</>, '47 tests in 7 files', 'Budget and pace maths, formatting, reports, print report, audit, backup and notification helpers'],
+                  [<>Backend, {c('test_receipts.py')} and four more</>, '81 checks in 5 files', 'Receipt parsing, JWT verification, every route group, user A vs user B isolation, anomalies, audit, backup, notifications, CORS and the scan limit'],
                   [c('backend/paper_anomalies.py'), 'Evaluation script', 'K-means against the baseline, with elbow and silhouette charts'],
                 ]}
               />

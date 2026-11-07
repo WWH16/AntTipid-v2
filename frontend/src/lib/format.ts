@@ -6,8 +6,8 @@ const pesoCompact = new Intl.NumberFormat('en-PH', { style: 'currency', currency
 export const money = (n: number, opts: { whole?: boolean; compact?: boolean } = {}) =>
   (opts.compact ? pesoCompact : opts.whole ? pesoWhole : peso).format(n)
 
-/** A chart axis label: "₱250", "₱1.25k", "₱12k". Never rounded, so a tick can't name a value it isn't. */
-export const pesoTick = (n: number) => (n < 1000 ? `₱${n}` : `₱${n / 1000}k`)
+/** A chart axis label: "₱250", "₱1.25k", "₱12k", "−₱500". Never rounded, so a tick can't name a value it isn't. */
+export const pesoTick = (n: number): string => (n < 0 ? `−${pesoTick(-n)}` : n < 1000 ? `₱${n}` : `₱${n / 1000}k`)
 
 /** Keeps digits, one decimal point (later ones are dropped), a leading minus when allowNegative is set, and at most 10 whole-peso digits (₱9,999,999,999), so numbers stay exact. */
 export function cleanMoneyInput(v: string, allowNegative = false): string {
@@ -60,9 +60,11 @@ export const shiftMonth = (month: string, by: number) => {
 
 /** Day `day` of `month` (YYYY-MM) as YYYY-MM-DD. */
 export const dayIso = (month: string, day: number) => `${month}-${String(day).padStart(2, '0')}`
+/** How many days a month (YYYY-MM) has. */
+export const daysIn = (month: string) => new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate()
 /** A date inside the month a screen shows: today in this month, else the month's last day. */
 export const dateInMonth = (month: string) =>
-  todayIso().startsWith(month) ? todayIso() : dayIso(month, new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate())
+  todayIso().startsWith(month) ? todayIso() : dayIso(month, daysIn(month))
 
 /** "Today", "Yesterday", or "Mon, 13 Oct". */
 export function dayLabel(iso: string) {

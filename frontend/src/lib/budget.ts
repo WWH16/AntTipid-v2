@@ -1,4 +1,4 @@
-import { money, todayIso } from './format.ts'
+import { daysIn, money, todayIso } from './format.ts'
 import type { Anomaly, AnomalyCheck, BudgetStatus, MonthlyReport, MonthSummary } from '@/types'
 
 export type BudgetState = 'ok' | 'near' | 'used' | 'over'
@@ -19,6 +19,10 @@ export function budgetRemaining(b: Pick<BudgetStatus, 'spent' | 'limit'>) {
   const left = b.limit - b.spent
   return left >= 0 ? `${money(left, { whole: true })} left` : `${money(-left, { whole: true })} over`
 }
+
+/** "₱340 left of ₱1,000" / "₱300 over ₱1,000". */
+export const remainingOfLimit = (b: Pick<BudgetStatus, 'spent' | 'limit'>) =>
+  `${budgetRemaining(b)} ${b.spent > b.limit ? '' : 'of '}${money(b.limit, { whole: true })}`
 
 /** How a finished month ended against its monthly budget. */
 export function endLine(b: { limit: number; spent: number }) {
@@ -45,8 +49,6 @@ export function outsideBudgets(budgets: Pick<BudgetStatus, 'categoryId' | 'spent
   return { spent: cents(monthly.spent - sum('spent')), room: cents(monthly.limit - sum('limit')), total: monthly.spent }
 }
 
-const daysIn = (month: string) => new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate()
-
 /**
  * A budget at this month's pace (spent so far ÷ days so far): the day it runs out and what's safe to spend a day to
  * last the month, or what's left over if it lasts. Null when there's nothing to say: a past month, before day 5 (too
@@ -64,6 +66,13 @@ export function pace(b: Pick<BudgetStatus, 'spent' | 'limit'>, month: string, to
   const runsOut = Math.ceil(out)
   // Per day over the days left, today included (it isn't over yet), the same way Home's card counts them.
   return { lasts: false as const, runsOut: `${month}-${String(runsOut).padStart(2, '0')}`, early: days - runsOut, perDay: left / (days - day + 1) }
+}
+
+/** The Reports pace chart's title for a month still going: the running total against the on-budget line today. */
+export function paceHeadline(spent: number, onPace: number) {
+  const gap = Math.round(onPace - spent)
+  if (gap === 0) return 'Right on pace so far'
+  return `${money(Math.abs(gap), { whole: true })} ${gap > 0 ? 'under' : 'over'} pace so far`
 }
 
 const shortDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
@@ -113,6 +122,21 @@ export function fixedPart(fixed: MonthSummary['fixed'], budgets: Pick<BudgetStat
 /** The monthly budget with the once-a-month part taken out: everyday spending against the room left for it. */
 export const everyday = <B extends Pick<BudgetStatus, 'spent' | 'limit'>>(b: B, f: ReturnType<typeof fixedPart>): B =>
   ({ ...b, spent: b.spent - f.spent, limit: b.limit - f.reserved })
+
+/**
+ * The running total per day from today to month-end at the everyday pace, with bills not paid yet joining once, so it
+ * crosses the limit on the day pace() says the money runs out. Keyed by day of the month. Null when pace() has nothing
+ * to say, or on the last day, with no days left to draw.
+ */
+export function projection(monthly: Pick<BudgetStatus, 'spent' | 'limit'>, f: ReturnType<typeof fixedPart>, month: string, today = todayIso()) {
+  const b = everyday(monthly, f)
+  const day = Number(today.slice(8))
+  if (!pace(b, month, today) || day === daysIn(month)) return null
+  const perDay = b.spent / day
+  const line: Record<number, number> = { [day]: monthly.spent }
+  for (let d = day + 1; d <= daysIn(month); d++) line[d] = monthly.spent + f.reserved - f.spent + perDay * (d - day)
+  return line
+}
 
 /** Whether a budget needs a look: near, used up or over. A once-a-month one only when over: a bill paid in full is fine. */
 export const needsLook = (b: Pick<BudgetStatus, 'spent' | 'limit' | 'warnAt'>, onceAMonth = false) =>

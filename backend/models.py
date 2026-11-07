@@ -167,10 +167,16 @@ class DayPoint(CamelModel):
     spent: float
 
 
+class CategoryTrend(CamelModel):
+    category_id: str
+    totals: list[float]  # one per month of the report's trend, oldest first
+
+
 class MonthlyReport(CamelModel):
     month: str
     by_category: list[CategoryTotal]
     trend: list[TrendPoint]
+    category_trend: list[CategoryTrend]  # the same six months for each category in by_category
     daily: list[DayPoint]
     # The budgets this month had (from budget_history), so a finished month is read against them, not today's.
     budgets: list[BudgetLimit]
@@ -185,6 +191,8 @@ class Anomaly(CamelModel):
     method: Literal["kmeans", "simple"] | None
     usual_low: float | None  # the usual range as it was when judged
     usual_high: float | None
+    date: Date
+    title: str
 
 
 class SimilarOneOff(CamelModel):

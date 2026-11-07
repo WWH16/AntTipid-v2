@@ -76,7 +76,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
   {
     title: 'Reports',
     items: [
-      'Reports shows earned, spent and saved, spending through the month, spending by category against each budget, and 6 months of income and spending as a chart or a table.',
+      'Reports shows earned, spent and saved beside last month, spending through the month with where the pace is heading and any unusual purchases, a calendar of daily spending, spending by category against each budget with its last 6 months, 6 months of income and spending as a chart or a table, and saved per month.',
       'Print preview gives a paper copy of one month: totals, categories, the 6-month trend and every transaction. The browser can print it or save it as a PDF.',
     ],
   },
@@ -281,7 +281,7 @@ export function HelpPrdPage() {
                   ['Activity', 'All transactions for a month grouped by day, with search, filters and CSV export.'],
                   ['Add transaction', 'Amount, category, save. “Scan a receipt instead” fills it from a photo.'],
                   ['Budgets', 'Monthly budget, category budgets worst first, and quick-add for categories with no budget.'],
-                  ['Reports', 'Earned, spent and saved, spending by category, and 6 months of income and spending.'],
+                  ['Reports', 'Earned, spent and saved, spending through the month, a calendar of daily spending, spending by category, and 6 months of income, spending and savings.'],
                   ['Print preview', 'A paper copy of one month.'],
                   ['Settings', 'Account, wallets, categories, notifications, backup and restore, audit log, and help.'],
                   ['Landing, Privacy, Terms', 'Public pages about the app and how it treats data.'],

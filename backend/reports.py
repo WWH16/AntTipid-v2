@@ -13,7 +13,7 @@ from auth import AuthUser, User
 from db import user_tx
 from ledger import category_kind
 from models import (
-    Anomaly, AnomalyCheck, AnomalyDecisionIn, BudgetIn, BudgetLimit, BudgetStatus, CategoryTotal, DayPoint, Month, MonthHistory, MonthlyReport, MonthSummary, MonthTotal, SimilarOneOff, TrendPoint,
+    Anomaly, AnomalyCheck, AnomalyDecisionIn, BudgetIn, BudgetLimit, BudgetStatus, CategoryTotal, CategoryTrend, DayPoint, Month, MonthHistory, MonthlyReport, MonthSummary, MonthTotal, SimilarOneOff, TrendPoint,
 )
 from months import days_in, days_shown, month_range, shift_month
 
@@ -186,6 +186,16 @@ def monthly(month: Month, user: User):
                 {"uid": user.id, "start": trend_start, "end": end},
             )
         }
+        history = {}
+        for r in conn.execute(
+            """
+            select category_id, to_char(date, 'YYYY-MM') as month, sum(amount) as total from transactions
+            where user_id = %(uid)s and kind = 'expense' and date >= %(start)s and date < %(end)s
+            group by 1, 2
+            """,
+            {"uid": user.id, "start": trend_start, "end": end},
+        ):
+            history.setdefault(r["category_id"], {})[r["month"]] = float(r["total"])
         budgets = _budgets_in(conn, user, start)
         daily = {
             r["day"]: float(r["spent"])
@@ -205,6 +215,10 @@ def monthly(month: Month, user: User):
             TrendPoint(month=m, income=float(t["income"]), spent=float(t["spent"]))
             for m in trend_months
             for t in [trend.get(m, {"income": 0, "spent": 0})]
+        ],
+        category_trend=[
+            CategoryTrend(category_id=str(r["category_id"]), totals=[history[r["category_id"]].get(m, 0) for m in trend_months])
+            for r in by_category
         ],
         daily=[DayPoint(day=d, spent=daily.get(d, 0)) for d in range(1, days_shown(month) + 1)],
         budgets=[
@@ -249,7 +263,7 @@ def anomalies(month: Month, user: User):
     num = lambda v: float(v) if v is not None else None  # noqa: E731
     return [
         Anomaly(transaction_id=str(r["id"]), category_id=str(r["category_id"]), amount=float(r["amount"]), decision=r["decision"],
-                method=r["method"], usual_low=num(r["usual_low"]), usual_high=num(r["usual_high"]))
+                method=r["method"], usual_low=num(r["usual_low"]), usual_high=num(r["usual_high"]), date=r["date"], title=r["title"])
         for r in rows
     ]
 

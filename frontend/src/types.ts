@@ -88,6 +88,8 @@ export interface MonthlyReport {
   month: string
   byCategory: { categoryId: string; total: number }[]
   trend: { month: string; income: number; spent: number }[]
+  /** The same six months for each category in byCategory. Optional: a report cached before this field, or from an older API, has none. */
+  categoryTrend?: { categoryId: string; totals: number[] }[]
   /** Spending per day of the month, from day 1 up to today (current month) or the last day. */
   daily: { day: number; spent: number }[]
   /** The budgets this month had (null categoryId: the monthly budget). A finished month keeps the ones it ended with. */
@@ -129,6 +131,9 @@ export interface Anomaly {
   /** The usual range as it was when the purchase was judged. */
   usualLow: number | null
   usualHigh: number | null
+  /** Optional, like MonthlyReport's categoryTrend: an older API has none. */
+  date?: string
+  title?: string
 }
 
 export interface SimilarOneOff {

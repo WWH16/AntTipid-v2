@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { budgetState, endLine, everyday, fixedPart, leavesOut, monthBudgets, numberLine, verdictCopy, outsideBudgets, pace, paceLine, unusualLine, withUnusual } from './budget.ts'
+import { budgetState, endLine, everyday, fixedPart, leavesOut, monthBudgets, numberLine, verdictCopy, outsideBudgets, pace, paceHeadline, paceLine, projection, remainingOfLimit, unusualLine, withUnusual } from './budget.ts'
 
 const budget = (categoryId: string | null, limit: number, spent: number) => ({ id: String(categoryId), categoryId, limit, spent, warnAt: 80 })
 
@@ -159,4 +159,43 @@ test('endLine: how a finished month ended', () => {
   assert.equal(endLine({ limit: 1000, spent: 800 }), 'You stayed ₱200 under your ₱1,000 monthly budget.')
   assert.equal(endLine({ limit: 1000, spent: 1200 }), 'You went ₱200 over your ₱1,000 monthly budget.')
   assert.equal(endLine({ limit: 1000, spent: 1000 }), 'You used your whole ₱1,000 monthly budget.')
+})
+
+test('remainingOfLimit: what is left of a budget, or how far past it', () => {
+  assert.equal(remainingOfLimit({ spent: 660, limit: 1000 }), '₱340 left of ₱1,000')
+  assert.equal(remainingOfLimit({ spent: 1040, limit: 1000 }), '₱40 over ₱1,000')
+})
+
+test('paceHeadline: where the running total stands against the on-budget line', () => {
+  assert.equal(paceHeadline(1500, 2000), '₱500 under pace so far')
+  assert.equal(paceHeadline(2800, 2000), '₱800 over pace so far')
+  assert.equal(paceHeadline(2000.4, 2000), 'Right on pace so far')
+})
+
+test('projection: the running total at this pace, crossing the limit on the run-out date', () => {
+  const none = { spent: 0, reserved: 0 }
+  const line = projection({ spent: 6000, limit: 10000 }, none, '2026-11', '2026-11-10')!
+  assert.deepEqual([line[9], line[10], line[16], line[17], line[30]], [undefined, 6000, 9600, 10200, 18000])
+  // Same as pace(): 2026-11-17 is the first day past the limit.
+  const p = pace({ spent: 6000, limit: 10000 }, '2026-11', '2026-11-10')!
+  assert.equal(!p.lasts && p.runsOut, '2026-11-17')
+})
+
+test('projection: a bill not paid yet joins once, the everyday pace carries on, and the end matches what pace() spares', () => {
+  // ₱2,000 paid of a ₱3,000 bill: ₱1,000 still to come. Everyday: ₱1,000 in 10 days against ₱7,000.
+  const fixed = { spent: 2000, reserved: 3000 }
+  const line = projection({ spent: 3000, limit: 10000 }, fixed, '2026-11', '2026-11-10')!
+  assert.equal(line[10], 3000)
+  assert.equal(line[11], 4100)
+  assert.equal(line[30], 6000)
+  const p = pace(everyday({ spent: 3000, limit: 10000 }, fixed), '2026-11', '2026-11-10')!
+  assert.equal(p.lasts && p.spare, 10000 - line[30])
+})
+
+test('projection: nothing to project for a finished month, the first days, the last day, or a budget already over', () => {
+  const none = { spent: 0, reserved: 0 }
+  assert.equal(projection({ spent: 6000, limit: 10000 }, none, '2026-11', '2026-11-30'), null)
+  assert.equal(projection({ spent: 6000, limit: 10000 }, none, '2026-10', '2026-11-10'), null)
+  assert.equal(projection({ spent: 6000, limit: 10000 }, none, '2026-11', '2026-11-04'), null)
+  assert.equal(projection({ spent: 11000, limit: 10000 }, none, '2026-11', '2026-11-10'), null)
 })

@@ -14,7 +14,7 @@ import { monthTotals } from '@/lib/report'
 
 const th = 'border-b border-neutral-300 py-1.5 font-semibold'
 const td = 'break-inside-avoid border-b border-neutral-300 py-1.5 align-top [overflow-wrap:anywhere]'
-const num = 'pl-2 text-right tabular-nums'
+const num = 'whitespace-nowrap pl-2 text-right tabular-nums'
 
 export function PrintReportPage() {
   const [month] = useMonth()

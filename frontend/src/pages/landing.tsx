@@ -252,7 +252,7 @@ function FilledField({ label, value }: { label: string; value: string }) {
   )
 }
 
-/** Reports' "Spending through the month": the running total so far against the dashed on-budget pace, as plain SVG
+/** Reports' "Spending through the month": the running total so far against the on-budget pace, as plain SVG
     (the real chart is recharts, too heavy for this page). */
 function PaceLine() {
   const [w, h] = [300, 120]
@@ -267,14 +267,14 @@ function PaceLine() {
         {[0.25, 0.5, 0.75, 1].map((f) => <line key={f} x1="0" x2={w} y1={h * f} y2={h * f} stroke="var(--border)" vectorEffect="non-scaling-stroke" />)}
         <g className="pace-reveal">
           <path d={area} fill="var(--chart-2)" fillOpacity={0.15} />
-          <line x1="0" y1={h} x2={w} y2={y(MONTH_BUDGET.limit)} stroke="var(--muted-foreground)" strokeWidth={2} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+          <line x1="0" y1={h} x2={w} y2={y(MONTH_BUDGET.limit)} stroke="var(--muted-foreground)" strokeWidth={2} vectorEffect="non-scaling-stroke" />
         </g>
         <path d={line} className="pace-line" pathLength={1} fill="none" stroke="var(--chart-2)" strokeWidth={2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       </svg>
       <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">{[1, 10, 20, PACE_DAYS].map((d) => <span key={d}>{d}</span>)}</div>
       <div className="flex justify-center gap-4 text-xs">
-        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-[3px] bg-chart-2" />Spent so far</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 border-t-2 border-dashed border-muted-foreground" />On-budget pace</span>
+        <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-[3px] bg-chart-2" />Spent</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 border-t-2 border-muted-foreground" />On budget</span>
       </div>
     </div>
   )
@@ -624,10 +624,10 @@ export function LandingPage() {
                 headline="Food took 38% of your spending"
               >
                 <div className="grid grid-cols-3 gap-2">
-                  {monthTotals(18500, 5760).map(([label, value, tone]) => (
+                  {monthTotals(18500, 5760).map(([label, value, tone, swatch]) => (
                     <Card key={label} size="sm">
                       <CardHeader>
-                        <CardDescription>{label}</CardDescription>
+                        <CardDescription className="flex items-center gap-1.5">{swatch && <span aria-hidden className={`size-2 shrink-0 rounded-[2px] ${swatch}`} />}{label}</CardDescription>
                         <CardTitle className={`text-sm font-semibold tabular-nums ${tone}`}>{money(value, { whole: true })}</CardTitle>
                       </CardHeader>
                     </Card>

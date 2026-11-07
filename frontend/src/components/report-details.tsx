@@ -5,7 +5,7 @@ import { monthLink, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
 import { BudgetBadge } from '@/components/budget'
-import { OVER_BAR, budgetPercent, budgetRemaining, budgetState } from '@/lib/budget'
+import { OVER_BAR, budgetPercent, budgetRemaining, budgetState, remainingOfLimit } from '@/lib/budget'
 import { CategoryMedia } from '@/components/category-icon'
 import { ResponsivePanel } from '@/components/responsive-panel'
 import { LoadingItems } from '@/components/states'
@@ -14,10 +14,10 @@ import { Button } from '@/components/ui/button'
 import { Item, ItemContent, ItemGroup } from '@/components/ui/item'
 import { Progress, ProgressLabel } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { dayIso, dayLabel, money, monthLabel, shiftMonth } from '@/lib/format'
+import { dayIso, dayLabel, daysIn, money, monthLabel, shiftMonth, todayIso } from '@/lib/format'
 import { bulletRows } from '@/lib/print-report'
 import { sumOf } from '@/lib/transactions'
-import { monthTotals } from '@/lib/report'
+import { heatLevels, monthTotals, sparkPoints } from '@/lib/report'
 import { cn } from '@/lib/utils'
 import type { MonthlyReport } from '@/types'
 
@@ -38,29 +38,39 @@ export function TotalAmount({ value }: { value: number }) {
   )
 }
 
+/** A total's label with the swatch tying it to its chart series, when it has one. */
+export const TotalLabel = ({ label, swatch }: { label: string; swatch: string }) => (
+  <span className="flex items-center gap-1.5">{swatch && <span aria-hidden className={cn('size-2 shrink-0 rounded-[2px]', swatch)} />}{label}</span>
+)
+
 /**
- * A bullet chart: spending per category as bars on one peso scale, each with its budget as a tick. No track behind the
- * bar, since a track reads as a whole and these are amounts. Rows are buttons when onSelect is given.
+ * A bullet chart: spending per category as bars on one peso scale, each with its budget as a tick, and a small line of
+ * its last six months when trends are given. No track behind the bar, since a track reads as a whole and these are
+ * amounts. Rows are buttons when onSelect is given.
  */
-export function CategoryBreakdown({ items, budgets = [], onSelect }: { items: MonthlyReport['byCategory']; budgets?: MonthlyReport['budgets']; onSelect?: (categoryId: string) => void }) {
+export function CategoryBreakdown({ items, budgets = [], trends = [], onSelect }: { items: MonthlyReport['byCategory']; budgets?: MonthlyReport['budgets']; trends?: MonthlyReport['categoryTrend']; onSelect?: (categoryId: string) => void }) {
   const { category } = useRefData()
   const rows = bulletRows({ byCategory: items, budgets }, (id) => category(id)?.name ?? 'Other')
+    .map((r) => ({ ...r, spark: sparkPoints(trends.find((t) => t.categoryId === r.id)?.totals ?? []) }))
+  const hasBudgets = rows.some((r) => r.tick !== null)
+  const hasSparks = rows.some((r) => r.spark)
   return (
     <div className="grid gap-1">
-      {rows.some((r) => r.tick !== null) && (
-        <p aria-hidden className="flex gap-4 text-xs text-muted-foreground">
+      {(hasBudgets || hasSparks) && (
+        <p aria-hidden className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="h-2 w-3 rounded-r-sm bg-chart-2" />Spent</span>
-          <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-foreground" />Budget</span>
+          {hasBudgets && <span className="flex items-center gap-1.5"><span className="h-3 w-0.5 bg-foreground" />Budget</span>}
+          {hasSparks && <span className="flex items-center gap-1.5"><svg viewBox="0 0 12 8" className="h-2 w-3"><polyline points="0,7 4,3 8,5 12,1" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>Last 6 months</span>}
         </p>
       )}
-      {rows.map(({ id, name, spent, share, limit, left, bar, tick }) => {
+      {rows.map(({ id, name, spent, share, limit, left, bar, tick, spark }) => {
         const over = left !== null && left < 0
-        const budgetLine = limit !== null && `${budgetRemaining({ spent, limit })} of ${money(limit, { whole: true })}`
+        const budgetLine = limit !== null && remainingOfLimit({ spent, limit })
         return (
           <Item
             key={id}
             size="xs"
-            className={onSelect ? '-mx-3 text-left hover:bg-muted' : '-mx-3'}
+            className={onSelect ? '-mx-3 text-left hover:bg-muted active:bg-muted' : '-mx-3'}
             render={onSelect ? <button type="button" onClick={() => onSelect(id)} aria-label={`${name}: ${money(spent, { whole: true })}, ${share}% of spending. ${budgetLine || 'No budget'}. Show details`} /> : undefined}
           >
             <ItemContent>
@@ -73,11 +83,62 @@ export function CategoryBreakdown({ items, budgets = [], onSelect }: { items: Mo
                 <div className={cn('absolute inset-y-1 left-0 rounded-r-sm', over ? 'bg-destructive' : 'bg-chart-2')} style={{ width: `${bar}%` }} />
                 {tick !== null && <div className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-foreground ring-2 ring-card" style={{ left: `${tick}%` }} />}
               </div>
-              {budgetLine && <p className={cn('text-xs tabular-nums', over ? 'text-destructive' : 'text-muted-foreground')}>{budgetLine}</p>}
+              {(budgetLine || spark) && (
+                <div className="flex items-center gap-2">
+                  {budgetLine && <p className={cn('text-xs tabular-nums', over ? 'text-destructive' : 'text-muted-foreground')}>{budgetLine}</p>}
+                  {spark && <svg aria-hidden viewBox="0 0 60 15" className="ml-auto h-[15px] w-[60px] shrink-0 text-muted-foreground"><polyline points={spark} fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>}
+                </div>
+              )}
             </ItemContent>
           </Item>
         )
       })}
+    </div>
+  )
+}
+
+const HEAT = ['bg-muted text-muted-foreground', 'bg-chart-2/50 text-foreground', 'bg-chart-2/67 text-foreground', 'bg-chart-2/83 text-foreground', 'bg-chart-2 text-background']
+
+/** A month of daily spending, Monday first like Home's week. Every day is a finger-sized target, unlike a point on the pace chart. */
+export function SpendingCalendar({ month, daily, onDay }: { month: string; daily: MonthlyReport['daily']; onDay: (day: number) => void }) {
+  const firstColumn = ((new Date(`${month}-01T12:00:00`).getDay() + 6) % 7) + 1
+  const levels = heatLevels(daily)
+  return (
+    <div className="grid gap-3">
+      <div className="grid grid-cols-7 gap-1">
+        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => <span key={d} aria-hidden className="text-center text-xs text-muted-foreground">{d}</span>)}
+        {Array.from({ length: daysIn(month) }, (_, i) => {
+          const day = i + 1
+          const iso = dayIso(month, day)
+          // daily stops at today, so a day still to come has no label and no shade.
+          const spent = daily[i]?.spent
+          const label = spent === undefined ? undefined : `${dayLabel(iso)}: ${spent ? `${money(spent, { whole: true })} spent` : 'nothing spent'}`
+          return (
+            <button
+              key={day}
+              type="button"
+              disabled={!label}
+              onClick={() => onDay(day)}
+              aria-label={label}
+              title={label}
+              aria-current={iso === todayIso() ? 'date' : undefined}
+              style={day === 1 ? { gridColumnStart: firstColumn } : undefined}
+              className={cn(
+                'h-11 rounded-md text-xs tabular-nums hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring active:opacity-70 disabled:text-muted-foreground/50 disabled:hover:opacity-100',
+                HEAT[levels[i]],
+                iso === todayIso() && 'ring-2 ring-foreground ring-inset',
+              )}
+            >
+              {day}
+            </button>
+          )
+        })}
+      </div>
+      <p aria-hidden className="flex items-center gap-1 text-xs text-muted-foreground">
+        Less
+        {HEAT.slice(1).map((h) => <span key={h} className={cn('size-3 rounded-[2px]', h)} />)}
+        More
+      </p>
     </div>
   )
 }
@@ -200,15 +261,15 @@ export function MonthDetail({ month, onClose, onOpen }: { month: string; onClose
       ) : (
         <div className="grid gap-6 pb-4">
           <dl className="grid grid-cols-3 gap-2 text-sm">
-            {monthTotals(totals.income, totals.spent).map(([label, value, tone]) => (
+            {monthTotals(totals.income, totals.spent).map(([label, value, tone, swatch]) => (
               <div key={label}>
-                <dt className="text-muted-foreground">{label}</dt>
+                <dt className="text-muted-foreground"><TotalLabel label={label} swatch={swatch} /></dt>
                 <dd className={`text-base font-semibold tabular-nums ${tone}`}><TotalAmount value={value} /></dd>
               </div>
             ))}
           </dl>
           {data.byCategory.length
-            ? <CategoryBreakdown items={data.byCategory} budgets={data.budgets} />
+            ? <CategoryBreakdown items={data.byCategory} budgets={data.budgets} trends={data.categoryTrend} />
             : <p className="text-sm text-muted-foreground">No spending this month.</p>}
         </div>
       )}
