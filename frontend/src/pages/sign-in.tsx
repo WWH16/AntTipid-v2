@@ -25,6 +25,10 @@ const PASSWORD_RULES = [
 
 type AuthMode = 'signIn' | 'signUp' | 'forgot' | 'reset' | 'emailSent'
 
+// The login a reviewer uses to try the app. From the environment, so it stays out of git and can change without a code edit.
+const DEMO_EMAIL: string | undefined = import.meta.env.VITE_DEMO_EMAIL
+const DEMO_PASSWORD: string | undefined = import.meta.env.VITE_DEMO_PASSWORD
+
 const COPY: Record<Exclude<AuthMode, 'emailSent'>, { title: string; description: string; cta: string }> = {
   signIn: { title: 'Sign in to your account', description: 'Enter your email below to sign in.', cta: 'Sign in' },
   signUp: { title: 'Create an account', description: 'Enter your details below to get started.', cta: 'Create account' },
@@ -255,6 +259,13 @@ export function SignInPage() {
             <CardDescription>{description}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5 sm:gap-6">
+            {isSignIn && DEMO_EMAIL && DEMO_PASSWORD && (
+              <section aria-label="Demo account" className="grid gap-1 rounded-lg bg-muted p-3 text-sm">
+                <p className="font-medium">To try AntTipid, use the demo account:</p>
+                <p className="break-all">Email: <span className="font-medium select-all">{DEMO_EMAIL}</span></p>
+                <p className="break-all">Password: <span className="font-medium select-all">{DEMO_PASSWORD}</span></p>
+              </section>
+            )}
             {(isSignIn || isSignUp) && (
               <>
                 <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={continueWithGoogle}>

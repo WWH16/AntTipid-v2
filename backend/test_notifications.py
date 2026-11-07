@@ -258,6 +258,7 @@ def test_list_read_and_privacy():
         assert mine["unread"] == 1 and len(mine["items"]) == 1
         row = mine["items"][0]
         assert row["title"] and row["link"] == "/budgets" and row["createdAt"]
+        assert row["kind"] == "near" and row["read"] is False
         assert client.get("/api/notifications", headers=hb).json() == {"items": [], "unread": 0}
         with user_tx(direct(user_b)) as conn:
             assert conn.execute("select count(*) as n from notifications").fetchone()["n"] == 0
@@ -265,7 +266,7 @@ def test_list_read_and_privacy():
             assert conn.execute("select count(*) as n from notifications").fetchone()["n"] == 1
         assert client.post("/api/notifications/read", headers=ha).status_code == 204
         mine = client.get("/api/notifications", headers=ha).json()
-        assert mine["unread"] == 0 and len(mine["items"]) == 1
+        assert mine["unread"] == 0 and len(mine["items"]) == 1 and mine["items"][0]["read"] is True
 
 
 @needs_db

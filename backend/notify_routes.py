@@ -26,7 +26,8 @@ log = logging.getLogger("notify")
 def list_notifications(user: User):
     with user_tx(user) as conn:
         items = conn.execute(
-            "select id, title, body, link, created_at from notifications where user_id = %s order by id desc limit 50",
+            "select id, kind, title, body, link, created_at, read_at is not null as read"
+            " from notifications where user_id = %s order by id desc limit 50",
             (user.id,),
         ).fetchall()
         unread = conn.execute("select count(*) as n from notifications where user_id = %s and read_at is null", (user.id,)).fetchone()
