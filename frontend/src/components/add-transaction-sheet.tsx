@@ -378,6 +378,7 @@ function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: ()
     try {
       // Shrink once: the small copy is both the preview and the upload, so the phone never renders the full photo.
       photo = await shrinkPhoto(file)
+      if (abort.signal.aborted) return // cancelled while the photo was being prepared
       photoRef.current = photo
     } catch {
       setScanError("Couldn't open this photo. Pick a JPEG or PNG image.")
