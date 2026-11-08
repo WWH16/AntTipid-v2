@@ -87,6 +87,13 @@ export function SignInPage() {
     return () => data.subscription.unsubscribe()
   }, [])
 
+  // Back from Google's page, the browser can restore this page as it was left, still busy. Undo that.
+  useEffect(() => {
+    const restored = (e: PageTransitionEvent) => { if (e.persisted) setBusy(false) }
+    window.addEventListener('pageshow', restored)
+    return () => window.removeEventListener('pageshow', restored)
+  }, [])
+
   // After the hooks: hold the form until the saved session is read, so a signed-in visitor isn't shown it on the way to /.
   if (!ready) return <LoadingAuth />
   // A recovery link signs the user in, and the reset form must stay up until the new password is saved.
