@@ -471,7 +471,11 @@ function ScanStep({ onClose, onBack, onDone }: { onClose: () => void; onBack: ()
       description="Use your camera or upload a photo. The store, date and items are filled in for you."
       footer={footer}
     >
-      <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} aria-label="Receipt photo" />
+      <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={(e) => {
+        const file = e.target.files?.[0]
+        e.target.value = '' // so picking the same photo again (after a failed read) still fires a change
+        if (file) read(file)
+      }} aria-label="Receipt photo" />
 
       {state === 'camera' ? (
         <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-foreground">
