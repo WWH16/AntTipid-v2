@@ -268,6 +268,17 @@ def test_list_read_and_privacy():
         mine = client.get("/api/notifications", headers=ha).json()
         assert mine["unread"] == 0 and len(mine["items"]) == 1 and mine["items"][0]["read"] is True
 
+        # Through Supabase's REST API users could write rows that the next save emails. They can only mark them read.
+        for sql in (
+            "insert into notifications (user_id, key, kind, title, link) values (auth.uid(), 'forged', 'near', 'Hi', '/')",
+            "update notifications set emailed_at = null",
+            "update notifications set title = 'Forged'",
+        ):
+            with pytest.raises(errors.InsufficientPrivilege), user_tx(direct(user_a)) as conn:
+                conn.execute(sql)
+        with user_tx(direct(user_a)) as conn:
+            conn.execute("update notifications set read_at = null")
+
 
 @needs_db
 def test_settings_default_on_and_save():

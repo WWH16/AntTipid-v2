@@ -10,7 +10,7 @@ import os
 import random
 import time
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -25,7 +25,7 @@ import storage  # noqa: E402
 from auth import verify_token  # noqa: E402
 from db import connect  # noqa: E402
 from main import app  # noqa: E402
-from months import current_month, shift_month, today  # noqa: E402
+from months import current_month, month_range, shift_month, today  # noqa: E402
 from receipts import NotAReceipt, normalize_scan  # noqa: E402
 
 TEST_SECRET = "test-jwt-secret-at-least-32-bytes-long!"
@@ -94,8 +94,20 @@ def test_receipt_normalization():
     with patch.dict(os.environ, {"APP_TIMEZONE": "Pacific/Pago_Pago"}):
         assert normalize_scan({"total": 10, "date": east_today}).date_guessed is True
 
-    # Long item names are cut to what saving allows
+    # A year before 2000 is a misread too
+    assert normalize_scan({"total": 10, "date": "1926-08-19"}).date_guessed is True
+
+    # Long item names and store names are cut to what saving allows
     assert len(normalize_scan({"total": 10, "items": [{"name": "x" * 300, "price": 10}]}).items[0].name) == 200
+    assert len(normalize_scan({"total": 10, "merchant": "x" * 300}).merchant) == 200
+
+    # Totals and prices written as text with commas or a peso sign still read
+    assert normalize_scan({"total": "₱1,234.50", "items": [{"name": "Rice", "price": "₱1,234.50"}]}).total == 1234.5
+    assert normalize_scan({"total": "1,234.50", "items": [{"name": "Rice", "price": "1,234.50"}]}).items[0].price == 1234.5
+
+    # A broken reply: an item list that isn't a list counts as no items
+    for junk in (5, True, "Rice", {"name": "Rice"}):
+        assert normalize_scan({"total": 10, "items": junk}).items == []
 
     # Unit prices keep 2 decimals, as saved; discount lines and misread negative quantities are dropped
     rounded = normalize_scan({"total": 401.94, "items": [
@@ -106,7 +118,7 @@ def test_receipt_normalization():
     assert rounded.low_confidence is False
 
     # Not a receipt
-    for reply in ({"total": 0}, {}, {"total": "abc"}):
+    for reply in ({"total": 0}, {}, {"total": "abc"}, {"total": math.inf}, {"total": math.nan}):
         try:
             normalize_scan(reply)
             raise AssertionError(f"expected NotAReceipt for {reply}")
@@ -143,19 +155,29 @@ def test_wallet_patch_accepts_type_and_balance():
 
 def test_transaction_patch_keeps_items_typed():
     # Editing a receipt's items used to crash: model_dump turned them into dicts with no .name.
+    import pytest
+    from fastapi.exceptions import RequestValidationError
     from ledger import merge_patch
-    from models import TransactionIn, TransactionPatch
+    from models import TransactionPatch
 
-    current = TransactionIn.model_validate({
-        "kind": "expense", "amount": 100, "title": "Lunch", "date": "2026-10-20",
-        "walletId": str(uuid.uuid4()), "categoryId": str(uuid.uuid4()),
+    current = {
+        "kind": "expense", "amount": 100, "title": "Lunch", "date": date(2026, 10, 20), "wallet_id": uuid.uuid4(),
+        "to_wallet_id": None, "category_id": uuid.uuid4(), "note": "", "source": "manual",
         "items": [{"name": "Rice", "qty": 1, "price": 100}],
-    })
+    }
     merged = merge_patch(current, TransactionPatch.model_validate({"items": [{"name": " Adobo ", "qty": 2, "price": 50}]}))
     assert [(i.name, i.qty, i.price) for i in merged.items] == [("Adobo", 2, 50)]
     assert (merged.title, merged.amount) == ("Lunch", 100)
 
+    # The merge is validated as a whole: a null for something required is a 422, not a database error.
+    for field in ("amount", "title", "date", "walletId", "note", "kind", "source"):
+        with pytest.raises(RequestValidationError):
+            merge_patch(current, TransactionPatch.model_validate({field: None}))
 
+
+# The test dates its transactions on set days of the current month (the 15th, the 16th), so let saving accept the whole
+# month: before the 16th they'd be refused as future days.
+@patch("models.today", new=lambda: month_range(current_month())[1] - timedelta(days=1))
 def test_routes_and_user_isolation():
     if not os.environ.get("DATABASE_URL"):
         print("Skipping live DB route tests (set DATABASE_URL in backend/.env to run them)")

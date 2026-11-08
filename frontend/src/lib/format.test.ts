@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanMoneyInput, dayLabel, fieldError, formatMoneyInput, pesoTick, todayIso, watchDay } from './format.ts'
+import { cleanMoneyInput, dayLabel, fieldError, formatMoneyInput, isoDate, pesoTick, todayIso, watchDay, yesterdayIso } from './format.ts'
+import { groupBy } from './utils.ts'
 import { cleanReceiptItems, itemProblem, itemsTotal, lineTotal, toDraftItems } from './receipt.ts'
 
 test('pesoTick: short axis labels that keep the real value', () => {
@@ -104,6 +105,25 @@ test('fieldError names the field to fix instead of the raw 422 list', () => {
   assert.equal(fieldError([{ loc: ['body', 'walletId'], msg: 'Input should be a valid UUID' }]),
     "Some details aren't valid. Check the form and try again.")
   assert.equal(fieldError('Pick a category.'), null)
+})
+
+test('yesterdayIso: the day before Manila\'s today, whatever time zone the phone is in', () => {
+  const zone = process.env.TZ
+  try {
+    for (const tz of ['Asia/Manila', 'America/Los_Angeles', 'Pacific/Auckland', 'Pacific/Apia', 'Pacific/Kiritimati', 'Etc/GMT+12']) {
+      process.env.TZ = tz
+      const [y, m, d] = todayIso().split('-').map(Number)
+      assert.equal(yesterdayIso(), isoDate(new Date(y, m - 1, d - 1)), tz)
+    }
+  } finally {
+    if (zone === undefined) delete process.env.TZ
+    else process.env.TZ = zone
+  }
+})
+
+test('groupBy: groups in first-seen order, like Map.groupBy', () => {
+  const groups = groupBy(['2026-11-02', '2026-11-01', '2026-11-02'], (d) => d)
+  assert.deepEqual([...groups], [['2026-11-02', ['2026-11-02', '2026-11-02']], ['2026-11-01', ['2026-11-01']]])
 })
 
 test('dayLabel adds the year only for another year', () => {
