@@ -49,7 +49,8 @@ export function watchDay(onNewDay: (day: string) => void, today = todayIso, page
 }
 
 const parse = (iso: string) => new Date(`${iso.length === 7 ? iso + '-01' : iso}T12:00:00`)
-export const yesterdayIso = () => new Date(parse(todayIso()).getTime() - 864e5).toISOString().slice(0, 10)
+// Local date parts, not toISOString: that's the UTC date, a day off from local noon in zones 12 or more hours out.
+export const yesterdayIso = () => isoDate(new Date(parse(todayIso()).getTime() - 864e5))
 
 export const monthLabel = (month: string, style: 'long' | 'short' = 'long') =>
   parse(month).toLocaleDateString('en-PH', style === 'long' ? { month: 'long', year: 'numeric' } : { month: 'short' })
