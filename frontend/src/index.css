@@ -1045,3 +1045,51 @@
   html, body { background: white; }
   .page-thumb { display: none; }
 }
+
+/* The installed app's launch screen: the mark on the phone splash's forest, so opening never drops to an empty page.
+   It holds until the app draws something and then fades. Pure CSS, so a crash can't leave it up: an error screen
+   replaces #app, which counts as drawn. Browser tabs and browsers without :has() never see it. */
+#launch { display: none; }
+@media (display-mode: standalone) {
+  @supports selector(:has(*)) {
+    #launch {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      background: var(--primary);
+    }
+    /* Up by default, so it's there from the first paint, before the parser has reached #root. */
+    body:has(#root:not(:empty)):not(:has(#app:empty)) #launch {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 220ms cubic-bezier(0.16, 1, 0.3, 1), visibility 0s 220ms;
+    }
+  }
+}
+/* A quiet bar for slow connections only: a normal launch is over before it appears. */
+.launch-wait {
+  position: absolute;
+  top: calc(50% + 120px);
+  width: 72px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--sidebar-primary) 22%, transparent);
+  animation: launch-wait-in 200ms ease-out 1.2s backwards;
+}
+.launch-wait > span {
+  display: block;
+  width: 24px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--sidebar-primary);
+  transform: translateX(24px);
+}
+@keyframes launch-wait-in { from { opacity: 0; } }
+@keyframes launch-wait-travel { from { transform: translateX(-24px); } to { transform: translateX(72px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .launch-wait > span { animation: launch-wait-travel 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+}

@@ -33,7 +33,8 @@ createRoot(document.getElementById('root')!).render(
       <ErrorBoundary>
         <AppStateProvider>
           <TooltipProvider>
-            <App />
+            {/* index.css holds the launch screen for as long as this is empty. */}
+            <div id="app" className="contents"><App /></div>
             <PageScrollbar />
             <Toaster position="top-center" theme="light" />
           </TooltipProvider>
