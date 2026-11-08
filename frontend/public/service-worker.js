@@ -1,7 +1,8 @@
 // Offline app shell. Built assets under /assets/ have hashed names, so they're served cache first.
 // Everything else (pages, icons, manifest) goes network first and falls back to the cache when offline.
 // API calls and other origins (Supabase, Google sign-in) are never cached, so records always come from the server.
-const CACHE = 'anttipid-v1'
+// One cache per build (main.tsx registers ?v=<build id>), so activate below clears every older deploy's files.
+const CACHE = `anttipid-${new URL(location.href).searchParams.get('v') ?? 'v1'}`
 const SHELL = ['/', '/brand/logo-color.svg']
 
 // File list from Vite's build manifest: every page chunk, so the whole app opens offline.

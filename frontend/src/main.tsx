@@ -11,7 +11,9 @@ import './index.css'
 
 // Offline shell and installability. Production only: in dev the worker would cache Vite's unbundled modules.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js'))
+  // The build id in the address makes each deploy a new worker: the file itself never changes, so without it the browser
+  // would keep the first worker forever, never caching a new deploy's files or clearing old ones.
+  window.addEventListener('load', () => navigator.serviceWorker.register(`/service-worker.js?v=${import.meta.env.VITE_BUILD_ID}`))
 }
 
 // A tab opened before a deploy asks for page files the deploy replaced. Reload once to get the new ones, instead of the

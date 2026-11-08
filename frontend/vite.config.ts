@@ -10,4 +10,6 @@ export default defineConfig({
   server: { proxy: { '/api': 'http://localhost:8000' } },
   // dist/asset-manifest.json lists every built file, so the service worker can precache the whole app for offline use.
   build: { manifest: 'asset-manifest.json' },
+  // A new value each build: main.tsx registers the service worker with it, so every deploy installs a fresh worker.
+  define: { 'import.meta.env.VITE_BUILD_ID': JSON.stringify(Date.now().toString(36)) },
 })
