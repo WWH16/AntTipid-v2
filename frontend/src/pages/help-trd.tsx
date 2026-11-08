@@ -191,10 +191,10 @@ export function HelpTrdPage() {
                 rows={[
                   ['Passwords', <>Supabase Auth stores a one-way hash in {c('auth.users.encrypted_password')}. The browser sends passwords to Supabase, and AntTipid’s API never receives one.</>],
                   ['SSL and transport', 'Browser traffic to Vercel and Supabase uses HTTPS. Vercel holds Let’s Encrypt certificates for anttipid.com and www, renews them, redirects HTTP to HTTPS and sends HSTS. Gmail SMTP uses STARTTLS.'],
-                  ['Bots', 'Cloudflare Turnstile on sign-in, sign-up and auth emails, with a new token per attempt.'],
+                  ['Bots', 'Cloudflare Turnstile on sign-in, sign-up and auth emails, with a new token per attempt. Supabase Auth checks the token and refuses a sign-in without one before it checks the password.'],
                   ['Tokens', <>Every route except the cron job needs a JWT. ES256 and RS256 are checked against the project’s JWKS, HS256 against a secret. {c('exp')}, {c('aud')}, {c('iss')} and {c('sub')} are required.</>],
                   ['Origins', <>CORS lets a browser call the API directly only from {c('APP_URL')} and {c('http://localhost:5173')}. The app itself goes through the same-origin rewrite, so it doesn’t depend on this.</>],
-                  ['Rate limits', <>30 receipt scans per user a day, counted in the database so the limit holds across Vercel instances. The day follows {c('APP_TIMEZONE')}. One test email a minute.</>],
+                  ['Rate limits', <>Supabase Auth limits each IP address to 30 sign-ups, password resets and resends per 5 minutes, and 150 sign-ins and token refreshes per 5 minutes. Its built-in mailer sends at most 2 sign-up and password-reset emails an hour for the whole project. Past a limit it returns 429, and the sign-in card says “Too many tries. Wait a minute, then try again.” AntTipid’s API allows 30 receipt scans per user a day, counted in the database so the limit holds across Vercel instances. The day follows {c('APP_TIMEZONE')}. One test email a minute.</>],
                   ['Row access', <>Row level security on all 11 tables: {c('user_id = auth.uid()')}, except {c('scan_usage')}, which users can’t reach at all. The anonymous role has no access. {c('audit_log')} and {c('budget_history')} are read-only to users.</>],
                   ['Receipt photos', 'Private bucket, own folder only, 1 MB cap, images only. File type is checked from the bytes. Links are signed for 10 minutes. The server uses the caller’s token and holds no service-role key.'],
                   ['Restore', 'New ids for every row, and a photo path is kept only if it’s in the caller’s own folder, so a file from another account can’t reach their data.'],
@@ -205,7 +205,8 @@ export function HelpTrdPage() {
               />
               <h3>Known gaps</h3>
               <ul>
-                <li>Only receipt scans and test emails have a rate limit. Other routes have none of their own.</li>
+                <li>AntTipid’s own API limits only receipt scans and test emails. Sign-in limits come from Supabase Auth and count per IP address, with no lockout per account.</li>
+                <li>Auth emails go through Supabase’s built-in mailer, capped at 2 an hour for the whole project. Custom SMTP in Supabase would raise the cap.</li>
                 <li>The scan limit is per user, so many accounts together can still use up the shared free model quota.</li>
                 <li>The session token sits in local storage, as is standard for Supabase in the browser, so cross-site scripting would expose it.</li>
               </ul>

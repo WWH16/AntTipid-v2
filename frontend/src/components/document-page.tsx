@@ -15,7 +15,7 @@ import { useOrigin } from '@/hooks/use-origin'
 import { cn } from '@/lib/utils'
 import { version } from '../../package.json'
 
-const UPDATED = 'November 5, 2026'
+const UPDATED = 'November 8, 2026'
 const WORD_IMAGE_WIDTH = 600 // fits the text width of a Letter or A4 page with 1-inch margins
 const ZOOM_MAX = 4 // times the fitted size
 const ZOOM_STEP = 2

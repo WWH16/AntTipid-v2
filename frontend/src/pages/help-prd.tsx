@@ -11,7 +11,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
       'A user can sign in with email and password, or continue with Google.',
       'A user can reset a forgotten password through an emailed link.',
       'A new password needs at least 8 characters, one uppercase letter, one lowercase letter and one number.',
-      'Sign-in, sign-up and the password-reset and confirmation emails pass a Cloudflare Turnstile CAPTCHA.',
+      'Sign-in, sign-up and the password-reset and confirmation emails pass a Cloudflare Turnstile CAPTCHA. Too many tries from one address are refused for a few minutes.',
       'A user can edit their name and sign out.',
     ],
   },
@@ -238,7 +238,7 @@ export function HelpPrdPage() {
               <DocTable
                 head={['Requirement', 'How AntTipid meets it, and where']}
                 rows={[
-                  ['1. User authentication and login security', 'Email and password or Google, email confirmation, password reset, password rules and a CAPTCHA. Sign-in page.'],
+                  ['1. User authentication and login security', 'Email and password or Google, email confirmation, password reset, password rules, a CAPTCHA and rate limits. Sign-in page.'],
                   ['2. Dashboard', 'Left to spend with a pace bar, budgets needing attention, wallets and recent activity. Home.'],
                   ['3. Decision support', 'Budget warnings, run-out date, safe daily amount, outside-budget flag, unusual purchases by K-means, and saved vs budget. Home, Budgets, Reports, bell and email.'],
                   ['4. CRUD operations', 'Create, read, update and delete transactions, wallets, categories and budgets. Activity, Budgets, Settings.'],
