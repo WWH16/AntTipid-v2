@@ -196,7 +196,10 @@ function AddFlow() {
 
   if (mode === 'scan') return <ScanStep onClose={closeAdd} onBack={() => setMode('form')} onDone={applyReceipt} />
 
-  const walletOptions = activeWallets.map((w) => ({ value: w.id, label: w.name }))
+  // Archived wallets stay hidden, except one this transaction already uses: without it, the select would show its raw id.
+  const walletOptions = wallets
+    .filter((w) => !w.archived || w.id === walletId || w.id === toWalletId)
+    .map((w) => ({ value: w.id, label: w.archived ? `${w.name} (archived)` : w.name }))
   const uses = groupBy(recent ?? [], (t) => t.categoryId)
   // Most-used first; sort is stable, so unused ones keep their usual order.
   const shownCategories = categories
