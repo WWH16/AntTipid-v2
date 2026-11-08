@@ -275,7 +275,7 @@ export function SignInPage() {
             )}
             {(isSignIn || isSignUp) && (
               <>
-                <Button type="button" variant="outline" className="w-full" disabled={busy} onClick={continueWithGoogle}>
+                <Button type="button" variant="outline" className="w-full" disabled={busy || waitingForCaptcha} onClick={continueWithGoogle}>
                   <GoogleIcon /> Continue with Google
                 </Button>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
