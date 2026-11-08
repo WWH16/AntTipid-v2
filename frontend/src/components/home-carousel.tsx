@@ -12,7 +12,7 @@ import { ItemGroup } from '@/components/ui/item'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { currentMonth, dayLabel, isoDate, money, monthLabel } from '@/lib/format'
 import { sumOf } from '@/lib/transactions'
-import { cn } from '@/lib/utils'
+import { cn, groupBy } from '@/lib/utils'
 import type { Transaction } from '@/types'
 
 const GAP = 8
@@ -202,7 +202,7 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
  */
 function SpendingDetail({ title, from, to, transactions, onClose }: { title: string; from: string; to: string; transactions: Transaction[]; onClose: () => void }) {
   const expenses = transactions.filter((t) => t.kind === 'expense' && t.date >= from && t.date <= to)
-  const byCategory = [...Map.groupBy(expenses, (t) => t.categoryId ?? '')]
+  const byCategory = [...groupBy(expenses, (t) => t.categoryId ?? '')]
     .map(([categoryId, list]) => ({ categoryId, total: sumOf(list, 'expense') }))
     .sort((a, b) => b.total - a.total)
   // -mx-3 on both lists: the same inset CategoryBreakdown's rows use, so icons and amounts line up down the panel.
@@ -234,7 +234,7 @@ export function CategoriesSlide({ transactions }: { transactions?: Transaction[]
   const month = currentMonth()
   const expenses = transactions.filter((t) => t.kind === 'expense' && t.date.startsWith(month))
   const total = sumOf(expenses, 'expense')
-  const top = [...Map.groupBy(expenses, (t) => t.categoryId ?? '')]
+  const top = [...groupBy(expenses, (t) => t.categoryId ?? '')]
     .map(([id, list]) => ({ id, spent: sumOf(list, 'expense') }))
     .sort((a, b) => b.spent - a.spent)
 

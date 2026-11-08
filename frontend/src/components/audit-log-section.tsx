@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { useAction } from '@/hooks/use-action'
 import { auditDay, auditLine, auditTime } from '@/lib/audit'
 import { dayLabel } from '@/lib/format'
-import { cn } from '@/lib/utils'
+import { cn, groupBy } from '@/lib/utils'
 import type { AuditEntry } from '@/types'
 
 const PAGE = 50
@@ -73,7 +73,7 @@ export function AuditLogSection() {
         <EmptyState icon={ScrollText} title="Nothing logged yet" body={filtered ? 'Nothing here for this filter.' : 'Your sign-ins and changes show up here.'} />
       ) : data && (
         <div aria-busy={dimmed} className={cn('grid gap-2 motion-safe:transition-opacity md:gap-4', dimmed && 'opacity-60')}>
-          {[...Map.groupBy(data, (e) => auditDay(e.createdAt))].map(([day, rows], i) => (
+          {[...groupBy(data, (e) => auditDay(e.createdAt))].map(([day, rows], i) => (
             <section key={day} className="grid gap-1">
               {i > 0 && <Separator className="mb-2 md:mb-3" />}
               <h3 className="text-sm font-medium">{dayLabel(day)}</h3>

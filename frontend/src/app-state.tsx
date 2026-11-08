@@ -95,7 +95,7 @@ export const MONTH_PAGES = new Set(['/activity', '/budgets', '/reports'])
 /** A link to one of the month pages on `month`, in the shape useMonth reads (no param for the current month). */
 export function monthLink(path: string, month: string, more: Record<string, string> = {}) {
   const q = new URLSearchParams(month < currentMonth() ? { month, ...more } : more)
-  return q.size ? `${path}?${q}` : path
+  return q.toString() ? `${path}?${q}` : path // not q.size: Safari only has it from 17
 }
 
 /** The current month. An app left open past midnight reloads every screen when it comes back into view, so the pace and

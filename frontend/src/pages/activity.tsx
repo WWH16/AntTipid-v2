@@ -19,7 +19,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { dateInMonth, dayLabel, money, monthLabel } from '@/lib/format'
 import { shouldHintSwipe, sumOf } from '@/lib/transactions'
-import { cn } from '@/lib/utils'
+import { cn, groupBy } from '@/lib/utils'
 import type { Transaction, TransactionFilters, TransactionKind } from '@/types'
 
 export function ActivityPage() {
@@ -169,7 +169,7 @@ export function ActivityPage() {
 const DayList = memo(function DayList({ list, hint }: { list: Transaction[]; hint: boolean }) {
   return (
     <CardContent className="grid gap-2 md:gap-4">
-      {[...Map.groupBy(list, (t) => t.date)].map(([day, items], i) => {
+      {[...groupBy(list, (t) => t.date)].map(([day, items], i) => {
         const spent = sumOf(items, 'expense')
         return (
           <section key={day} id={`day-${day}`} className="grid scroll-mt-16 gap-1">

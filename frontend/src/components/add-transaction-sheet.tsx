@@ -27,6 +27,7 @@ import { numberLine, verdictCopy } from '@/lib/budget'
 import { done } from '@/lib/done'
 import { currentMonth, FIRST_DAY, money, monthLabel, shiftMonth, todayIso, yesterdayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/transactions'
+import { groupBy } from '@/lib/utils'
 import { cleanReceiptItems, itemProblem, itemsTotal, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
 import type { AnomalyCheck, AnomalyDecision, NewTransaction, ReceiptScan, TransactionKind } from '@/types'
 
@@ -185,7 +186,7 @@ function AddFlow() {
   if (mode === 'scan') return <ScanStep onClose={closeAdd} onBack={() => setMode('form')} onDone={applyReceipt} />
 
   const walletOptions = activeWallets.map((w) => ({ value: w.id, label: w.name }))
-  const uses = Map.groupBy(recent ?? [], (t) => t.categoryId)
+  const uses = groupBy(recent ?? [], (t) => t.categoryId)
   // Most-used first; sort is stable, so unused ones keep their usual order.
   const shownCategories = categories
     .filter((c) => c.kind === (kind === 'income' ? 'income' : 'expense'))
