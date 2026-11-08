@@ -10,7 +10,7 @@ import { LoadingHero } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { ItemGroup } from '@/components/ui/item'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { currentMonth, dayLabel, isoDate, money, monthLabel } from '@/lib/format'
+import { currentMonth, dayLabel, isoDate, money, monthLabel, todayIso } from '@/lib/format'
 import { sumOf } from '@/lib/transactions'
 import { cn, groupBy } from '@/lib/utils'
 import type { Transaction } from '@/types'
@@ -82,7 +82,9 @@ type Period = 'week' | 'month'
  * previous week or month. Week is the default view.
  */
 export function SpendingSlide({ transactions }: { transactions?: Transaction[] }) {
-  const [today] = useState(() => new Date())
+  // Manila's today, the app's calendar, read on every draw: a date kept from the first draw goes stale overnight, and the
+  // phone's own date is a different day abroad. Noon, so the local date parts are that day wherever the phone is.
+  const today = new Date(`${todayIso()}T12:00:00`)
   const [period, setPeriod] = useState<Period>('week')
   const [opened, setOpened] = useState<{ title: string; from: string; to: string } | null>(null)
   if (!transactions) return <LoadingHero />
