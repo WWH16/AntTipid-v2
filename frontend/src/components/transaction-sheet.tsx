@@ -28,7 +28,10 @@ export function TransactionSheet() {
 function Details({ id }: { id: string }) {
   const { openAdd, closeDetail } = useApp()
   const { category, wallet } = useRefData()
-  const { data: t, error } = useQuery(`transaction:${id}`, () => api.transactions.get(id))
+  // Keyed by when the panel opened: its receipt link is signed for 10 minutes, so opening it again later asks for a new
+  // one instead of reusing a dead link. ponytail: one cache entry per opening, a few hundred bytes each.
+  const [opened] = useState(Date.now)
+  const { data: t, error } = useQuery(`transaction:${id}:${opened}`, () => api.transactions.get(id))
 
   const rows: [string, string][] = !t ? [] : [
     ['Type', KIND_LABEL[t.kind]],
