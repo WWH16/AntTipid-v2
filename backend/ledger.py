@@ -7,7 +7,9 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile
+from fastapi.exceptions import RequestValidationError
 from psycopg import errors
+from pydantic import ValidationError
 
 import notify
 import storage
@@ -282,9 +284,13 @@ def _normalize(conn, user: AuthUser, t: TransactionIn) -> TransactionIn:
     return t
 
 
-def merge_patch(current: TransactionIn, body: TransactionPatch) -> TransactionIn:
-    """Apply the fields the client sent. getattr, not model_dump: dumping turns items into dicts."""
-    return current.model_copy(update={k: getattr(body, k) for k in body.model_fields_set})
+def merge_patch(current: dict, body: TransactionPatch) -> TransactionIn:
+    """The saved transaction (as TransactionIn fields) with the fields the client sent, validated as a whole, so a
+    null amount or title is refused with 422 like any other bad value instead of reaching the database."""
+    try:
+        return TransactionIn.model_validate({**current, **body.model_dump(exclude_unset=True)})
+    except ValidationError as e:
+        raise RequestValidationError(e.errors(include_url=False, include_context=False)) from None
 
 
 def _write_items(conn, user: AuthUser, txn_id, items) -> None:
@@ -330,19 +336,16 @@ def get_transaction(txn_id: UUID, user: User):
 def update_transaction(txn_id: UUID, body: TransactionPatch, user: User):
     with user_tx(user) as conn:
         r = _get_txn(conn, user, txn_id)
-        current = TransactionIn(
-            kind=r["kind"], amount=float(r["amount"]), title=r["title"], date=r["date"], wallet_id=r["wallet_id"],
-            to_wallet_id=r["to_wallet_id"], category_id=r["category_id"], note=r["note"], source=r["source"], items=r["items"],
-        )
+        current = {c: r[c] for c in TXN_COLUMNS} | {"amount": float(r["amount"]), "items": r["items"]}
         t = _normalize(conn, user, merge_patch(current, body))
         conn.execute(
             f"update transactions set {', '.join(f'{c} = %({c})s' for c in TXN_COLUMNS)} where id = %(id)s and user_id = %(uid)s",
             {**{c: getattr(t, c) for c in TXN_COLUMNS}, "id": txn_id, "uid": user.id},
         )
-        if "items" in body.model_fields_set or t.items != current.items:
+        if [i.model_dump() for i in t.items or []] != (current["items"] or []):
             _write_items(conn, user, txn_id, t.items)
         # What the verdict rests on changed: judge it again. Otherwise only a new decision is kept.
-        if any(getattr(t, f) != getattr(current, f) for f in ("kind", "amount", "category_id", "date")):
+        if any(getattr(t, f) != current[f] for f in ("kind", "amount", "category_id", "date")):
             record(conn, user.id, txn_id, t.anomaly_decision, bool(t.anomaly_also_earlier))
         elif "anomaly_decision" in body.model_fields_set:
             conn.execute("update anomaly_checks set decision = %s where transaction_id = %s and unusual", (t.anomaly_decision, txn_id))
