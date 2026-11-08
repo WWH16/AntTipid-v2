@@ -8,6 +8,7 @@ import logging
 import os
 from pathlib import Path
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -117,6 +118,21 @@ async def _check(_: Request, e: Exception):
 @app.exception_handler(errors.UniqueViolation)
 async def _unique(_: Request, e: Exception):
     return JSONResponse({"detail": "That already exists."}, 409)
+
+
+# Values the request checks let through but Postgres can't store: a number past numeric(14, 2), a NUL character.
+@app.exception_handler(psycopg.DataError)
+@app.exception_handler(errors.NotNullViolation)
+async def _bad_value(_: Request, e: Exception):
+    log.info("bad value: %s", e)
+    return JSONResponse({"detail": "Some of those values aren't allowed. Check the form and try again."}, 422)
+
+
+# Photo storage timed out or refused the connection (storage.py turns error replies into 502 itself).
+@app.exception_handler(httpx.HTTPError)
+async def _storage_down(_: Request, e: Exception):
+    log.error("photo storage unreachable: %r", e)
+    return JSONResponse({"detail": "Couldn't reach photo storage. Try again in a minute."}, 502)
 
 
 @app.exception_handler(psycopg.OperationalError)
