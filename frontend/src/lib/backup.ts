@@ -1,5 +1,6 @@
 // Reads a backup file before it is sent for restoring: checks it is ours and counts what it holds.
-export const MAX_BACKUP_BYTES = 4 * 1024 * 1024
+// Just under Vercel's 4.5 MB request cap, the same cap a downloaded backup has, so a backup the app could make can be restored.
+export const MAX_BACKUP_BYTES = 4_400_000
 
 export function readBackup(text: string) {
   let data: Record<string, unknown> | null = null

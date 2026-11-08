@@ -26,7 +26,7 @@ export function BackupSection() {
   async function choose(file: File | undefined) {
     if (input.current) input.current.value = '' // so the same file can be picked again
     if (!file) return
-    if (file.size > MAX_BACKUP_BYTES) return void toast.error('That file is over 4 MB, too big to restore here.')
+    if (file.size > MAX_BACKUP_BYTES) return void toast.error('That file is over 4.4 MB, too big to restore here.')
     try {
       const text = await file.text()
       setPicked({ text, summary: readBackup(text) })
