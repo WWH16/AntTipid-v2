@@ -6,7 +6,8 @@ import { Camera, Check, Copy, Loader2, ScanLine, TriangleAlert, Upload } from 'l
 import { useLocation, useNavigate } from 'react-router-dom'
 import { MONTH_PAGES, monthLink, useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
-import { useQuery } from '@/api/use-query'
+import { invalidate, useQuery } from '@/api/use-query'
+import { toast } from 'sonner'
 import { BusyButton } from '@/components/busy-button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { CategoryIcon } from '@/components/category-icon'
@@ -33,6 +34,15 @@ import type { AnomalyCheck, AnomalyDecision, NewTransaction, ReceiptScan, Transa
 
 // Only a first-time user with no wallet sees this, so the add flow doesn't wait on the Settings file.
 const WalletForm = lazy(() => import('@/components/wallet-form').then((m) => ({ default: m.WalletForm })))
+
+/** Upload a saved transaction's receipt photo. If it fails, the transaction stays saved and the toast offers a retry. */
+function attachPhoto(id: string, photo: Blob) {
+  api.transactions.uploadReceipt(id, photo).then(invalidate, (e: Error) => toast.error("Saved, but the receipt photo didn't upload", {
+    description: e.message,
+    duration: 10_000,
+    action: { label: 'Try again', onClick: () => attachPhoto(id, photo) },
+  }))
+}
 
 const LAST_WALLET = 'anttipid-last-wallet'
 const readLastWallet = () => { try { return localStorage.getItem(LAST_WALLET) ?? '' } catch { return '' } }
@@ -131,9 +141,10 @@ function AddFlow() {
       anomalyAlsoEarlier: alsoEarlier,
     }
     const saved = editing ? await api.transactions.update(editing.id, body) : await api.transactions.create(body)
-    if (receiptPhoto && body.source === 'receipt') await api.transactions.uploadReceipt(saved.id, receiptPhoto)
     try { localStorage.setItem(LAST_WALLET, walletId) } catch { /* private mode */ }
     closeAdd()
+    // After the form closes: a failed upload must not leave a saved transaction's form open, inviting a second save.
+    if (receiptPhoto && body.source === 'receipt') attachPhoto(saved.id, receiptPhoto)
     // Dated in another month than the one on screen: it won't show up here, so say where it went and offer to go there.
     const savedMonth = body.date.slice(0, 7)
     const elsewhere = savedMonth !== viewedMonth && savedMonth <= currentMonth()
