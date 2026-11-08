@@ -11,7 +11,7 @@ from email.message import EmailMessage
 
 from anomalies import month_unusual
 from auth import AuthUser
-from db import user_tx
+from db import connect
 from months import days_in, month_range, today
 
 log = logging.getLogger("notify")
@@ -68,8 +68,14 @@ def get_settings(conn, user_id) -> dict:
 
 def add_row(conn, user_id, key, kind, title, body, link, email_enabled) -> bool:
     """Store a notification once per key, ever. True when it's new. With email off it's marked as handled, so turning
-    email on later doesn't send old warnings."""
-    return conn.execute(
+    email on later doesn't send old warnings.
+
+    Users can only mark notifications read (the notifications_server_only migration), or they could write rows through
+    Supabase's REST API that get emailed. So the insert runs as the connection's own role, as restore does, and switches
+    back after. A failed insert needs no switch back: the savepoint or transaction it fails in undoes the role too."""
+    role = conn.execute("select current_setting('role') as r").fetchone()["r"]
+    conn.execute("select set_config('role', 'none', true)")
+    new = conn.execute(
         """
         insert into notifications (user_id, key, kind, title, body, link, emailed_at)
         values (%s, %s, %s, %s, %s, %s, case when %s then null else now() end)
@@ -77,6 +83,8 @@ def add_row(conn, user_id, key, kind, title, body, link, email_enabled) -> bool:
         """,
         (user_id, key, kind, title, body, link, email_enabled),
     ).fetchone() is not None
+    conn.execute("select set_config('role', %s, true)", (role,))
+    return new
 
 
 def _state_copy(state: str, name: str, spent: float, limit: float) -> tuple[str, str]:
@@ -264,7 +272,8 @@ def send_pending(user: AuthUser) -> None:
     if not to or not email_ready():
         return
     try:
-        with user_tx(user) as conn:
+        # The server's own connection: users can't write emailed_at. Every statement names user_id itself.
+        with connect() as conn:
             rows = conn.execute(
                 """
                 update notifications set emailed_at = now()
@@ -280,7 +289,7 @@ def send_pending(user: AuthUser) -> None:
             send_email(to, *email_text(rows))
         except Exception:
             log.exception("notification email failed")
-            with user_tx(user) as conn:
+            with connect() as conn:
                 conn.execute("update notifications set emailed_at = null where id = any(%s) and user_id = %s", ([r["id"] for r in rows], user.id))
     except Exception:
         log.exception("couldn't work out which notifications to email")
