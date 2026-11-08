@@ -64,7 +64,7 @@ export function BudgetsPage() {
       />
       <MonthSwitcher month={month} onChange={setMonth} />
 
-      {error ? <ErrorState error={error} /> : loading && !data ? <LoadingBudgets /> : (
+      {error && !data ? <ErrorState error={error} /> : loading && !data ? <LoadingBudgets /> : (
         <div className="grid items-start gap-5 md:gap-6 lg:grid-cols-[2fr_3fr]">
           {overall ? (
             <HeroCard>

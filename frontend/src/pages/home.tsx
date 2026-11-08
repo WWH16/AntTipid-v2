@@ -54,7 +54,7 @@ export function HomePage() {
   // With neither a budget nor an expense, there's no carousel: the setup card says what to do first.
   const hasSpending = recent.data ? recent.data.some((t) => t.kind === 'expense') : true
   const slides = [
-    ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} budgets={budgets.data} unusual={unusual.loading ? undefined : unusual.data ?? []} /> }]),
+    ...(noLeftSlide ? [] : [{ title: 'Left to spend', content: summary.error && !summary.data ? <ErrorState error={summary.error} /> : <SafeToSpend s={summary.data} budgets={budgets.data} unusual={unusual.loading ? undefined : unusual.data ?? []} /> }]),
     ...(hasSpending ? [
       { title: 'Spending', content: <SpendingSlide transactions={recent.data} /> },
       { title: 'Where it went', content: <CategoriesSlide transactions={recent.data} /> },

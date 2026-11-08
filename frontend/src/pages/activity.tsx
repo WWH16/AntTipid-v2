@@ -151,7 +151,7 @@ export function ActivityPage() {
       </div>
 
       <div className="min-w-0 lg:order-1">
-      {error ? <ErrorState error={error} /> : loading && !data ? <LoadingDays /> : !data?.length ? (
+      {error && !data ? <ErrorState error={error} /> : loading && !data ? <LoadingDays /> : !data?.length ? (
         filtered
           ? <EmptyState framed icon={SearchX} title="No matches" body={searching ? 'Nothing in any month matches these filters.' : `Nothing in ${monthLabel(month)} matches these filters.`} action={<Button variant="outline" onClick={clear}>Clear filters</Button>} />
           : <EmptyState framed icon={ReceiptText} title={`Nothing recorded in ${monthLabel(month)}`} body="Transactions you add for this month are listed here." action={<Button onClick={() => openAdd({ date: dateInMonth(month) })}>Add transaction</Button>} />

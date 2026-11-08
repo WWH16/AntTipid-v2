@@ -116,7 +116,7 @@ export function ReportsPage() {
       />
       <MonthSwitcher month={month} onChange={setMonth} />
 
-      {error ? <ErrorState error={error} /> : loading && !data ? <LoadingReport /> : data && (
+      {error && !data ? <ErrorState error={error} /> : loading && !data ? <LoadingReport /> : data && (
         <div className={BENTO}>
           {!monthEmpty && monthTotals(thisMonth?.income ?? 0, thisMonth?.spent ?? 0).map(([label, value, tone, swatch], i) => {
             const Tile = i === 2 ? HeroCard : Card
