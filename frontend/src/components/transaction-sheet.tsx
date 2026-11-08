@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ErrorState } from '@/components/states'
 import { useAction } from '@/hooks/use-action'
 import { unusualLine } from '@/lib/budget'
 import { longDate, money } from '@/lib/format'
@@ -55,7 +56,10 @@ function Details({ id }: { id: string }) {
         </>
       )}
     >
-      {error ? <p className="text-sm text-destructive">This transaction no longer exists.</p> : !t ? (
+      {error ? (
+        // Only the server's "not found" means it's gone; anything else (offline, a server error) says what went wrong.
+        (error as { status?: number }).status === 404 ? <p className="text-sm text-destructive">This transaction no longer exists.</p> : <ErrorState error={error} />
+      ) : !t ? (
         <div aria-busy className="grid gap-4 pb-4">
           <Skeleton className="h-8 w-36" />
           <Separator />
