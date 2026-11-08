@@ -255,7 +255,9 @@ def email_text(rows: list[dict]) -> tuple[str, str, str]:
     """Subject, text and HTML for one save's new notifications. No user-typed text goes in the subject."""
     count = len(rows)
     subject = f"AntTipid: {count} new notification{'' if count == 1 else 's'}"
-    if all(r["kind"] != "unusual" for r in rows):
+    if all(r["kind"] == "new_month" for r in rows):  # a recap whose own email failed, sent with the next save
+        heading = rows[0]["title"] if count == 1 else "Your monthly recaps"
+    elif all(r["kind"] != "unusual" for r in rows):
         heading = "Your budget needs a look" if count == 1 else "Your budgets need a look"
     else:
         heading = "Unusual purchase" if count == 1 else "A few things need a look"

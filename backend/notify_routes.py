@@ -142,8 +142,9 @@ def _recap_for(conn, user_id, month: str) -> list:
 
 
 def run_new_month(month: str, only_users: list[str] | None = None) -> dict:
-    """Store and email the recap of `month`, the month just ended. Safe to run again: each user gets one row, and only
-    rows not emailed yet are sent. Tests must pass only_users: without it this covers every user in the project."""
+    """Store and email the recap of `month`, the month just ended. Safe to run again, even at the same time: each user
+    gets one row, and rows are claimed before sending, like notify.send_pending, so no recap goes out twice. A failed
+    send hands its row back. Tests must pass only_users: without it this covers every user in the project."""
     start, end = month_range(month)
     key = f"new_month:{shift_month(month, 1)}"
     created, recaps = 0, {}
@@ -164,27 +165,27 @@ def run_new_month(month: str, only_users: list[str] | None = None) -> dict:
             created += notify.add_row(
                 conn, u["id"], key, "new_month", f"Your {_month_name(month)} recap", recap_body(runs), f"/reports?month={month}", u["email_enabled"],
             )
-        waiting = conn.execute(
+        claimed = [] if not notify.email_ready() else conn.execute(
             """
-            select user_id from notifications
+            update notifications set emailed_at = now()
             where key = %s and emailed_at is null and created_at > now() - interval '1 day' and user_id = any(%s::uuid[])
+            returning user_id
             """,
             (key, list(recaps)),
         ).fetchall()
 
-    sent = []
-    if notify.email_ready():  # no database connection is held while sending
-        for row in waiting:
-            email, runs = recaps[row["user_id"]]
-            try:
-                notify.send_email(email, *recap_email(month, runs))
-                sent.append(row["user_id"])
-            except Exception:
-                log.exception("recap email failed")
-    if sent:
+    failed = []
+    for row in claimed:  # no database connection is held while sending
+        email, runs = recaps[row["user_id"]]
+        try:
+            notify.send_email(email, *recap_email(month, runs))
+        except Exception:
+            log.exception("recap email failed")
+            failed.append(row["user_id"])
+    if failed:
         with connect() as conn:
-            conn.execute("update notifications set emailed_at = now() where key = %s and user_id = any(%s::uuid[])", (key, sent))
-    return {"created": created, "sent": len(sent)}
+            conn.execute("update notifications set emailed_at = null where key = %s and user_id = any(%s::uuid[])", (key, failed))
+    return {"created": created, "sent": len(claimed) - len(failed)}
 
 
 @router.get("/cron/new-month")
