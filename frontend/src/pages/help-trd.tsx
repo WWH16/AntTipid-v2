@@ -203,13 +203,6 @@ export function HelpTrdPage() {
                   ['Secrets', <>Kept in environment variables. {c('.env')} files are ignored by git.</>],
                 ]}
               />
-              <h3>Known gaps</h3>
-              <ul>
-                <li>AntTipid’s own API limits only receipt scans and test emails. Sign-in limits come from Supabase Auth and count per IP address, with no lockout per account.</li>
-                <li>Auth emails go through Supabase’s built-in mailer, capped at 2 an hour for the whole project. Custom SMTP in Supabase would raise the cap.</li>
-                <li>The scan limit is per user, so many accounts together can still use up the shared free model quota.</li>
-                <li>The session token sits in local storage, as is standard for Supabase in the browser, so cross-site scripting would expose it.</li>
-              </ul>
             </>
           ),
         },
