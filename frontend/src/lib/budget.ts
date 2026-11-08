@@ -93,6 +93,8 @@ export function paceLine(b: Pick<BudgetStatus, 'spent' | 'limit'>, month: string
   const current = month === today.slice(0, 7)
   const daysLeft = daysIn(month) - Number(today.slice(8)) + 1 // today included, as above
   const span = `${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} to month-end`
+  // Bills set aside and one-offs can take the whole limit before anything everyday is spent: no room, not a negative a day.
+  if (current && b.spent <= 0 && b.limit <= 0) return 'Nothing left for everyday spending: bills and one-offs already use this budget.'
   if (current && b.spent === 0) return `Nothing spent yet. That's ${money(b.limit / daysLeft, { whole: true })} a day for the rest of the month.`
   // Fully or nearly used up: a daily target would read "₱0 a day", so say where it stands instead.
   const left = b.limit - b.spent
