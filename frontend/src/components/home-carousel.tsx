@@ -118,7 +118,10 @@ export function SpendingSlide({ transactions }: { transactions?: Transaction[] }
       for (let d = start; d <= Math.min(end, today.getDate()); d++) spent = (spent ?? 0) + dayTotal(d)
       bars.push({ label: `${monthName} ${range}`, tick: range, spent, from: isoDate(dayOf(start)), to: isoDate(dayOf(end)) })
     }
-    for (let i = 1; i <= today.getDate(); i++) previous += spentOn(new Date(today.getFullYear(), today.getMonth() - 1, i))
+    // Up to last month's own last day: on the 31st after a 30-day month, day 31 of last month would roll over to this
+    // month's 1st and count this month's spending as last month's.
+    const lastMonthDays = new Date(today.getFullYear(), today.getMonth(), 0).getDate()
+    for (let i = 1; i <= Math.min(today.getDate(), lastMonthDays); i++) previous += spentOn(new Date(today.getFullYear(), today.getMonth() - 1, i))
   }
 
   const total = bars.reduce((s, d) => s + (d.spent ?? 0), 0)
