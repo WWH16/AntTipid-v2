@@ -3,6 +3,7 @@
 import base64
 import json
 import logging
+import math
 import os
 import re
 import time
@@ -151,10 +152,14 @@ async def scan_receipt(image: bytes, content_type: str, categories: dict[str, st
 
 
 def _num(value, default: float = 0.0) -> float:
+    """A finite number from what the model wrote: 120, "120.50", or text like "₱1,234.50"."""
+    if isinstance(value, str):
+        value = re.sub(r"[^\d.\-]", "", value)
     try:
-        return float(value)
+        n = float(value)
     except (TypeError, ValueError):
         return default
+    return n if math.isfinite(n) else default
 
 
 def _purchase_date(value) -> date | None:
@@ -179,11 +184,12 @@ def normalize_scan(raw: dict, categories: dict[str, str] = CATEGORIES) -> Receip
     total = _num(raw.get("total"))
     if not total > 0:
         raise NotAReceipt("no total found")
+    lines = raw.get("items")
     items = [
         # Capped to what a saved item allows (models.ReceiptItemIn), so a scanned item never blocks saving.
         # Unit prices are kept to the centavo, as saved (numeric(14, 2)), so the subtotal doesn't shift on save.
         ReceiptItem(name=str(i.get("name") or "").strip()[:200], qty=_num(i.get("qty"), 1) or 1, price=round(_num(i.get("price")), 2))
-        for i in raw.get("items") or []
+        for i in (lines if isinstance(lines, list) else [])
         if isinstance(i, dict)
     ]
     # Free lines carry no money; a negative quantity is a misread.
@@ -191,7 +197,7 @@ def normalize_scan(raw: dict, categories: dict[str, str] = CATEGORIES) -> Receip
     label = raw.get("paymentLabel")
     day = _purchase_date(raw.get("date"))
     return ReceiptScan(
-        merchant=str(raw.get("merchant") or "").strip() or "Receipt",
+        merchant=str(raw.get("merchant") or "").strip()[:200] or "Receipt",  # a transaction title holds 200
         date=(day or today()).isoformat(),
         date_guessed=day is None,
         total=total,
