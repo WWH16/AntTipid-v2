@@ -34,7 +34,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
   {
     title: 'Transactions and Activity',
     items: [
-      'A user can record an expense, income or transfer with an amount, title, date, wallet, category and note. Wallet and date are pre-filled.',
+      'A user can record an expense, income or transfer with an amount, title, date, wallet, category and note. Wallet and date are pre-filled. The date can be any day from 2000 up to today.',
       'A transfer moves money between two different wallets and has no category.',
       'A user can edit or delete any of their transactions.',
       'A second entry with the same date and amount asks “Is this a duplicate?”.',
@@ -46,7 +46,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
   {
     title: 'Receipt scanning',
     items: [
-      'A JPEG, PNG or WebP photo up to 8 MB fills in the store, date, items, total, a suggested category and the payment method. A missing, impossible or future date becomes today, with a message to check it. The user checks the result, then saves.',
+      'A JPEG, PNG or WebP photo up to 8 MB fills in the store, date, items, total, a suggested category and the payment method. A missing or impossible date, or one before 2000 or after today, becomes today, with a message to check it. The user checks the result, then saves.',
       'The photo is kept privately with its transaction. Only its owner can open it.',
       'If reading fails, the app says so and the user can type the transaction instead.',
     ],

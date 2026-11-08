@@ -121,7 +121,7 @@ export function HelpTrdPage() {
                   [c('budget_history'), 'The limit each month had', <>Written only by a trigger. {c('month')} is the first day of the month. Empty {c('limit_amount')} means removed that month. Goes with its category on delete.</>],
                   [c('anomaly_checks'), 'Verdict on each purchase', <>Key is {c('transaction_id')}. {c('unusual')}, {c('decision')} (one_off or normal), {c('method')} (kmeans, simple or none), {c('usual_low')}, {c('usual_high')}. A decision needs {c('unusual')}.</>],
                   [c('audit_log'), 'Who changed what and when', <>Written only by triggers and restore. {c('action')}, {c('entity')}, {c('label')}, {c('changes')} as JSON of old and new values, naming wallets and categories as they were called at the time. No foreign key on {c('entity_id')}, because the row may be gone.</>],
-                  [c('notifications'), 'What the bell lists and email sends', <>{c('kind')} is near, used, over, run_out, unusual or new_month. Unique on {c('(user_id, key)')}, so each warning fires once. {c('read_at')}, {c('emailed_at')}.</>],
+                  [c('notifications'), 'What the bell lists and email sends', <>{c('kind')} is near, used, over, run_out, unusual or new_month. Unique on {c('(user_id, key)')}, so each warning fires once. {c('read_at')}, {c('emailed_at')}. Only the server writes them; users can mark theirs read.</>],
                   [c('notification_settings'), 'One switch per warning', <>Key is {c('user_id')}. A missing row means everything is on. {c('test_email_at')} limits test emails, and only the server’s own connection can write it.</>],
                   [c('scan_usage'), 'Receipt scans per user per day', <>Key is {c('user_id')}. {c('day')}, {c('used')}. Only the server’s own connection can read or write it.</>],
                 ]}
@@ -176,6 +176,7 @@ export function HelpTrdPage() {
                   [c('20261105000000_scan_usage'), 'Daily receipt scan count per user'],
                   [c('20261105010000_test_email_at_server_only'), 'Users can no longer write the test email limit'],
                   [c('20261107000000_audit_details'), 'Audit log keeps what was added or deleted, and names wallets and categories'],
+                  [c('20261108000000_notifications_server_only'), 'Users can no longer write notifications, only mark them read'],
                 ]}
               />
             </>
@@ -195,7 +196,7 @@ export function HelpTrdPage() {
                   ['Tokens', <>Every route except the cron job needs a JWT. ES256 and RS256 are checked against the project’s JWKS, HS256 against a secret. {c('exp')}, {c('aud')}, {c('iss')} and {c('sub')} are required.</>],
                   ['Origins', <>CORS lets a browser call the API directly only from {c('APP_URL')} and {c('http://localhost:5173')}. The app itself goes through the same-origin rewrite, so it doesn’t depend on this.</>],
                   ['Rate limits', <>Supabase Auth limits each IP address to 30 sign-ups, password resets and resends per 5 minutes, and 150 sign-ins and token refreshes per 5 minutes. Its built-in mailer sends at most 2 sign-up and password-reset emails an hour for the whole project. Past a limit it returns 429, and the sign-in card says “Too many tries. Wait a minute, then try again.” AntTipid’s API allows 30 receipt scans per user a day, counted in the database so the limit holds across Vercel instances. The day follows {c('APP_TIMEZONE')}. One test email a minute.</>],
-                  ['Row access', <>Row level security on all 11 tables: {c('user_id = auth.uid()')}, except {c('scan_usage')}, which users can’t reach at all. The anonymous role has no access. {c('audit_log')} and {c('budget_history')} are read-only to users.</>],
+                  ['Row access', <>Row level security on all 11 tables: {c('user_id = auth.uid()')}, except {c('scan_usage')}, which users can’t reach at all. The anonymous role has no access. {c('audit_log')} and {c('budget_history')} are read-only to users, and so is {c('notifications')}, apart from marking one read.</>],
                   ['Receipt photos', 'Private bucket, own folder only, 1 MB cap, images only. File type is checked from the bytes. Links are signed for 10 minutes. The server uses the caller’s token and holds no service-role key.'],
                   ['Restore', 'New ids for every row, and a photo path is kept only if it’s in the caller’s own folder, so a file from another account can’t reach their data.'],
                   ['Injection', <>All SQL is parameterized. {c('LIKE')} wildcards in search are escaped. CSV text cells starting with {c('= + - @')} are prefixed, so spreadsheets don’t run them.</>],
@@ -213,7 +214,8 @@ export function HelpTrdPage() {
             <>
               <p>
                 All paths start with {c('/api')}, and bodies are JSON. Errors return {c('{"detail": "..."}')} with a readable message: 401 for
-                sign-in problems, 409 for conflicts, 422 for values the database rejects, 429 when a limit is reached and 503 when the database is unreachable.
+                sign-in problems, 409 for conflicts, 422 for values the request or the database rejects, 429 when a limit is reached, 502 when photo storage or
+                every receipt model is unreachable and 503 when the database is.
               </p>
               <DocTable
                 head={['Method and path', 'Purpose']}
@@ -342,8 +344,8 @@ export function HelpTrdPage() {
               <li>The route accepts JPEG, PNG or WebP up to 8 MB, and sends the photo to vision models with the caller’s category names.</li>
               <li>Models are tried in order: two free OpenRouter models, then two Gemini models. A model whose key isn’t set is skipped.</li>
               <li>Each model gets 25 seconds. A bad reply moves to the next one, and a reply with no total means “not a receipt”.</li>
-              <li>A missing, impossible or future date becomes today in {c('APP_TIMEZONE')}, and {c('dateGuessed')} tells the form to ask the user to check it.</li>
-              <li>Each user gets 30 scans a day, counted in {c('scan_usage')} before any model is asked. A scan that fails still counts. Past the limit the route returns 429 and asks the user to try tomorrow or type it in.</li>
+              <li>A missing or impossible date, or one before 2000 or after today, becomes today in {c('APP_TIMEZONE')}, and {c('dateGuessed')} tells the form to ask the user to check it.</li>
+              <li>Each user gets 30 scans a day, counted in {c('scan_usage')} before any model is asked. A scan still counts when a model read the photo, even with no total found; one that no model could read is given back. Past the limit the route returns 429 and asks the user to try tomorrow or type it in.</li>
               <li>The scan keeps no photo or receipt data, only that count. The photo saved with a transaction is a WebP, or a JPEG from Safari, within the bucket’s 1 MB cap.</li>
             </ul>
             </>
@@ -391,7 +393,7 @@ export function HelpTrdPage() {
               <ul>
                 <li>Each page is its own lazy-loaded file. Signed-in pages load in the background 1.5 seconds after the app is up.</li>
                 <li>Data goes through {c('api/endpoints.ts')} and a small cached {c('useQuery')} hook. There’s no state library.</li>
-                <li>The service worker serves hashed assets cache first and pages network first. It never caches API calls, so records always come from the server.</li>
+                <li>The service worker serves hashed assets cache first and pages network first. It never caches API calls, so records always come from the server. Each deploy registers it with a new build id, so it caches that deploy’s files and deletes the last one’s.</li>
                 <li>The shell is a sidebar from tablet width up, and a bottom bar on phones.</li>
               </ul>
             </>
