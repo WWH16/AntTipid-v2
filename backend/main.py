@@ -66,6 +66,12 @@ def _take_scan(user_id: str) -> bool:
         ).fetchone() is not None
 
 
+def _give_scan_back(user_id: str) -> None:
+    """Undo _take_scan when no model could read the photo: an outage shouldn't use up anyone's scans."""
+    with connect() as conn:
+        conn.execute("update scan_usage set used = used - 1 where user_id = %s and day = %s and used > 0", (user_id, today()))
+
+
 def _user_categories(user: AuthUser) -> dict[str, str]:
     """The caller's expense categories (id -> name) for the category suggestion."""
     try:
@@ -92,6 +98,7 @@ async def scan(image: UploadFile, user: User) -> ReceiptScan:
         raise HTTPException(422, "Couldn't find a total on this photo. Try a sharper photo with the total visible.")
     except ScanFailed as e:
         logging.error("scan failed: %s", e)  # e.g. a missing API key, or every model down
+        await run_in_threadpool(_give_scan_back, user.id)
         raise HTTPException(502, "Receipt reading is busy right now. Try again in a minute, or type it in.")
 
 
