@@ -5,8 +5,9 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from annotated_types import Ge, Gt, Le, Lt, MaxLen
-from pydantic import StringConstraints, model_validator
+from pydantic import AfterValidator, StringConstraints, model_validator
 
+from months import FIRST_DAY, today
 from receipts import CamelModel, ReceiptItem
 
 WalletType = Literal["cash", "e_wallet", "bank", "credit_card", "savings"]
@@ -27,7 +28,19 @@ class ReceiptItemIn(CamelModel):
 
 
 ItemList = Annotated[list[ReceiptItemIn], MaxLen(200)]
-Month = Annotated[str, StringConstraints(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")]
+# 2000 to 2099: a year outside it is a typo, and month arithmetic past year 1 or 9999 fails.
+Month = Annotated[str, StringConstraints(pattern=r"^20\d{2}-(0[1-9]|1[0-2])$")]
+
+
+def _not_future(day: Date) -> Date:
+    if day > today():
+        raise ValueError("Pick today or an earlier day.")
+    return day
+
+
+# A purchase's day: from 2000 up to the user's today. A future day would take money from a wallet in a month no screen
+# shows yet; a year like 0026 is a typo.
+TxnDate = Annotated[Date, Ge(FIRST_DAY), AfterValidator(_not_future)]
 
 
 class Wallet(CamelModel):
@@ -76,7 +89,7 @@ class TransactionIn(CamelModel):
     kind: TransactionKind
     amount: Money
     title: TitleStr
-    date: Date
+    date: TxnDate
     wallet_id: UUID
     to_wallet_id: UUID | None = None
     category_id: UUID | None = None
@@ -95,7 +108,7 @@ class TransactionPatch(CamelModel):
     kind: TransactionKind | None = None
     amount: Money | None = None
     title: TitleStr | None = None
-    date: Date | None = None
+    date: TxnDate | None = None
     wallet_id: UUID | None = None
     to_wallet_id: UUID | None = None
     category_id: UUID | None = None

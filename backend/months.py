@@ -5,6 +5,8 @@ import os
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
+FIRST_DAY = date(2000, 1, 1)  # the earliest day a purchase can have; frontend/src/lib/format.ts has the same
+
 
 def today() -> date:
     return datetime.now(ZoneInfo(os.environ.get("APP_TIMEZONE", "Asia/Manila"))).date()

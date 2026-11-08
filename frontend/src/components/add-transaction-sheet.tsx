@@ -25,7 +25,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useAction } from '@/hooks/use-action'
 import { numberLine, verdictCopy } from '@/lib/budget'
 import { done } from '@/lib/done'
-import { currentMonth, money, monthLabel, shiftMonth, todayIso, yesterdayIso } from '@/lib/format'
+import { currentMonth, FIRST_DAY, money, monthLabel, shiftMonth, todayIso, yesterdayIso } from '@/lib/format'
 import { KIND_LABEL } from '@/lib/transactions'
 import { cleanReceiptItems, itemProblem, itemsTotal, shrinkPhoto, suggestWalletId, toDraftItems, type DraftReceiptItem } from '@/lib/receipt'
 import type { AnomalyCheck, AnomalyDecision, NewTransaction, ReceiptScan, TransactionKind } from '@/types'
@@ -93,6 +93,8 @@ function AddFlow() {
     !walletId ? (activeWallets.length ? 'Choose a wallet' : 'Add a wallet in Settings first') :
     kind === 'transfer' && !toWalletId ? 'Choose where the money goes' :
     kind === 'transfer' && toWalletId === walletId ? 'Pick two different wallets' :
+    // Checked here, not only by the field's min and max: the second button of an unusual verdict skips the form's checks.
+    !date || date < FIRST_DAY || date > todayIso() ? 'Pick a date from 2000 up to today' :
     itemIndex >= 0 ? `Item ${itemIndex + 1} needs ${itemProblem(items[itemIndex])}, or remove it` :
     null
   // Checked against the items as they are now, so the warning goes once they're fixed.
@@ -279,7 +281,7 @@ function AddFlow() {
           )}
           <div className={kind === 'transfer' ? 'col-span-2 grid gap-2' : 'grid gap-2'}>
             <Label htmlFor="date">Date</Label>
-            <Input id="date" type="date" value={date} max={todayIso()} aria-describedby={dateGuessed ? 'date-guessed' : undefined} onChange={(e) => setDate(e.target.value)} />
+            <Input id="date" type="date" value={date} min={FIRST_DAY} max={todayIso()} aria-describedby={dateGuessed ? 'date-guessed' : undefined} onChange={(e) => setDate(e.target.value)} />
             {/* Most spending is logged the same day or the day after: one tap instead of the date picker. */}
             <div className="flex gap-1">
               {([['Today', todayIso()], ['Yesterday', yesterdayIso()]] as const).map(([label, day]) => (

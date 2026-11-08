@@ -12,7 +12,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
-from months import today
+from months import FIRST_DAY, today
 
 log = logging.getLogger("receipts")
 
@@ -158,12 +158,13 @@ def _num(value, default: float = 0.0) -> float:
 
 
 def _purchase_date(value) -> date | None:
-    """The printed date if it's a real day, not after the user's today. A misread like 2026-02-30 would block saving."""
+    """The printed date if it's a real day a purchase can have (2000 up to the user's today). A misread like 2026-02-30
+    or 1926 would block saving."""
     try:
         day = date.fromisoformat(value)
     except (TypeError, ValueError):
         return None
-    return day if day <= today() else None
+    return day if FIRST_DAY <= day <= today() else None
 
 
 def _category_id(raw: dict, categories: dict[str, str]) -> str | None:

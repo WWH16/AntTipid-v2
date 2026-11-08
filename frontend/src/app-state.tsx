@@ -115,7 +115,7 @@ export function useMonth() {
   const [params, setParams] = useSearchParams()
   const now = currentMonth()
   const raw = params.get('month')
-  const month = raw && /^\d{4}-(0[1-9]|1[0-2])$/.test(raw) && raw < now ? raw : now
+  const month = raw && /^20\d{2}-(0[1-9]|1[0-2])$/.test(raw) && raw < now ? raw : now // the API's range, 2000 to 2099
   const setMonth = (m: string) => setParams((p) => {
     if (m < currentMonth()) p.set('month', m)
     else p.delete('month')

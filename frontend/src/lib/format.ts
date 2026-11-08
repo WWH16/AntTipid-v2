@@ -35,6 +35,8 @@ export const isoDate = (d: Date) =>
 // flip to a new day or month at the same moment wherever the phone is.
 export const manilaDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' })
 export const todayIso = () => manilaDate.format(new Date())
+/** The earliest day a transaction can have, as the API checks (backend/months.py FIRST_DAY). */
+export const FIRST_DAY = '2000-01-01'
 export const currentMonth = () => todayIso().slice(0, 7)
 
 /** Calls onNewDay when the page comes back into view on a later date than it last saw (left open past midnight).
