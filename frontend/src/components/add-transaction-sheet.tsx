@@ -54,7 +54,7 @@ export function AddTransactionSheet() {
 
 function AddFlow() {
   const { add, closeAdd, openDetail } = useApp()
-  const { wallets, categories, category, loading } = useRefData()
+  const { wallets, categories, category, loading, error: refError } = useRefData()
   const editing = add?.edit
   // Edit and "Add again" both start from a transaction; only an edit keeps its date, note and receipt items.
   const from = editing ?? add?.copy
@@ -101,7 +101,7 @@ function AddFlow() {
   const missing =
     !(value > 0) ? 'Enter an amount' :
     kind !== 'transfer' && !categoryId ? 'Pick a category' :
-    !walletId ? (activeWallets.length ? 'Choose a wallet' : 'Add a wallet in Settings first') :
+    !walletId ? (activeWallets.length ? 'Choose a wallet' : refError ? "Couldn't load your wallets. Check your connection" : 'Add a wallet in Settings first') :
     kind === 'transfer' && !toWalletId ? 'Choose where the money goes' :
     kind === 'transfer' && toWalletId === walletId ? 'Pick two different wallets' :
     // Checked here, not only by the field's min and max: the second button of an unusual verdict skips the form's checks.
@@ -179,7 +179,8 @@ function AddFlow() {
 
   // The wallet form opens in place: once it's saved there is a wallet, so the transaction form takes over.
   // The transition keeps this panel up while the form's file loads, so the two panels swap in one step.
-  if (!editing && !loading && !activeWallets.length) {
+  // Not when the wallets failed to load: they may well exist, and this would invite adding them again.
+  if (!editing && !loading && !refError && !activeWallets.length) {
     return (
       <Suspense fallback={null}>
         {addingWallet ? <WalletForm onClose={() => setAddingWallet(false)} /> : (

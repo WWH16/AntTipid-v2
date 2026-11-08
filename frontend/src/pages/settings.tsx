@@ -21,7 +21,7 @@ import { ResponsivePanel } from '@/components/responsive-panel'
 import { UserAvatar } from '@/components/user-avatar'
 import { WalletForm } from '@/components/wallet-form'
 import { WalletItem } from '@/components/wallet-item'
-import { LoadingItems } from '@/components/states'
+import { ErrorState, LoadingItems } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -173,7 +173,7 @@ function RowMenu({ label, children }: { label: string; children: React.ReactNode
 }
 
 function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
-  const { wallets, loading } = useRefData()
+  const { wallets, loading, error } = useRefData()
   const [deleting, setDeleting] = useState<Wallet | null>(null)
 
   // Reversible, so no confirm step: the toast offers Undo instead. The row changes at once and goes back if the save fails.
@@ -199,7 +199,7 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
         description="Each transaction is paid from or paid into one of these."
         action={<Button variant="outline" size="sm" aria-label="Add wallet" onClick={() => onEdit({ type: 'wallet' })}><Plus /><span className="hidden sm:inline">Add wallet</span></Button>}
       />
-      {loading ? <LoadingItems rows={3} /> : !wallets.length ? (
+      {loading ? <LoadingItems rows={3} /> : error && !wallets.length ? <ErrorState error={error} /> : !wallets.length ? (
         <p className="text-sm text-muted-foreground">No wallets yet. Add the cash, e-wallets and bank accounts you pay from.</p>
       ) : <ItemGroup className="-mx-3">
         {wallets.map((w) => (
@@ -241,7 +241,7 @@ function WalletsTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
 }
 
 function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
-  const { categories, loading } = useRefData()
+  const { categories, loading, error } = useRefData()
   const [deleting, setDeleting] = useState<Category | null>(null)
 
   return (
@@ -253,7 +253,7 @@ function CategoriesTab({ onEdit }: { onEdit: (d: Dlg) => void }) {
             description={kind === 'expense' ? 'Shown when you add an expense.' : 'Shown when you add income.'}
             action={<Button variant="outline" size="sm" aria-label={kind === 'expense' ? 'Add spending category' : 'Add income category'} onClick={() => onEdit({ type: 'category', kind })}><Plus /><span className="hidden sm:inline">Add category</span></Button>}
           />
-          {loading ? <LoadingItems rows={kind === 'expense' ? 5 : 3} amount={false} /> : !categories.some((c) => c.kind === kind) ? (
+          {loading ? <LoadingItems rows={kind === 'expense' ? 5 : 3} amount={false} /> : error && !categories.length ? <ErrorState error={error} /> : !categories.some((c) => c.kind === kind) ? (
             <p className="text-sm text-muted-foreground">
               {kind === 'expense' ? 'No spending categories. Add one to record expenses.' : 'No income categories. Add one to record income.'}
             </p>

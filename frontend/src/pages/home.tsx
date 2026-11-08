@@ -31,7 +31,7 @@ export function HomePage() {
   // Last month and this one: the carousel compares against last month, and the newest six fill Recent activity.
   // ponytail: someone idle for two months sees an empty list and the setup's expense step again; add a limit query if that matters.
   const recent = useQuery(`recent:${month}`, () => api.transactions.list({ since: `${shiftMonth(month, -1)}-01` }))
-  const { wallets, category, loading: refLoading } = useRefData()
+  const { wallets, category, loading: refLoading, error: refError } = useRefData()
 
   const attention = (budgets.data ?? []).filter((b) => b.categoryId && needsLook(b, category(b.categoryId)?.onceAMonth))
   // Unusual purchases nobody decided on (saved before the check answered, or before verdicts were kept).
@@ -44,7 +44,7 @@ export function HomePage() {
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
   const [setupHidden, setSetupHidden] = useState(() => { try { return localStorage.getItem(SETUP_HIDDEN) === '1' } catch { return false } })
-  const setup = !refLoading && summary.data && recent.data && !setupHidden
+  const setup = !refLoading && !refError && summary.data && recent.data && !setupHidden
     ? { hasWallet: activeWallets.length > 0, hasBudget: summary.data.budget > 0, hasExpense: recent.data.some((t) => t.kind === 'expense') }
     : null
   const showSetup = setup && !(setup.hasWallet && setup.hasBudget && setup.hasExpense)
@@ -162,7 +162,7 @@ export function HomePage() {
                 <ItemGroup>
                   {activeWallets.map((w) => <WalletItem key={w.id} w={w} />)}
                 </ItemGroup>
-              ) : (
+              ) : refError ? <ErrorState error={refError} /> : (
                 <p className="text-sm text-muted-foreground">No wallets yet. Add the cash, e-wallets and bank accounts you pay from.</p>
               )}
             </CardContent>
