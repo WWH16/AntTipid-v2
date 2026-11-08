@@ -1,5 +1,5 @@
 // Details for one transaction, opened by tapping any row. Edit reopens the add panel prefilled; Delete offers Undo.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pencil, Repeat, ScanSearch, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApp, useRefData } from '@/app-state'
@@ -120,6 +120,11 @@ function UnusualNote({ t }: { t: Transaction }) {
   const { data } = useAnomalies(t.date.slice(0, 7))
   const [run, busy] = useAction()
   const [earlier, setEarlier] = useState<SimilarOneOff[]>([])
+  // The lists wait for the answer about earlier one-offs before refreshing. Closed without one, refresh on the way out,
+  // or the badges keep saying "Unusual" for a purchase already called normal.
+  const asking = useRef(false)
+  useEffect(() => { asking.current = earlier.length > 0 })
+  useEffect(() => () => { if (asking.current) invalidate() }, [])
   const a = data?.find((x) => x.transactionId === t.id)
   if (!a) return null
   const name = category(a.categoryId)?.name ?? 'this category'
