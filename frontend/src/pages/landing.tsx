@@ -33,6 +33,7 @@ const NAV = [
   { href: '#faq', label: 'FAQ' },
 ]
 
+// The copy below is repeated for AI crawlers in index.html (#about) and public/llms.txt. Change them together.
 const FEATURES = [
   { icon: Wallet, title: 'Every wallet in one place', body: 'Cash, e-wallets, bank accounts, savings and credit cards each keep their own balance. Move money between them with a transfer.' },
   { icon: Gauge, title: 'Left to spend, at a glance', body: 'The Home screen shows what’s left of your monthly budget, how much you can spend each day to stay on track, and when your money runs out if you keep spending at the same pace.' },

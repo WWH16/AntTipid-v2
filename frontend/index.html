@@ -20,7 +20,22 @@
     <meta property="og:image" content="https://anttipid.com/icon-512.png" />
     <meta name="twitter:card" content="summary" />
     <meta name="google-site-verification" content="X8rTpsx5lgl1ObB89K02dMeOjG7u-VTf70tmsyWcXHI" />
-    <title>AntTipid</title>
+    <title>AntTipid: expense and budget tracker</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "AntTipid",
+        "url": "https://anttipid.com/",
+        "description": "AntTipid is a free expense and budget tracker for the Philippine peso. Log spending and income across cash, e-wallets and bank accounts, set monthly budgets by category, scan receipts, and get warned before your money runs out.",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Any web browser. Can be added to a phone's home screen.",
+        "inLanguage": "en-PH",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "PHP" },
+        "author": { "@type": "Person", "name": "John Ansley Rocel" }
+      }
+    </script>
     <!-- Here, not in index.css: in dev that CSS arrives through JS, so the launch mark would flash unstyled until then.
          Stays above the stylesheet so the installed app's rule there still wins. -->
     <style>#launch { display: none; }</style>
@@ -49,6 +64,70 @@
       <span class="launch-wait"><span></span></span>
     </div>
     <div id="root"></div>
+    <!-- The landing page's words as plain HTML, for AI crawlers (GPTBot, ClaudeBot, PerplexityBot), which read this file without
+         running JavaScript and would otherwise find an empty page. Browsers remove it on the next line and draw the real page.
+         Beside #root, not inside it: the launch screen in index.css waits on #root being filled.
+         ponytail: copied by hand from pages/landing.tsx, so change both. Prerender the landing page at build time if they drift. -->
+    <main id="about">
+      <h1>AntTipid: expense and budget tracker for the Philippine peso</h1>
+      <p>Tipid means spending carefully so your money lasts until your next payday. AntTipid is a free tracker that helps you do it: record what you spend and earn across cash, e-wallets and bank accounts, set a budget for each category, and get a warning before your money runs out.</p>
+      <p>Free, no ads. Never asks for your bank or e-wallet login. Works on your phone.</p>
+
+      <h2>Everything you need to stay on budget</h2>
+      <h3>Every wallet in one place</h3>
+      <p>Cash, e-wallets, bank accounts, savings and credit cards each keep their own balance. Move money between them with a transfer.</p>
+      <h3>Left to spend, at a glance</h3>
+      <p>The Home screen shows what’s left of your monthly budget, how much you can spend each day to stay on track, and when your money runs out if you keep spending at the same pace.</p>
+      <h3>Budgets by category</h3>
+      <p>Set a budget for food, transport or bills. Together, category budgets can’t go over your monthly budget. You also see when spending in categories with no budget goes past what your monthly budget has left for them.</p>
+      <h3>Scan a receipt</h3>
+      <p>Take a photo and AntTipid fills in the store, date, items and total. You check it, then save.</p>
+      <h3>Reports that add up</h3>
+      <p>See what you earned, spent and saved, where the money went by category, and your income and spending over six months. After a month ends, see how it went against your budgets.</p>
+      <h3>Your records, your copy</h3>
+      <p>Search any transaction, download a month as a CSV spreadsheet, print a report or save it as a PDF, and back up or restore your records. An audit log lists each sign-in and change.</p>
+
+      <h2>AntTipid warns you before the money runs out</h2>
+      <p>Each time you add or change a transaction or budget, AntTipid checks your spending against your budgets and your own habits. If something needs attention, you see it in the app and by email.</p>
+      <h3>Run-out date</h3>
+      <p>From the 5th of each month, AntTipid works out the date a budget runs out at your current pace, and how much you can spend each day to make it last.</p>
+      <h3>Unusual purchases</h3>
+      <p>AntTipid learns how much you usually spend in each category and flags a purchase far above that. You then mark it as a one-off or as normal for you.</p>
+      <h3>Budget limits</h3>
+      <p>You get a warning when a budget nears its limit, is used up or goes over.</p>
+      <h3>No false alarms from one big payment</h3>
+      <p>Mark rent or tuition as paid once a month. Bills like these, and purchases you mark as one-offs, stay out of your daily spending pace.</p>
+      <h3>You choose what you get</h3>
+      <p>Warnings appear in the app and by email, and a recap of last month arrives on the 1st. In Settings, you can turn off email or any single warning.</p>
+
+      <h2>Set up in a few minutes</h2>
+      <ol>
+        <li>Create your free account. Sign up with your email or continue with Google. Common categories like food, transport and bills are ready for you.</li>
+        <li>Add wallets and budgets. Add the wallets you use and their current balances, then set a budget for the month and for the categories you want to watch.</li>
+        <li>Add transactions as you go. Type an amount and pick a category, or scan the receipt. The Home screen updates what’s left to spend right away, and AntTipid warns you when something needs attention.</li>
+      </ol>
+
+      <h2>Questions, answered</h2>
+      <h3>Is AntTipid free?</h3>
+      <p>Yes. AntTipid is free to use, with no ads.</p>
+      <h3>Does it connect to my bank, GCash or Maya?</h3>
+      <p>No. AntTipid never asks for your bank or e-wallet login. You add transactions yourself or scan a receipt, and you set the starting balance of each wallet.</p>
+      <h3>Who can see my records?</h3>
+      <p>Only you. Your records are private to your account. AntTipid has no analytics or tracking tools and never sells your information.</p>
+      <h3>What happens to a receipt photo when I scan it?</h3>
+      <p>The photo is sent to an AI service that reads the store, date, items and total. AntTipid keeps only what you choose to save. Avoid scanning receipts that show information you’d rather not share.</p>
+      <h3>How does AntTipid know a purchase is unusual?</h3>
+      <p>It compares the amount with your own purchases in that category over the last 6 months, and only flags amounts far above your usual. It needs at least 3 purchases in a category, and skips categories paid once a month. This check doesn’t use an AI service.</p>
+      <h3>Will AntTipid email me? Can I turn it off?</h3>
+      <p>Yes, unless you turn it off. AntTipid emails only the address you sign in with, when something you add or change sets off a warning, and sends a recap on the 1st of the month. You can turn off email or any single warning in Settings. With email off, warnings still appear under the bell in the app. AntTipid doesn’t send phone push notifications.</p>
+      <h3>Can I use it on my phone?</h3>
+      <p>Yes. AntTipid works in your phone’s browser, and you can add it to your home screen so it opens like an app.</p>
+      <h3>Can I get my data out or delete it?</h3>
+      <p>Download any month of transactions as a CSV from Activity, print a monthly report or save it as a PDF from Reports, or download a backup of your records from Settings (receipt photos aren’t included). To delete your account and everything in it, email support@anttipid.com from the address you sign in with.</p>
+
+      <p><a href="/privacy">Privacy policy</a> · <a href="/terms">Terms</a> · support@anttipid.com · Developed by John Ansley Rocel</p>
+    </main>
+    <script>document.getElementById('about').remove()</script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

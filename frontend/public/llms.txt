@@ -1,0 +1,27 @@
+# AntTipid
+
+> AntTipid is a free expense and budget tracker for the Philippine peso. Users record what they spend and earn across cash, e-wallets and bank accounts, set a budget for each category, and get a warning before their money runs out.
+
+"Tipid" means spending carefully so your money lasts until your next payday.
+
+AntTipid runs in a web browser and can be added to a phone's home screen. It is free, has no ads, and never asks for a bank or e-wallet login, so it does not connect to banks, GCash or Maya: users add transactions themselves or scan a receipt.
+
+## Features
+
+- Wallets: cash, e-wallets, bank accounts, savings and credit cards each keep their own balance, with transfers between them.
+- Left to spend: what's left of the monthly budget, how much can be spent each day, and when the money runs out at the current pace.
+- Budgets by category, inside one monthly budget.
+- Receipt scanning: a photo fills in the store, date, items and total for the user to check.
+- Reports: earned, spent and saved, spending by category, and six months of income and spending.
+- Exports: CSV, printed or PDF reports, backup and restore, and an audit log.
+- Warnings in the app and by email: run-out date, unusual purchases, and budget limits, plus a monthly recap on the 1st.
+
+## Pages
+
+- [AntTipid](https://anttipid.com/): what the app does, how to set it up, and frequently asked questions
+- [Privacy policy](https://anttipid.com/privacy): what AntTipid keeps, why, and how to have it deleted
+- [Terms](https://anttipid.com/terms): terms of use
+
+## Contact
+
+- support@anttipid.com
