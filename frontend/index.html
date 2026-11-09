@@ -21,6 +21,9 @@
     <meta name="twitter:card" content="summary" />
     <meta name="google-site-verification" content="X8rTpsx5lgl1ObB89K02dMeOjG7u-VTf70tmsyWcXHI" />
     <title>AntTipid</title>
+    <!-- Here, not in index.css: in dev that CSS arrives through JS, so the launch mark would flash unstyled until then.
+         Stays above the stylesheet so the installed app's rule there still wins. -->
+    <style>#launch { display: none; }</style>
   </head>
   <body>
     <!-- The installed app's launch screen, carrying on from the phone's own splash. Styled in index.css (hidden in a browser tab). -->

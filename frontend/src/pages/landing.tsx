@@ -327,8 +327,8 @@ function SampleNotifications() {
       </CardHeader>
       <CardContent>
         <ItemGroup className="-mx-3">
-          {rows.map((n) => (
-            <Item key={n.title} size="sm">
+          {rows.map((n, i) => (
+            <Item key={n.title} size="sm" style={stagger(i)}>
               <ItemContent>
                 <ItemTitle className="line-clamp-none break-words">{n.title}</ItemTitle>
                 <ItemDescription className="line-clamp-none break-words">{n.body}</ItemDescription>
@@ -355,7 +355,10 @@ function SampleUnusual() {
           <div className="grid gap-1.5">
             <div className="relative h-2 rounded-full bg-muted">
               <div className="absolute inset-y-0 rounded-full bg-primary/35" style={{ left: `${line.bandLeft}%`, width: `${line.bandWidth}%` }} />
-              <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-destructive ring-2 ring-card" style={{ left: `${line.marker}%` }} />
+              {/* Full width, so the slide's percent is of the track: the marker starts at the band's end and runs out to this purchase. */}
+              <div className="marker-out absolute inset-0" style={{ '--from': `${line.bandLeft + line.bandWidth - line.marker}%` } as CSSProperties}>
+                <div className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-destructive ring-2 ring-card" style={{ left: `${line.marker}%` }} />
+              </div>
             </div>
             <div className="flex justify-between gap-2 text-xs text-muted-foreground tabular-nums">
               <span>Usual ₱80 to ₱250</span>
@@ -400,7 +403,7 @@ export function LandingPage() {
   // The section picked from the phone menu: when the menu closes, focus moves to that section's heading so Tab carries on from there.
   const jumpTo = useRef<string | null>(null)
   return (
-    <div className="min-h-svh overflow-x-clip">
+    <div className="landing min-h-svh overflow-x-clip">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:p-2">Skip to content</a>
       <header className="sticky top-0 z-20 border-b bg-background/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-3 sm:gap-3 sm:px-6">
@@ -408,7 +411,7 @@ export function LandingPage() {
             <LogoWithTagline height={28} small />
           </Link>
           <nav aria-label="Page sections" className="hidden items-center gap-5 text-sm font-medium whitespace-nowrap text-muted-foreground md:flex lg:gap-7">
-            {NAV.map((n) => <a key={n.href} href={n.href} className={linkClass}>{n.label}</a>)}
+            {NAV.map((n) => <a key={n.href} href={n.href} className={linkClass} style={{ animationTimeline: `--${n.href.slice(1)}` }}>{n.label}</a>)}
           </nav>
           <div className="flex items-center gap-1 sm:gap-2">
             {/* Below sm, Log in moves into the menu so the bar fits a 320px screen. */}

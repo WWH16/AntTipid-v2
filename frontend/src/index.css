@@ -297,9 +297,11 @@
 
 /* Landing motion. Every element's resting state is its finished state, so nothing hides if an animation never runs.
    Hero (on load): the copy rises in reading order, the phone lands flat out of a tilt, then its screen behaves like Home:
-   both bars fill to today's numbers and the recent transactions log in, newest last, at the top.
+   both bars fill to today's numbers and the recent transactions log in, newest last, at the top. On phones, where it
+   sits at or below the fold, the phone flattens as it scrolls into view instead.
    Below the hero (scroll-driven, skipped where unsupported, e.g. Firefox): feature icons drop in and their copy is
-   written in; the preview pins a phone that steps through its three screens; the closing panel widens to the full screen.
+   written in; the sample warnings arrive; the preview pins a phone that steps through its three screens; the closing
+   panel widens to the full screen.
    (The how-it-works steps have their own block below, since part of it also runs under reduced motion.)
    --i staggers siblings. Reduced motion: none of it runs. */
 @media (prefers-reduced-motion: no-preference) {
@@ -311,7 +313,7 @@
   }
 
   @keyframes phone-land {
-    from { opacity: 0; transform: perspective(1400px) translateY(56px) rotateX(16deg) scale(.95); }
+    from { opacity: var(--land-o, 0); transform: perspective(1400px) translateY(56px) rotateX(16deg) scale(.95); }
   }
   .phone-land {
     transform-origin: 50% 100%;
@@ -344,7 +346,32 @@
     .log-in { animation-delay: calc(.6s + var(--i, 0) * 160ms); }
   }
 
+  /* The try-it card answers what's typed: the status badge swaps in (SafeToSpendCard keys it on the status). The tour's
+     badges land with the same keyframes. */
+  @keyframes badge-land {
+    from { opacity: 0; transform: scale(.4); }
+  }
+  .hero-screen [data-slot=badge] {
+    animation: badge-land 150ms cubic-bezier(.16, 1, .3, 1) both;
+  }
+
+  /* Section links glide. Only on the landing: the app's own scrolling stays instant. */
+  html:has(.tour) {
+    scroll-behavior: smooth;
+  }
+
   @supports (animation-timeline: view()) {
+    /* Phones: the phone sits under the copy with little or none of it on the first screen, so it flattens out of its
+       tilt as it scrolls into view instead of landing on load. No fade: the part that peeks in must never be blank. */
+    @media (width < 48rem) {
+      .phone-land {
+        --land-o: 1;
+        animation: phone-land cubic-bezier(.65, 0, .35, 1) both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 100%;
+      }
+    }
+
     @keyframes coin-drop {
       from { opacity: 0; transform: translateY(-18px) scale(.6) rotate(-16deg); }
     }
@@ -373,7 +400,6 @@
        Short screens (a phone held sideways) keep the static layout, since a pinned stage would cut the phone down. */
     @media (height >= 34rem) {
       .tour {
-        view-timeline: --tour block;
         /* The step nodes' size: the node itself, and where the rails and the step text sit around it. */
         --node: 1.75rem;
         height: 340svh;
@@ -681,9 +707,6 @@
         animation-timeline: --tour;
         animation-range: contain var(--m) contain calc(var(--m) + 10%);
       }
-      @keyframes badge-land {
-        from { opacity: 0; transform: scale(.4); }
-      }
       .tour-grid [data-slot=badge] {
         animation: badge-land cubic-bezier(.16, 1, .3, 1) both;
         animation-timeline: --tour;
@@ -825,6 +848,26 @@
       box-shadow: 0 0 12px 2px rgb(159 232 112 / .8);
     }
 
+    /* Warnings: each sample card is the timeline for what's inside it (its overflow clip would trap a plain view()).
+       The notifications arrive as their card scrolls in, and the purchase marker runs out of the usual band to its
+       amount. --from: the band's end, relative to the marker, as a share of the track. */
+    #warnings figure > [data-slot=card] {
+      view-timeline: --warn-card block;
+    }
+    #warnings [data-slot=item-group] > * {
+      animation: rise cubic-bezier(.16, 1, .3, 1) both;
+      animation-timeline: --warn-card;
+      animation-range: entry calc(20% + var(--i) * 18%) entry calc(55% + var(--i) * 18%);
+    }
+    @keyframes marker-out {
+      from { transform: translateX(var(--from)); }
+    }
+    .marker-out {
+      animation: marker-out cubic-bezier(.65, 0, .35, 1) both;
+      animation-timeline: --warn-card;
+      animation-range: entry 70% cover 55%;
+    }
+
     /* The closing panel starts as a card the width of the page's content and widens to the screen's full width,
        edge to edge, by the time it is fully in view. Linear, so the widening keeps pace with the scroll: an ease-out
        finished it in the first few rows of scrolling, before most of a short phone panel was even on screen. */
@@ -878,6 +921,27 @@
         transform-origin: left;
       }
     }
+  }
+}
+
+/* Header: the link for the section crossing a line 30% down the screen lights up, driven by that section's own timeline
+   (each link names it from its href, in landing.tsx). timeline-scope lifts the sections' timelines to the page, so the header, which sits outside them, can read them.
+   A color, not movement, so reduced motion keeps it. Unsupported browsers just leave the links plain. */
+@supports (animation-timeline: view()) {
+  .landing {
+    timeline-scope: --features, --warnings, --how-it-works, --preview, --faq;
+  }
+  #features { view-timeline: --features block; }
+  #warnings { view-timeline: --warnings block; }
+  #how-it-works { view-timeline: --how-it-works block; }
+  .tour { view-timeline: --tour block, --preview block; }
+  #faq { view-timeline: --faq block; }
+  @keyframes nav-on {
+    from, to { color: var(--foreground); }
+  }
+  .landing > header nav a {
+    animation: nav-on linear;
+    animation-range: cover 70svh cover calc(100% - 30svh);
   }
 }
 
@@ -1048,8 +1112,7 @@
 
 /* The installed app's launch screen: the mark on the phone splash's forest, so opening never drops to an empty page.
    It holds until the app draws something and then fades. Pure CSS, so a crash can't leave it up: an error screen
-   replaces #app, which counts as drawn. Browser tabs and browsers without :has() never see it. */
-#launch { display: none; }
+   replaces #app, which counts as drawn. Browser tabs and browsers without :has() never see it: index.html hides it. */
 @media (display-mode: standalone) {
   @supports selector(:has(*)) {
     #launch {

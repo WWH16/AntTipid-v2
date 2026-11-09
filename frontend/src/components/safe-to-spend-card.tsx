@@ -28,17 +28,19 @@ export function SafeToSpendCard({ s, fixed, note }: {
   // From day 5 on, the same pace line Budgets shows ("On track. You should reach month-end with ₱1,450 to
   // spare."). Before that, the plain on-budget pace instead.
   const line = over ? null : paceLine(e, s.month)
+  const status = over ? 'Over budget' : gap >= 0 ? 'On track' : 'Spending fast'
 
   return (
     <HeroCard>
       <CardHeader>
         <CardDescription>{over ? 'Over your monthly budget by' : 'Left to spend this month'}</CardDescription>
-        <CardTitle className={cn('text-3xl font-semibold tabular-nums', over && 'text-destructive-on-primary')}>
+        <CardTitle className={cn('text-3xl font-semibold tabular-nums transition-colors', over && 'text-destructive-on-primary')}>
           {money(Math.abs(left), { whole: true })}
         </CardTitle>
         <CardAction>
-          <Badge variant="secondary" className={cn(over && 'bg-destructive-on-primary! text-primary!')}>
-            {over ? 'Over budget' : gap >= 0 ? 'On track' : 'Spending fast'}
+          {/* Keyed so a new status mounts fresh, which lets the landing's try-it card animate it in (index.css). */}
+          <Badge key={status} variant="secondary" className={cn(over && 'bg-destructive-on-primary! text-primary!')}>
+            {status}
           </Badge>
         </CardAction>
       </CardHeader>
