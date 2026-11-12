@@ -35,9 +35,14 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // The Supabase session is the source of truth. This fires once with the saved session
   // (INITIAL_SESSION), then on every sign-in, sign-out and token refresh.
   useEffect(() => {
+    let userId: string | null | undefined
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const id = session?.user.id ?? null
+      // Another tab signed out or switched accounts: close sheets still holding the old account's transaction.
+      if (id !== userId) { setAdd(null); setDetailId(null) }
+      userId = id
       // Before setUser, so the first render after sign-in already has this user's saved data, never another's.
-      setCacheUser(session?.user.id ?? null)
+      setCacheUser(id)
       setUser(session?.user ? toUser(session.user) : null)
       setReady(true)
     })
