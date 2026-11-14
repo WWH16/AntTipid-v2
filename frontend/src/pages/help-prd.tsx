@@ -41,7 +41,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
       'A second entry with the same date and amount asks “Is this a duplicate?”.',
       'Activity lists a month’s transactions grouped by day, newest first, with totals spent and earned.',
       'Activity filters by month, type, wallet and category together. Search looks through titles, notes and receipt items in every month.',
-      'A user can export the filtered list as a CSV file.',
+      'A user can export the filtered list as a CSV or PDF file.',
     ],
   },
   {
@@ -78,7 +78,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
     title: 'Reports',
     items: [
       'Reports shows earned, spent and saved beside last month, spending through the month with where the pace is heading and any unusual purchases, a calendar of daily spending, spending by category against each budget with its last 6 months, 6 months of income and spending as a chart or a table, and saved per month.',
-      'Print preview gives a paper copy of one month: totals, categories, the 6-month trend and every transaction. The browser can print it or save it as a PDF.',
+      'Print preview gives a paper copy of one month: totals, categories, the 6-month trend and every transaction. It can be printed or downloaded as a PDF file.',
     ],
   },
   {
@@ -243,7 +243,7 @@ export function HelpPrdPage() {
                   ['2. Dashboard', 'Left to spend with a pace bar, budgets needing attention, wallets and recent activity. Home.'],
                   ['3. Decision support', 'Budget warnings, run-out date, safe daily amount, outside-budget flag, unusual purchases by K-means, and saved vs budget. Home, Budgets, Reports, bell and email.'],
                   ['4. CRUD operations', 'Create, read, update and delete transactions, wallets, categories and budgets. Activity, Budgets, Settings.'],
-                  ['5. Print preview and reports', 'Monthly report with charts and tables, plus a print preview that can save a PDF. Reports.'],
+                  ['5. Print preview and reports', 'Monthly report with charts and tables, plus a print preview that prints or downloads a PDF. Reports.'],
                   ['6. Multi-filtering', 'Month, type, wallet and category together, with search across every month. Activity.'],
                   ['7. SSL security', 'The app, API and database services are served over HTTPS by Vercel and Supabase.'],
                   ['8. Password encryption', 'Supabase Auth stores each password as a one-way hash. AntTipid’s own API never receives a password.'],
@@ -279,7 +279,7 @@ export function HelpPrdPage() {
                 head={['Screen', 'What comes first']}
                 rows={[
                   ['Home', 'Left to spend with a pace bar, then budgets needing attention, wallets and recent activity.'],
-                  ['Activity', 'All transactions for a month grouped by day, with search, filters and CSV export.'],
+                  ['Activity', 'All transactions for a month grouped by day, with search, filters and CSV or PDF export.'],
                   ['Add transaction', 'Amount, category, save. “Scan a receipt instead” fills it from a photo.'],
                   ['Budgets', 'Monthly budget, category budgets worst first, and quick-add for categories with no budget.'],
                   ['Reports', 'Earned, spent and saved, spending through the month, a calendar of daily spending, spending by category, and 6 months of income, spending and savings.'],

@@ -1,6 +1,7 @@
 // A paper copy of one month: totals, spending by category, the 6-month trend and every transaction. Opens outside the
 // app shell, always on white, so the preview matches what prints (and what "Save as PDF" writes).
 import { useEffect } from 'react'
+import { Download, Printer } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -9,6 +10,7 @@ import { ErrorState } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { endLine, monthBudgets } from '@/lib/budget'
 import { currentMonth, longDate, money, monthLabel, todayIso } from '@/lib/format'
+import { savePdf, transactionTable } from '@/lib/pdf'
 import { categoryRows, printDate, signedAmount } from '@/lib/print-report'
 import { monthTotals } from '@/lib/report'
 
@@ -36,11 +38,37 @@ export function PrintReportPage() {
   // Same rule as Reports: only a finished month with spending, and only when it has a monthly budget.
   const monthly = month < currentMonth() && spentTotal > 0 ? monthBudgets(data!).find((b) => b.categoryId === null) : undefined
 
+  // The same report as a PDF file, section for section.
+  const downloadPdf = () => {
+    if (!ready) return
+    const totals = monthTotals(thisMonth?.income ?? 0, thisMonth?.spent ?? 0)
+    const none = (what: string) => `No ${what} recorded in ${monthLabel(month)}.`
+    void savePdf(`anttipid-report-${month}.pdf`, 'Monthly report', [
+      monthLabel(month),
+      `Prepared for ${user?.name} (${user?.email})`,
+      `Exported ${longDate(todayIso())}`,
+    ], [
+      { heading: 'Totals', head: totals.map(([label]) => label), rows: [totals.map(([, value]) => money(value))], text: monthly && endLine(monthly) },
+      rows.length
+        ? { heading: 'Spending by category', head: ['Category', 'Spent', 'Share', 'Budget', 'Left'], right: [1, 2, 3, 4], rows: rows.map((r) =>
+            [r.name, money(r.spent), `${r.share}%`, r.limit === null ? '—' : money(r.limit), r.left === null ? '—' : money(r.left)]) }
+        : { heading: 'Spending by category', text: none('spending') },
+      { heading: 'Income and spending, last 6 months', head: ['Month', 'Income', 'Spending'], right: [1, 2],
+        rows: data.trend.map((m) => [monthLabel(m.month), money(m.income), money(m.spent)]) },
+      txs.length
+        ? { heading: 'Transactions', ...transactionTable(txs, (id) => category(id)?.name, (id) => wallet(id)?.name) }
+        : { heading: 'Transactions', text: none('transactions') },
+    ])
+  }
+
   return (
     <div className="min-h-svh bg-neutral-100 p-4 print:bg-white print:p-0">
       <div className="mx-auto mb-4 flex max-w-[210mm] items-center justify-between gap-3 print:hidden">
         <Button variant="outline" size="sm" nativeButton={false} render={<Link to={monthLink('/reports', month)} />}>Back to reports</Button>
-        <Button size="sm" disabled={!ready} onClick={() => window.print()}>Print</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" disabled={!ready} onClick={downloadPdf}><Download />Download PDF</Button>
+          <Button size="sm" disabled={!ready} onClick={() => window.print()}><Printer />Print</Button>
+        </div>
       </div>
       {error && <div className="mx-auto mb-4 max-w-[210mm] print:hidden"><ErrorState error={error} /></div>}
 

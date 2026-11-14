@@ -435,7 +435,7 @@ export function HelpTrdPage() {
               <DocTable
                 head={['Suite', 'Size', 'Covers']}
                 rows={[
-                  [<>Frontend, {c('node --test src/lib/*.test.ts')}</>, '54 tests in 7 files', 'Budget and pace maths, formatting, reports, print report, audit, backup and notification helpers'],
+                  [<>Frontend, {c('node --test src/lib/*.test.ts')}</>, '57 tests in 8 files', 'Budget and pace maths, formatting, reports, print report, PDF export, audit, backup and notification helpers'],
                   [<>Backend, {c('test_receipts.py')} and four more</>, '86 checks in 5 files', 'Receipt parsing, JWT verification, every route group, user A vs user B isolation, anomalies, audit, backup, notifications, CORS and the scan limit'],
                   [c('backend/paper_anomalies.py'), 'Evaluation script', 'K-means against the baseline, with elbow and silhouette charts'],
                 ]}

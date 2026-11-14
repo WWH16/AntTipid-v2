@@ -2,7 +2,7 @@
 import { memo, useEffect, useState } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Download, ReceiptText, Search, SearchX, SlidersHorizontal, X } from 'lucide-react'
+import { Download, FileText, ReceiptText, Search, SearchX, Sheet, SlidersHorizontal, X } from 'lucide-react'
 import { useApp, useMonth, useRefData } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { useQuery } from '@/api/use-query'
@@ -13,19 +13,23 @@ import { EmptyState, ErrorState, LoadingDays } from '@/components/states'
 import { TransactionItem } from '@/components/transaction-item'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { ItemGroup } from '@/components/ui/item'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { dateInMonth, dayLabel, money, monthLabel } from '@/lib/format'
+import { dateInMonth, dayLabel, longDate, money, monthLabel, todayIso } from '@/lib/format'
+import { savePdf, transactionTable } from '@/lib/pdf'
 import { shouldHintSwipe, sumOf } from '@/lib/transactions'
 import { cn, groupBy } from '@/lib/utils'
 import type { Transaction, TransactionFilters, TransactionKind } from '@/types'
 
+const KIND_LABEL: Record<TransactionKind, string> = { expense: 'Expenses', income: 'Income', transfer: 'Transfers' }
+
 export function ActivityPage() {
   const [month, setMonth] = useMonth()
-  const { openAdd } = useApp()
-  const { wallets, categories } = useRefData()
+  const { openAdd, user } = useApp()
+  const { wallets, categories, wallet, category } = useRefData()
   const [kind, setKind] = useState<'all' | TransactionKind>('all')
   const [walletId, setWalletId] = useState('all')
   // Category lives in the URL so Reports can link straight to one category's transactions.
@@ -77,6 +81,22 @@ export function ActivityPage() {
   // below already says the month is empty. Search stays: it looks through every month.
   const empty = data?.length === 0 && !filtered
 
+  // The list on screen as a PDF: what the filters show, with the totals above it. Only a fresh list, never a dimmed one.
+  const exportPdf = () => {
+    if (!loaded?.length || !user) return
+    const shown = [kind === 'all' ? '' : KIND_LABEL[kind], wallet(filters.walletId)?.name, category(filters.categoryId)?.name]
+      .filter(Boolean).join(', ')
+    void savePdf(`anttipid-${filters.month ?? 'all'}.pdf`, 'Transactions', [
+      searching ? `Search: “${filters.search}”, all months` : monthLabel(month),
+      ...(shown ? [`Showing: ${shown}`] : []),
+      `Spent ${money(sumOf(loaded, 'expense'))}, earned ${money(sumOf(loaded, 'income'))}`,
+      `Prepared for ${user.name} (${user.email}), ${longDate(todayIso())}`,
+    ], [{
+      heading: `${loaded.length} ${loaded.length === 1 ? 'transaction' : 'transactions'}`,
+      ...transactionTable(loaded, (id) => category(id)?.name, (id) => wallet(id)?.name, searching),
+    }])
+  }
+
   return (
     <>
       <PageHeader
@@ -91,9 +111,15 @@ export function ActivityPage() {
           </span>
         )}
         action={!empty && (
-          <Button onClick={() => exportCsv(filters)} disabled={!data?.length}>
-            <Download /> <span className="sr-only sm:not-sr-only">Export CSV</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger disabled={!loaded?.length} render={<Button />}>
+              <Download /> <span className="sr-only sm:not-sr-only">Export</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-auto">
+              <DropdownMenuItem onClick={() => exportCsv(filters)}><Sheet />CSV spreadsheet</DropdownMenuItem>
+              <DropdownMenuItem onClick={exportPdf}><FileText />PDF document</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       />
 

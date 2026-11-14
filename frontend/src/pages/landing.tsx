@@ -40,7 +40,7 @@ const FEATURES = [
   { icon: PiggyBank, title: 'Budgets by category', body: 'Set a budget for food, transport or bills. Together, category budgets can’t go over your monthly budget. You also see when spending in categories with no budget goes past what your monthly budget has left for them.' },
   { icon: ReceiptText, title: 'Scan a receipt', body: 'Take a photo and AntTipid fills in the store, date, items and total. You check it, then save.' },
   { icon: ChartPie, title: 'Reports that add up', body: 'See what you earned, spent and saved, where the money went by category, and your income and spending over six months. After a month ends, see how it went against your budgets.' },
-  { icon: Download, title: 'Your records, your copy', body: 'Search any transaction, download a month as a CSV spreadsheet, print a report or save it as a PDF, and back up or restore your records. An audit log lists each sign-in and change.' },
+  { icon: Download, title: 'Your records, your copy', body: 'Search any transaction, download a month as a CSV spreadsheet or PDF, print a report or download it as a PDF, and back up or restore your records. An audit log lists each sign-in and change.' },
 ]
 
 const WARNINGS = [
@@ -65,7 +65,7 @@ const FAQ = [
   { q: 'How does AntTipid know a purchase is unusual?', a: 'It compares the amount with your own purchases in that category over the last 6 months, and only flags amounts far above your usual. It needs at least 3 purchases in a category, and skips categories paid once a month. This check doesn’t use an AI service.' },
   { q: 'Will AntTipid email me? Can I turn it off?', a: 'Yes, unless you turn it off. AntTipid emails only the address you sign in with, when something you add or change sets off a warning, and sends a recap on the 1st of the month. You can turn off email or any single warning in Settings. With email off, warnings still appear under the bell in the app. AntTipid doesn’t send phone push notifications.' },
   { q: 'Can I use it on my phone?', a: 'Yes. AntTipid works in your phone’s browser, and you can add it to your home screen so it opens like an app.' },
-  { q: 'Can I get my data out or delete it?', a: `Download any month of transactions as a CSV from Activity, print a monthly report or save it as a PDF from Reports, or download a backup of your records from Settings (receipt photos aren’t included). To delete your account and everything in it, email ${CONTACT} from the address you sign in with.` },
+  { q: 'Can I get my data out or delete it?', a: `Download any month of transactions as a CSV or PDF from Activity, print a monthly report or download it as a PDF from Reports, or download a backup of your records from Settings (receipt photos aren’t included). To delete your account and everything in it, email ${CONTACT} from the address you sign in with.` },
 ]
 
 /** Stagger index for the landing's .rise / .log-in / step animations. */
