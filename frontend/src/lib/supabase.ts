@@ -10,12 +10,36 @@ if (!url || !key) {
   throw new Error('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in frontend/.env.local.')
 }
 
+// Set when Supabase Auth says this browser's session no longer exists: a sign-in somewhere else ended it.
+let sessionEnded = false
+
+/** The auth client's fetch. Notes the two answers that mean the session was deleted on the server: refreshing it
+ *  (refresh_token_not_found) or checking it (session_not_found). auth-js then drops the session itself. */
+const watchSession: typeof fetch = async (input, init) => {
+  const res = await fetch(input, init)
+  if (res.status === 400 || res.status === 403) {
+    const body = await res.clone().json().catch(() => null)
+    // The error code is `code` in Auth's current answers and `error_code` in older ones, where `code` is the status.
+    const codes = [body?.code, body?.error_code]
+    if (codes.includes('session_not_found') || codes.includes('refresh_token_not_found')) sessionEnded = true
+  }
+  return res
+}
+
+/** True once after a sign-in elsewhere ended this browser's session; reading it clears it. */
+export function takeSessionEnded() {
+  const ended = sessionEnded
+  sessionEnded = false
+  return ended
+}
+
 /** Sessions persist in localStorage and refresh themselves. Same settings and storage key as supabase-js's
  *  createClient, so sessions saved before the switch stay signed in. */
 export const supabase = {
   auth: new AuthClient({
     url: new URL('auth/v1', url.endsWith('/') ? url : `${url}/`).href,
     headers: { Authorization: `Bearer ${key}`, apikey: key },
+    fetch: watchSession,
     storageKey: `sb-${new URL(url).hostname.split('.')[0]}-auth-token`,
     autoRefreshToken: true,
     persistSession: true,

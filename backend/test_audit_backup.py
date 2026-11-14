@@ -19,7 +19,7 @@ from pydantic import ValidationError
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-from auth import AuthUser  # noqa: E402
+from auth import EXPIRED, AuthUser  # noqa: E402
 from backup import leftover_photos, own_receipt  # noqa: E402
 from db import connect, user_tx  # noqa: E402
 from main import app  # noqa: E402
@@ -185,6 +185,21 @@ def test_sign_in_survives_audit_failure():
             conn.execute(INSERT_SESSION, (uuid.uuid4(), user_a))  # must not raise
             conn.rollback()
 
+
+@needs_db
+def test_one_session_per_user():
+    with users(2) as (client, (user_a, user_b), _):
+        first, second, other = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+        with connect() as conn:
+            conn.execute(INSERT_SESSION, (other, user_b))
+            conn.execute(INSERT_SESSION, (first, user_a))
+            conn.execute(INSERT_SESSION, (second, user_a))  # user A signs in somewhere else
+            rows = conn.execute("select id from auth.sessions where user_id = any(%s::uuid[])", ([user_a, user_b],))
+            assert {r["id"] for r in rows} == {second, other}
+        bearer = lambda s: {"Authorization": f"Bearer {_make_token(user_a, session_id=str(s))}"}
+        old = client.get("/api/wallets", headers=bearer(first))
+        assert old.status_code == 401 and old.json()["detail"] == EXPIRED
+        assert client.get("/api/wallets", headers=bearer(second)).status_code == 200
 
 @needs_db
 def test_audit_goes_with_the_user():

@@ -36,7 +36,7 @@ TINY_WEBP = (
 )
 
 
-def _make_token(user_id: str, email: str = "test@example.com", secret: str = TEST_SECRET, exp_offset: int = 3600) -> str:
+def _make_token(user_id: str, email: str = "test@example.com", secret: str = TEST_SECRET, exp_offset: int = 3600, session_id: str | None = None) -> str:
     now = int(time.time())
     return jwt.encode(
         {
@@ -47,6 +47,7 @@ def _make_token(user_id: str, email: str = "test@example.com", secret: str = TES
             "iss": f"{TEST_URL.rstrip('/')}/auth/v1",
             "iat": now,
             "exp": now + exp_offset,
+            "session_id": session_id,  # None skips the session check; real Supabase tokens always carry one
         },
         secret,
         algorithm="HS256",

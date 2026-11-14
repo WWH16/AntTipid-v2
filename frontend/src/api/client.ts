@@ -29,8 +29,9 @@ async function request(path: string, init: RequestInit & { query?: Query } = {})
     throw new Error("You're offline. Check your connection and try again.")
   })
   if (!res.ok) {
-    // The session is gone on the server's side (expired, revoked): drop it here too, which shows the sign-in page.
-    if (res.status === 401) void supabase.auth.signOut({ scope: 'local' })
+    // The session is gone on the server's side (ended by a sign-in elsewhere, expired, revoked): drop it here too,
+    // which shows the sign-in page. Asking Auth first lets a session ended elsewhere be noted as the reason.
+    if (res.status === 401) void supabase.auth.getUser().finally(() => supabase.auth.signOut({ scope: 'local' }))
     const body = await res.json().catch(() => null)
     // status rides along so callers can tell a refusal (409) from a failure.
     throw Object.assign(new Error(typeof body?.detail === 'string' ? body.detail : fieldError(body?.detail) ?? `Request failed (${res.status})`), { status: res.status })

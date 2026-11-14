@@ -59,7 +59,7 @@ export function HelpTrdPage() {
               <ol>
                 <li>The browser holds a Supabase session in local storage, refreshed automatically by {c('auth-js')}.</li>
                 <li>The browser calls {c('/api/...')} with {c('Authorization: Bearer <JWT>')}. Vercel rewrites the call to the backend.</li>
-                <li>{c('auth.py')} verifies the token’s signature, expiry, audience and issuer, and takes the user from it.</li>
+                <li>{c('auth.py')} verifies the token’s signature, expiry, audience and issuer, checks that its session still exists in {c('auth.sessions')}, and takes the user from it.</li>
                 <li>{c('db.py')} opens one transaction on a pooled connection, as role {c('authenticated')} with the token’s claims set.</li>
                 <li>Row level security now applies, on top of the explicit {c('user_id')} in each query.</li>
                 <li>The route commits. Warnings are stored inside that transaction, and any email goes out after it commits.</li>
@@ -155,6 +155,7 @@ export function HelpTrdPage() {
                   [c('on_budget_change_record_history'), <>Change to {c('budgets')}</>, 'Writes the month’s limit to budget_history. The last edit in a month wins.'],
                   [<>{c('audit_transactions')}, {c('audit_wallets')}, {c('audit_categories')}, {c('audit_budgets')}</>, 'Insert, update or delete', 'Writes one audit entry per direct change, with a diff on updates and what the row held on inserts and deletes. Skips nested trigger writes and restores.'],
                   [c('on_session_created_audit'), <>Insert on {c('auth.sessions')}</>, 'Logs a sign-in. A failure here never blocks the sign-in.'],
+                  [c('on_session_created_end_others'), <>Insert on {c('auth.sessions')}</>, 'Ends the account’s other sessions, so it is signed in in one place only. A failure here never blocks the sign-in.'],
                 ]}
               />
               <p>
@@ -177,6 +178,7 @@ export function HelpTrdPage() {
                   [c('20261105010000_test_email_at_server_only'), 'Users can no longer write the test email limit'],
                   [c('20261107000000_audit_details'), 'Audit log keeps what was added or deleted, and names wallets and categories'],
                   [c('20261108000000_notifications_server_only'), 'Users can no longer write notifications, only mark them read'],
+                  [c('20261114000000_single_session'), 'A new sign-in ends the account’s other sessions'],
                 ]}
               />
             </>
@@ -194,6 +196,7 @@ export function HelpTrdPage() {
                   ['SSL and transport', 'Browser traffic to Vercel and Supabase uses HTTPS. Vercel holds Let’s Encrypt certificates for anttipid.com and www, renews them, redirects HTTP to HTTPS and sends HSTS. Gmail SMTP uses STARTTLS.'],
                   ['Bots', 'Cloudflare Turnstile on sign-in, sign-up and auth emails, with a new token per attempt. Supabase Auth checks the token and refuses a sign-in without one before it checks the password.'],
                   ['Tokens', <>Every route except the cron job needs a JWT. ES256 and RS256 are checked against the project’s JWKS, HS256 against a secret. {c('exp')}, {c('aud')}, {c('iss')} and {c('sub')} are required.</>],
+                  ['Sessions', 'One session per account. A new sign-in deletes the others, and the API refuses a token whose session is gone, so an old device loses access at once instead of when its token expires. Tabs in one browser share a session, and only the newest tab shows the app.'],
                   ['Origins', <>CORS lets a browser call the API directly only from {c('APP_URL')} and {c('http://localhost:5173')}. The app itself goes through the same-origin rewrite, so it doesn’t depend on this.</>],
                   ['Rate limits', <>Supabase Auth limits each IP address to 30 sign-ups, password resets and resends per 5 minutes, and 150 sign-ins and token refreshes per 5 minutes. Its built-in mailer sends at most 2 sign-up and password-reset emails an hour for the whole project. Past a limit it returns 429, and the sign-in card says “Too many tries. Wait a minute, then try again.” AntTipid’s API allows 30 receipt scans per user a day, counted in the database so the limit holds across Vercel instances. The day follows {c('APP_TIMEZONE')}. One test email a minute.</>],
                   ['Row access', <>Row level security on all 11 tables: {c('user_id = auth.uid()')}, except {c('scan_usage')}, which users can’t reach at all. The anonymous role has no access. {c('audit_log')} and {c('budget_history')} are read-only to users, and so is {c('notifications')}, apart from marking one read.</>],
@@ -433,7 +436,7 @@ export function HelpTrdPage() {
                 head={['Suite', 'Size', 'Covers']}
                 rows={[
                   [<>Frontend, {c('node --test src/lib/*.test.ts')}</>, '54 tests in 7 files', 'Budget and pace maths, formatting, reports, print report, audit, backup and notification helpers'],
-                  [<>Backend, {c('test_receipts.py')} and four more</>, '85 checks in 5 files', 'Receipt parsing, JWT verification, every route group, user A vs user B isolation, anomalies, audit, backup, notifications, CORS and the scan limit'],
+                  [<>Backend, {c('test_receipts.py')} and four more</>, '86 checks in 5 files', 'Receipt parsing, JWT verification, every route group, user A vs user B isolation, anomalies, audit, backup, notifications, CORS and the scan limit'],
                   [c('backend/paper_anomalies.py'), 'Evaluation script', 'K-means against the baseline, with elbow and silhouette charts'],
                 ]}
               />

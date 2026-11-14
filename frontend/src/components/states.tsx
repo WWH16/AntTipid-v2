@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { CircleAlert, Plus, type LucideIcon } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -21,6 +21,26 @@ export function EmptyState({ icon: Icon, title, body, action, framed }: { icon: 
       </EmptyHeader>
       {action && <EmptyContent>{action}</EmptyContent>}
     </Empty>
+  )
+}
+
+const SESSION_EXPIRED = 'Session expired' // the sign-in page uses the same words after a sign-in elsewhere
+
+/** Covers the app in an older tab while a newer tab of this browser shows it: the logo and the words, no card, on the
+ *  sign-in page's column. Reloading the tab opens the app again, and then the other tab locks: the newest one wins. */
+export function TabLockedScreen() {
+  // Named in the tab strip too, so the old tab is easy to find among the others.
+  useEffect(() => { document.title = `${SESSION_EXPIRED} | AntTipid` }, [])
+  return (
+    <main className="flex min-h-svh w-full items-start justify-center px-4 pt-10 pb-8 sm:items-center sm:p-6 md:p-10">
+      <div className="flex w-full max-w-sm flex-col items-start gap-8 sm:items-center sm:text-center">
+        <LogoWithTagline />
+        <div className="grid gap-2">
+          <h1 className="text-xl font-semibold text-balance">{SESSION_EXPIRED}</h1>
+          <p className="text-sm text-pretty text-muted-foreground">This session is no longer active. You can close this tab.</p>
+        </div>
+      </div>
+    </main>
   )
 }
 

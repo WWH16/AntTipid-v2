@@ -1,10 +1,10 @@
 // App-wide state: who is signed in, and the two sheets any screen can open (add/edit, transaction details).
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/api/endpoints'
 import { invalidate, setCacheUser, useQuery } from '@/api/use-query'
 import { currentMonth, watchDay } from '@/lib/format'
-import { supabase, toUser } from '@/lib/supabase'
+import { supabase, takeSessionEnded, toUser } from '@/lib/supabase'
 import type { Transaction, TransactionKind, User } from '@/types'
 
 // copy: a new transaction prefilled from an old one ("Add again"), dated today.
@@ -14,6 +14,12 @@ interface AppState {
   user: User | null
   /** False until the saved Supabase session has been read; don't redirect to sign-in before then. */
   ready: boolean
+  /** A sign-in elsewhere ended this browser's session. The sign-in page says so until the next sign-in. */
+  sessionEnded: boolean
+  /** A newer tab of this browser is showing the app; this one shows "Session expired" until it's reloaded. */
+  tabLocked: boolean
+  /** Make this the one tab showing the app, if it loaded signed in or signed in here and no newer tab took over. */
+  claimTab: () => void
   signIn: (u: User) => void
   signOut: () => void
   add: AddRequest | null
@@ -26,9 +32,19 @@ interface AppState {
 
 const Ctx = createContext<AppState | null>(null)
 
+// Tabs of one browser share one session, so the server can't tell them apart. They tell each other instead: a tab that
+// starts showing the app posts the time, and every other tab locks.
+const tabs = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('anttipid-tab')
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [ready, setReady] = useState(false)
+  const [sessionEnded, setSessionEnded] = useState(false)
+  const [tabLocked, setTabLocked] = useState(false)
+  // at: when this tab last claimed the app. allowed: it may claim on its own, because it loaded signed in or signed in
+  // here. A tab that only received another tab's sign-in never claims on its own, so it can't take the app back.
+  // locked mirrors tabLocked, so claimTab can stay the same function across renders.
+  const claim = useRef({ at: 0, allowed: false, locked: false })
   const [add, setAdd] = useState<AddRequest | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
 
@@ -36,25 +52,61 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   // (INITIAL_SESSION), then on every sign-in, sign-out and token refresh.
   useEffect(() => {
     let userId: string | null | undefined
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
       const id = session?.user.id ?? null
+      if (event === 'INITIAL_SESSION' && id) claim.current.allowed = true
+      if (!id) claim.current.allowed = false
       // Another tab signed out or switched accounts: close sheets still holding the old account's transaction.
       if (id !== userId) { setAdd(null); setDetailId(null) }
+      // Signed out because a sign-in elsewhere ended the session: the sign-in page says why. Any sign-in clears it.
+      if (id) setSessionEnded(false)
+      else if (takeSessionEnded()) setSessionEnded(true)
       userId = id
       // Before setUser, so the first render after sign-in already has this user's saved data, never another's.
       setCacheUser(id)
       setUser(session?.user ? toUser(session.user) : null)
       setReady(true)
     })
-    return () => data.subscription.unsubscribe()
+    // Back on screen: ask Auth whether the session still exists, so a sign-in elsewhere shows here at once.
+    // A session that's gone is dropped by auth-js, which signs this browser out.
+    const recheck = () => { if (userId && document.visibilityState === 'visible') void supabase.auth.getUser() }
+    document.addEventListener('visibilitychange', recheck)
+    return () => {
+      data.subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', recheck)
+    }
+  }, [])
+
+  // Another tab claimed the app at the same time or later than this one did: lock. When two tabs open together, the
+  // later claim wins instead of both locking.
+  useEffect(() => {
+    const onClaim = (e: MessageEvent<number>) => {
+      if (e.data < claim.current.at) return
+      claim.current.locked = true
+      setTabLocked(true)
+    }
+    tabs?.addEventListener('message', onClaim)
+    return () => tabs?.removeEventListener('message', onClaim)
+  }, [])
+
+  // force: signing in here takes the app back even in a locked tab.
+  const claimTab = useCallback((force = false) => {
+    if (!force && (!claim.current.allowed || claim.current.locked)) return
+    claim.current = { at: Date.now(), allowed: true, locked: false }
+    tabs?.postMessage(claim.current.at)
+    setTabLocked(false)
   }, [])
 
   const value: AppState = {
     user,
     ready,
-    // Updates state immediately, before onAuthStateChange catches up.
-    signIn: setUser,
+    sessionEnded,
+    tabLocked,
+    claimTab,
+    // Updates state immediately, before onAuthStateChange catches up. Signing in here makes this the tab showing the app.
+    signIn: (u) => { setUser(u); claimTab(true) },
     signOut: () => {
+      takeSessionEnded() // signing out on purpose is never "ended elsewhere"
       setCacheUser(null)
       setUser(null)
       setAdd(null)

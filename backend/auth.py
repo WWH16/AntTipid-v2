@@ -17,6 +17,7 @@ from fastapi import Depends, Header, HTTPException
 log = logging.getLogger("auth")
 
 ASYMMETRIC = {"ES256", "RS256"}
+EXPIRED = "Your session has expired. Sign in again."
 
 
 @dataclass(frozen=True)
@@ -62,9 +63,9 @@ def verify_token(token: str) -> dict:
         raise HTTPException(503, "Couldn't check your sign-in right now. Try again in a minute.")
     except jwt.PyJWTError as e:
         log.info("rejected token: %s", e)
-        raise HTTPException(401, "Your session has expired. Sign in again.")
+        raise HTTPException(401, EXPIRED)
     if claims.get("role") != "authenticated":
-        raise HTTPException(401, "Your session has expired. Sign in again.")
+        raise HTTPException(401, EXPIRED)
     return claims
 
 
@@ -78,6 +79,15 @@ def current_user(authorization: str | None = Header(default=None)) -> AuthUser:
     if not token:
         raise HTTPException(401, "Sign in to continue.")
     claims = verify_token(token)
+    # A valid signature isn't enough: the session must still exist, or a signed-out device keeps working until its
+    # token expires. ponytail: one extra query per request; tokens without session_id (only hand-made test tokens,
+    # every Supabase user token has one) skip it. A newer sign-in deletes the old session (single_session migration).
+    if claims.get("session_id"):
+        from db import connect  # here, not at the top: db imports this module
+        with connect() as conn:
+            alive = conn.execute("select 1 from auth.sessions where id = %s", (claims["session_id"],)).fetchone()
+        if not alive:
+            raise HTTPException(401, EXPIRED)
     return AuthUser(id=claims["sub"], token=token, claims=claims)
 
 

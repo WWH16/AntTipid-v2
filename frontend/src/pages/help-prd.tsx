@@ -9,6 +9,7 @@ const FR_GROUPS: { title: string; items: string[] }[] = [
     items: [
       'A visitor can create an account with a name, email and password. AntTipid sends a confirmation email.',
       'A user can sign in with email and password, or continue with Google.',
+      'An account is active in only one place at a time. Signing in on another browser or device signs out the old one, and opening the app in another tab locks the older tab. Both show “Session expired”.',
       'A user can reset a forgotten password through an emailed link.',
       'A new password needs at least 8 characters, one uppercase letter, one lowercase letter and one number.',
       'Sign-in, sign-up and the password-reset and confirmation emails pass a Cloudflare Turnstile CAPTCHA. Too many tries from one address are refused for a few minutes.',

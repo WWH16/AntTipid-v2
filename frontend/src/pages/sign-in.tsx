@@ -1,12 +1,13 @@
 // shadcn login-01 block: centred card with the form, switching between sign-in, sign-up, forgot password, reset, and email confirmation.
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { Check, Loader2, Mail } from 'lucide-react'
+import { Check, Info, Loader2, Mail } from 'lucide-react'
 import { useApp } from '@/app-state'
 import { api } from '@/api/endpoints'
 import { GoogleIcon } from '@/components/brand-icons'
 import { LogoWithTagline } from '@/components/logo'
 import { LoadingAuth } from '@/components/states'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { TURNSTILE_SITE_KEY, Turnstile } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,7 +38,7 @@ const COPY: Record<Exclude<AuthMode, 'emailSent'>, { title: string; description:
 }
 
 export function SignInPage() {
-  const { user, ready, signIn } = useApp()
+  const { user, ready, sessionEnded, signIn } = useApp()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const isResetLink = searchParams.get('mode') === 'reset'
@@ -266,6 +267,9 @@ export function SignInPage() {
             <CardDescription>{description}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5 sm:gap-6">
+            {isSignIn && sessionEnded && (
+              <Alert><Info /><AlertTitle>Session expired</AlertTitle><AlertDescription>Please sign in again to continue.</AlertDescription></Alert>
+            )}
             {isSignIn && DEMO_EMAIL && DEMO_PASSWORD && (
               <section aria-label="Demo account" className="grid gap-1 rounded-lg bg-muted p-3 text-sm">
                 <p className="font-medium">To try AntTipid, use the demo account:</p>

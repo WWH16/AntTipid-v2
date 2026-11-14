@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useApp } from '@/app-state'
-import { LoadingAuth, LoadingDocument, LoadingPage, LoadingShell } from '@/components/states'
+import { LoadingAuth, LoadingDocument, LoadingPage, LoadingShell, TabLockedScreen } from '@/components/states'
 import { hasSavedSession } from '@/lib/supabase'
 
 // Each page is its own file. The signed-in pages are fetched in the background once the app is up (see
@@ -38,8 +38,12 @@ const page = (el: ReactNode) => <Suspense fallback={<LoadingPage />}>{el}</Suspe
 
 /** `loading` stands in while the session is read: the shell's shape for shell pages, a plain document otherwise. */
 function RequireUser({ children, loading = <LoadingDocument /> }: { children: ReactNode; loading?: ReactNode }) {
-  const { user, ready } = useApp()
+  const { user, ready, sessionEnded, tabLocked, claimTab } = useApp()
   const { pathname } = useLocation()
+  const signedIn = !!user
+  // Showing the app makes this the one tab that shows it. On the signed-in flag, not the user object, which is new on
+  // every token refresh: re-claiming then would make tabs lock each other.
+  useEffect(() => { if (signedIn) claimTab() }, [signedIn, claimTab])
   useEffect(() => {
     if (!user) return
     // After the first screen settles; Safari has no requestIdleCallback.
@@ -50,8 +54,9 @@ function RequireUser({ children, loading = <LoadingDocument /> }: { children: Re
   // With no saved session there's nothing to wait for, so / skips the app skeleton and shows the landing page at once.
   const landing = <Suspense fallback={null}><LandingPage /></Suspense>
   if (!ready) return pathname === '/' && !hasSavedSession() ? landing : loading
-  if (user) return children
-  return pathname === '/' ? landing : <Navigate to="/sign-in" replace />
+  if (user) return tabLocked ? <TabLockedScreen /> : children
+  // A session ended by a sign-in elsewhere goes to the sign-in page from / too, which says why.
+  return pathname === '/' && !sessionEnded ? landing : <Navigate to="/sign-in" replace />
 }
 
 export default function App() {
